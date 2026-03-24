@@ -1,5 +1,5 @@
-use crate::geometry::{Color, Point, Size};
 use super::{Annotation, AnnotationTool};
+use crate::geometry::{Color, Point, Size};
 
 pub struct RectangleTool {
     color: Color,

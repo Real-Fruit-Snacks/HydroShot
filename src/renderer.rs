@@ -122,7 +122,10 @@ pub fn render_overlay(state: &OverlayState, pixmap: &mut tiny_skia::Pixmap) {
             let mut paint = Paint::default();
             paint.set_color(tiny_skia::Color::WHITE);
             paint.anti_alias = true;
-            let stroke = Stroke { width: 1.5, ..Stroke::default() };
+            let stroke = Stroke {
+                width: 1.5,
+                ..Stroke::default()
+            };
             pixmap.stroke_path(&path, &paint, &stroke, Transform::identity(), None);
         }
     }
@@ -172,25 +175,54 @@ fn render_toolbar(state: &OverlayState, selection: &Selection, pixmap: &mut tiny
     let presets = Color::presets();
 
     // --- Toolbar background: rounded rect with subtle border ---
-    if let Some(bg_path) = rounded_rect_path(toolbar.x, toolbar.y, toolbar.width, toolbar.height, 8.0) {
+    if let Some(bg_path) =
+        rounded_rect_path(toolbar.x, toolbar.y, toolbar.width, toolbar.height, 8.0)
+    {
         // Shadow (offset dark rect behind)
-        if let Some(shadow_path) = rounded_rect_path(toolbar.x + 1.0, toolbar.y + 2.0, toolbar.width, toolbar.height, 8.0) {
+        if let Some(shadow_path) = rounded_rect_path(
+            toolbar.x + 1.0,
+            toolbar.y + 2.0,
+            toolbar.width,
+            toolbar.height,
+            8.0,
+        ) {
             let mut shadow_paint = Paint::default();
             shadow_paint.set_color(tiny_skia::Color::from_rgba(0.0, 0.0, 0.0, 0.4).unwrap());
             shadow_paint.anti_alias = true;
-            pixmap.fill_path(&shadow_path, &shadow_paint, tiny_skia::FillRule::Winding, Transform::identity(), None);
+            pixmap.fill_path(
+                &shadow_path,
+                &shadow_paint,
+                tiny_skia::FillRule::Winding,
+                Transform::identity(),
+                None,
+            );
         }
         // Background fill
         let mut bg_paint = Paint::default();
         bg_paint.set_color(tiny_skia::Color::from_rgba(0.12, 0.12, 0.14, 0.92).unwrap());
         bg_paint.anti_alias = true;
-        pixmap.fill_path(&bg_path, &bg_paint, tiny_skia::FillRule::Winding, Transform::identity(), None);
+        pixmap.fill_path(
+            &bg_path,
+            &bg_paint,
+            tiny_skia::FillRule::Winding,
+            Transform::identity(),
+            None,
+        );
         // Subtle border
         let mut border_paint = Paint::default();
         border_paint.set_color(tiny_skia::Color::from_rgba(1.0, 1.0, 1.0, 0.1).unwrap());
         border_paint.anti_alias = true;
-        let border_stroke = Stroke { width: 1.0, ..Stroke::default() };
-        pixmap.stroke_path(&bg_path, &border_paint, &border_stroke, Transform::identity(), None);
+        let border_stroke = Stroke {
+            width: 1.0,
+            ..Stroke::default()
+        };
+        pixmap.stroke_path(
+            &bg_path,
+            &border_paint,
+            &border_stroke,
+            Transform::identity(),
+            None,
+        );
     }
 
     // --- Separators between button groups (tools | colors | actions) ---
@@ -207,7 +239,10 @@ fn render_toolbar(state: &OverlayState, selection: &Selection, pixmap: &mut tiny
             let mut paint = Paint::default();
             paint.set_color(sep_color);
             paint.anti_alias = true;
-            let stroke = Stroke { width: 1.0, ..Stroke::default() };
+            let stroke = Stroke {
+                width: 1.0,
+                ..Stroke::default()
+            };
             pixmap.stroke_path(&path, &paint, &stroke, Transform::identity(), None);
         }
     }
@@ -237,19 +272,34 @@ fn render_toolbar(state: &OverlayState, selection: &Selection, pixmap: &mut tiny
                 let mut fill = Paint::default();
                 fill.set_color(tiny_skia::Color::from_rgba(0.25, 0.52, 0.95, 0.35).unwrap());
                 fill.anti_alias = true;
-                pixmap.fill_path(&btn_path, &fill, tiny_skia::FillRule::Winding, Transform::identity(), None);
+                pixmap.fill_path(
+                    &btn_path,
+                    &fill,
+                    tiny_skia::FillRule::Winding,
+                    Transform::identity(),
+                    None,
+                );
                 // Active border glow
                 let mut glow = Paint::default();
                 glow.set_color(tiny_skia::Color::from_rgba(0.4, 0.65, 1.0, 0.7).unwrap());
                 glow.anti_alias = true;
-                let glow_stroke = Stroke { width: 1.5, ..Stroke::default() };
+                let glow_stroke = Stroke {
+                    width: 1.5,
+                    ..Stroke::default()
+                };
                 pixmap.stroke_path(&btn_path, &glow, &glow_stroke, Transform::identity(), None);
             } else {
                 // Inactive: subtle hover-ready background
                 let mut fill = Paint::default();
                 fill.set_color(tiny_skia::Color::from_rgba(1.0, 1.0, 1.0, 0.06).unwrap());
                 fill.anti_alias = true;
-                pixmap.fill_path(&btn_path, &fill, tiny_skia::FillRule::Winding, Transform::identity(), None);
+                pixmap.fill_path(
+                    &btn_path,
+                    &fill,
+                    tiny_skia::FillRule::Winding,
+                    Transform::identity(),
+                    None,
+                );
             }
         }
 
@@ -275,7 +325,10 @@ fn render_toolbar(state: &OverlayState, selection: &Selection, pixmap: &mut tiny
                     let mut paint = Paint::default();
                     paint.set_color(icon_color);
                     paint.anti_alias = true;
-                    let stroke = Stroke { width: 2.0, ..Stroke::default() };
+                    let stroke = Stroke {
+                        width: 2.0,
+                        ..Stroke::default()
+                    };
                     pixmap.stroke_path(&path, &paint, &stroke, Transform::identity(), None);
                 }
 
@@ -294,24 +347,45 @@ fn render_toolbar(state: &OverlayState, selection: &Selection, pixmap: &mut tiny
 
                 let mut pb = PathBuilder::new();
                 pb.move_to(x2, y2);
-                pb.line_to(base_x + perp_x * arrow_half_w, base_y + perp_y * arrow_half_w);
-                pb.line_to(base_x - perp_x * arrow_half_w, base_y - perp_y * arrow_half_w);
+                pb.line_to(
+                    base_x + perp_x * arrow_half_w,
+                    base_y + perp_y * arrow_half_w,
+                );
+                pb.line_to(
+                    base_x - perp_x * arrow_half_w,
+                    base_y - perp_y * arrow_half_w,
+                );
                 pb.close();
                 if let Some(path) = pb.finish() {
                     let mut paint = Paint::default();
                     paint.set_color(icon_color);
                     paint.anti_alias = true;
-                    pixmap.fill_path(&path, &paint, tiny_skia::FillRule::Winding, Transform::identity(), None);
+                    pixmap.fill_path(
+                        &path,
+                        &paint,
+                        tiny_skia::FillRule::Winding,
+                        Transform::identity(),
+                        None,
+                    );
                 }
             }
             1 => {
                 // Rectangle icon: rounded outlined rect
                 let inset = 7.0;
-                if let Some(path) = rounded_rect_path(bx + inset, by + inset, bw - inset * 2.0, bh - inset * 2.0, 2.0) {
+                if let Some(path) = rounded_rect_path(
+                    bx + inset,
+                    by + inset,
+                    bw - inset * 2.0,
+                    bh - inset * 2.0,
+                    2.0,
+                ) {
                     let mut paint = Paint::default();
                     paint.set_color(icon_color);
                     paint.anti_alias = true;
-                    let stroke = Stroke { width: 2.0, ..Stroke::default() };
+                    let stroke = Stroke {
+                        width: 2.0,
+                        ..Stroke::default()
+                    };
                     pixmap.stroke_path(&path, &paint, &stroke, Transform::identity(), None);
                 }
             }
@@ -325,7 +399,10 @@ fn render_toolbar(state: &OverlayState, selection: &Selection, pixmap: &mut tiny
                     let mut paint = Paint::default();
                     paint.set_color(icon_color);
                     paint.anti_alias = true;
-                    let stroke = Stroke { width: 2.0, ..Stroke::default() };
+                    let stroke = Stroke {
+                        width: 2.0,
+                        ..Stroke::default()
+                    };
                     pixmap.stroke_path(&path, &paint, &stroke, Transform::identity(), None);
                 }
             }
@@ -340,7 +417,10 @@ fn render_toolbar(state: &OverlayState, selection: &Selection, pixmap: &mut tiny
                     let mut paint = Paint::default();
                     paint.set_color(icon_color);
                     paint.anti_alias = true;
-                    let stroke = Stroke { width: 2.5, ..Stroke::default() };
+                    let stroke = Stroke {
+                        width: 2.5,
+                        ..Stroke::default()
+                    };
                     pixmap.stroke_path(&path, &paint, &stroke, Transform::identity(), None);
                 }
                 // Vertical stem of T
@@ -351,7 +431,10 @@ fn render_toolbar(state: &OverlayState, selection: &Selection, pixmap: &mut tiny
                     let mut paint = Paint::default();
                     paint.set_color(icon_color);
                     paint.anti_alias = true;
-                    let stroke = Stroke { width: 2.5, ..Stroke::default() };
+                    let stroke = Stroke {
+                        width: 2.5,
+                        ..Stroke::default()
+                    };
                     pixmap.stroke_path(&path, &paint, &stroke, Transform::identity(), None);
                 }
             }
@@ -370,9 +453,15 @@ fn render_toolbar(state: &OverlayState, selection: &Selection, pixmap: &mut tiny
                             let mut paint = Paint::default();
                             // Checkerboard-ish pattern for visual interest
                             let alpha = if (row + col) % 2 == 0 { 1.0 } else { 0.5 };
-                            paint.set_color(tiny_skia::Color::from_rgba(
-                                icon_color.red(), icon_color.green(), icon_color.blue(), alpha,
-                            ).unwrap());
+                            paint.set_color(
+                                tiny_skia::Color::from_rgba(
+                                    icon_color.red(),
+                                    icon_color.green(),
+                                    icon_color.blue(),
+                                    alpha,
+                                )
+                                .unwrap(),
+                            );
                             paint.anti_alias = false;
                             pixmap.fill_rect(rect, &paint, Transform::identity(), None);
                         }
@@ -385,19 +474,42 @@ fn render_toolbar(state: &OverlayState, selection: &Selection, pixmap: &mut tiny
                 if idx < SWATCH_COLORS.len() {
                     let (r, g, b) = SWATCH_COLORS[idx];
                     let inset = 6.0;
-                    if let Some(swatch_path) = rounded_rect_path(bx + inset, by + inset, bw - inset * 2.0, bh - inset * 2.0, 3.0) {
+                    if let Some(swatch_path) = rounded_rect_path(
+                        bx + inset,
+                        by + inset,
+                        bw - inset * 2.0,
+                        bh - inset * 2.0,
+                        3.0,
+                    ) {
                         // Fill with color
                         let mut paint = Paint::default();
                         paint.set_color(tiny_skia::Color::from_rgba(r, g, b, 1.0).unwrap());
                         paint.anti_alias = true;
-                        pixmap.fill_path(&swatch_path, &paint, tiny_skia::FillRule::Winding, Transform::identity(), None);
+                        pixmap.fill_path(
+                            &swatch_path,
+                            &paint,
+                            tiny_skia::FillRule::Winding,
+                            Transform::identity(),
+                            None,
+                        );
                         // Border (darker for light colors, lighter for dark)
                         let border_alpha = if r + g + b > 2.0 { 0.3 } else { 0.5 };
                         let mut border = Paint::default();
-                        border.set_color(tiny_skia::Color::from_rgba(1.0, 1.0, 1.0, border_alpha).unwrap());
+                        border.set_color(
+                            tiny_skia::Color::from_rgba(1.0, 1.0, 1.0, border_alpha).unwrap(),
+                        );
                         border.anti_alias = true;
-                        let stroke = Stroke { width: 1.0, ..Stroke::default() };
-                        pixmap.stroke_path(&swatch_path, &border, &stroke, Transform::identity(), None);
+                        let stroke = Stroke {
+                            width: 1.0,
+                            ..Stroke::default()
+                        };
+                        pixmap.stroke_path(
+                            &swatch_path,
+                            &border,
+                            &stroke,
+                            Transform::identity(),
+                            None,
+                        );
                     }
                 }
             }
@@ -408,24 +520,48 @@ fn render_toolbar(state: &OverlayState, selection: &Selection, pixmap: &mut tiny
                 let cx = bx + bw / 2.0;
                 let cy = by + bh / 2.0;
                 // Back rect (top-left)
-                if let Some(path) = rounded_rect_path(cx - s / 2.0 - off / 2.0, cy - s / 2.0 - off / 2.0, s, s, 2.0) {
+                if let Some(path) = rounded_rect_path(
+                    cx - s / 2.0 - off / 2.0,
+                    cy - s / 2.0 - off / 2.0,
+                    s,
+                    s,
+                    2.0,
+                ) {
                     let mut paint = Paint::default();
                     paint.set_color(icon_color);
                     paint.anti_alias = true;
-                    let stroke = Stroke { width: 1.5, ..Stroke::default() };
+                    let stroke = Stroke {
+                        width: 1.5,
+                        ..Stroke::default()
+                    };
                     pixmap.stroke_path(&path, &paint, &stroke, Transform::identity(), None);
                 }
                 // Front rect (bottom-right, slightly filled)
-                if let Some(path) = rounded_rect_path(cx - s / 2.0 + off / 2.0, cy - s / 2.0 + off / 2.0, s, s, 2.0) {
+                if let Some(path) = rounded_rect_path(
+                    cx - s / 2.0 + off / 2.0,
+                    cy - s / 2.0 + off / 2.0,
+                    s,
+                    s,
+                    2.0,
+                ) {
                     // Slight fill to distinguish from back
                     let mut fill = Paint::default();
                     fill.set_color(tiny_skia::Color::from_rgba(0.12, 0.12, 0.14, 0.92).unwrap());
                     fill.anti_alias = true;
-                    pixmap.fill_path(&path, &fill, tiny_skia::FillRule::Winding, Transform::identity(), None);
+                    pixmap.fill_path(
+                        &path,
+                        &fill,
+                        tiny_skia::FillRule::Winding,
+                        Transform::identity(),
+                        None,
+                    );
                     let mut paint = Paint::default();
                     paint.set_color(icon_color);
                     paint.anti_alias = true;
-                    let stroke = Stroke { width: 1.5, ..Stroke::default() };
+                    let stroke = Stroke {
+                        width: 1.5,
+                        ..Stroke::default()
+                    };
                     pixmap.stroke_path(&path, &paint, &stroke, Transform::identity(), None);
                 }
             }
@@ -444,7 +580,10 @@ fn render_toolbar(state: &OverlayState, selection: &Selection, pixmap: &mut tiny
                     let mut paint = Paint::default();
                     paint.set_color(icon_color);
                     paint.anti_alias = true;
-                    let stroke = Stroke { width: 2.0, ..Stroke::default() };
+                    let stroke = Stroke {
+                        width: 2.0,
+                        ..Stroke::default()
+                    };
                     pixmap.stroke_path(&path, &paint, &stroke, Transform::identity(), None);
                 }
 
@@ -458,7 +597,13 @@ fn render_toolbar(state: &OverlayState, selection: &Selection, pixmap: &mut tiny
                     let mut paint = Paint::default();
                     paint.set_color(icon_color);
                     paint.anti_alias = true;
-                    pixmap.fill_path(&path, &paint, tiny_skia::FillRule::Winding, Transform::identity(), None);
+                    pixmap.fill_path(
+                        &path,
+                        &paint,
+                        tiny_skia::FillRule::Winding,
+                        Transform::identity(),
+                        None,
+                    );
                 }
 
                 // Tray: U-shape
@@ -473,7 +618,10 @@ fn render_toolbar(state: &OverlayState, selection: &Selection, pixmap: &mut tiny
                     let mut paint = Paint::default();
                     paint.set_color(icon_color);
                     paint.anti_alias = true;
-                    let stroke = Stroke { width: 2.0, ..Stroke::default() };
+                    let stroke = Stroke {
+                        width: 2.0,
+                        ..Stroke::default()
+                    };
                     pixmap.stroke_path(&path, &paint, &stroke, Transform::identity(), None);
                 }
             }

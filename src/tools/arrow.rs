@@ -1,5 +1,5 @@
-use crate::geometry::{Color, Point};
 use super::{Annotation, AnnotationTool};
+use crate::geometry::{Color, Point};
 
 pub struct ArrowTool {
     color: Color,

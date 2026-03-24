@@ -5,7 +5,8 @@ use global_hotkey::GlobalHotKeyManager;
 ///
 /// Returns the manager (must be kept alive) and the hotkey id.
 pub fn register_hotkey(binding: &str) -> Result<(GlobalHotKeyManager, u32), String> {
-    let manager = GlobalHotKeyManager::new().map_err(|e| format!("Failed to create hotkey manager: {e}"))?;
+    let manager =
+        GlobalHotKeyManager::new().map_err(|e| format!("Failed to create hotkey manager: {e}"))?;
 
     let parts: Vec<&str> = binding.split('+').collect();
     if parts.is_empty() {

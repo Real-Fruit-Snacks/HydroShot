@@ -3,8 +3,8 @@ use crate::geometry::{Color, Point};
 use crate::overlay::selection::{HitZone, Selection};
 use crate::tools::arrow::ArrowTool;
 use crate::tools::pencil::PencilTool;
-use crate::tools::rectangle::RectangleTool;
 use crate::tools::pixelate::PixelateTool;
+use crate::tools::rectangle::RectangleTool;
 use crate::tools::text::TextTool;
 use crate::tools::{Annotation, ToolKind};
 

@@ -44,9 +44,18 @@ fn serialize_roundtrip_via_toml() {
     let cfg = Config::default();
     let serialized = toml::to_string(&cfg).expect("serialize");
     let deserialized: Config = toml::from_str(&serialized).expect("deserialize");
-    assert_eq!(deserialized.general.default_color, cfg.general.default_color);
-    assert_eq!(deserialized.general.default_thickness, cfg.general.default_thickness);
-    assert_eq!(deserialized.general.save_directory, cfg.general.save_directory);
+    assert_eq!(
+        deserialized.general.default_color,
+        cfg.general.default_color
+    );
+    assert_eq!(
+        deserialized.general.default_thickness,
+        cfg.general.default_thickness
+    );
+    assert_eq!(
+        deserialized.general.save_directory,
+        cfg.general.save_directory
+    );
     assert_eq!(deserialized.hotkey.capture, cfg.hotkey.capture);
 }
 

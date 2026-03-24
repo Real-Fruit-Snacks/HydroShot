@@ -26,7 +26,10 @@ fn text_tool_mouse_up_produces_no_annotation() {
     let mut tool = TextTool::new(Color::blue(), 16.0);
     tool.on_mouse_down(Point::new(10.0, 10.0));
     let ann = tool.on_mouse_up(Point::new(10.0, 10.0));
-    assert!(ann.is_none(), "TextTool should not produce annotations from mouse_up");
+    assert!(
+        ann.is_none(),
+        "TextTool should not produce annotations from mouse_up"
+    );
 }
 
 #[test]

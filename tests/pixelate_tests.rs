@@ -30,9 +30,7 @@ fn pixelate_normalizes_reverse_drag() {
     let ann = tool.on_mouse_up(Point::new(20.0, 20.0));
     assert!(ann.is_some());
     match ann.unwrap() {
-        Annotation::Pixelate {
-            top_left, size, ..
-        } => {
+        Annotation::Pixelate { top_left, size, .. } => {
             assert_eq!(top_left, Point::new(20.0, 20.0));
             assert_eq!(size, Size::new(60.0, 60.0));
         }
@@ -65,11 +63,26 @@ fn pixelate_render_draws_to_pixmap() {
 
     // After pixelation of a uniform red image, all pixels should still be red-ish
     let pixel = pixmap.pixel(5, 5).unwrap();
-    assert!(pixel.alpha() > 0, "Expected non-transparent pixel after pixelate");
+    assert!(
+        pixel.alpha() > 0,
+        "Expected non-transparent pixel after pixelate"
+    );
     // The red channel (premultiplied) should be dominant
-    assert!(pixel.red() > 200, "Expected red channel to be high, got {}", pixel.red());
-    assert!(pixel.green() < 10, "Expected green channel to be low, got {}", pixel.green());
-    assert!(pixel.blue() < 10, "Expected blue channel to be low, got {}", pixel.blue());
+    assert!(
+        pixel.red() > 200,
+        "Expected red channel to be high, got {}",
+        pixel.red()
+    );
+    assert!(
+        pixel.green() < 10,
+        "Expected green channel to be low, got {}",
+        pixel.green()
+    );
+    assert!(
+        pixel.blue() < 10,
+        "Expected blue channel to be low, got {}",
+        pixel.blue()
+    );
 }
 
 #[test]
@@ -90,9 +103,7 @@ fn pixelate_in_progress_annotation_during_drag() {
     let preview = tool.in_progress_annotation();
     assert!(preview.is_some());
     match preview.unwrap() {
-        Annotation::Pixelate {
-            top_left, size, ..
-        } => {
+        Annotation::Pixelate { top_left, size, .. } => {
             assert_eq!(top_left, Point::new(10.0, 10.0));
             assert_eq!(size, Size::new(30.0, 30.0));
         }
@@ -112,5 +123,9 @@ fn pixelate_skips_render_without_source_pixels() {
     render_annotation(&ann, &mut pixmap, None, None);
     // Pixmap should remain transparent (default)
     let pixel = pixmap.pixel(25, 25).unwrap();
-    assert_eq!(pixel.alpha(), 0, "Expected transparent pixel when no source pixels");
+    assert_eq!(
+        pixel.alpha(),
+        0,
+        "Expected transparent pixel when no source pixels"
+    );
 }

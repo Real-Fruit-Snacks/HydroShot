@@ -1,7 +1,5 @@
 use hydroshot::geometry::{Color, Point};
-use hydroshot::tools::{
-    pencil::PencilTool, render_annotation, Annotation, AnnotationTool,
-};
+use hydroshot::tools::{pencil::PencilTool, render_annotation, Annotation, AnnotationTool};
 
 #[test]
 fn pencil_produces_annotation_with_correct_points() {

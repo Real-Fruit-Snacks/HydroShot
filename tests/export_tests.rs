@@ -10,8 +10,8 @@ fn flatten_empty_annotations_preserves_pixels() {
     let mut pixels = Vec::with_capacity((width * height * 4) as usize);
     for _ in 0..(width * height) {
         pixels.push(255); // R
-        pixels.push(0);   // G
-        pixels.push(0);   // B
+        pixels.push(0); // G
+        pixels.push(0); // B
         pixels.push(255); // A
     }
 
@@ -69,10 +69,10 @@ fn crop_and_flatten_crops_correctly() {
     let mut pixels = Vec::with_capacity((width * height * 4) as usize);
     for y in 0..height {
         for x in 0..width {
-            pixels.push(x as u8 * 25);  // R varies by column
-            pixels.push(y as u8 * 25);  // G varies by row
-            pixels.push(128);           // B constant
-            pixels.push(255);           // A opaque
+            pixels.push(x as u8 * 25); // R varies by column
+            pixels.push(y as u8 * 25); // G varies by row
+            pixels.push(128); // B constant
+            pixels.push(255); // A opaque
         }
     }
 
@@ -83,10 +83,10 @@ fn crop_and_flatten_crops_correctly() {
     assert_eq!(result.len(), (4 * 4 * 4) as usize);
 
     // Check first pixel of cropped region corresponds to (2,3) in original
-    assert_eq!(result[0], 2 * 25);   // R = x=2 * 25
-    assert_eq!(result[1], 3 * 25);   // G = y=3 * 25
-    assert_eq!(result[2], 128);      // B
-    assert_eq!(result[3], 255);      // A
+    assert_eq!(result[0], 2 * 25); // R = x=2 * 25
+    assert_eq!(result[1], 3 * 25); // G = y=3 * 25
+    assert_eq!(result[2], 128); // B
+    assert_eq!(result[3], 255); // A
 }
 
 #[test]

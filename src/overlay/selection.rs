@@ -28,15 +28,17 @@ impl Selection {
         let y = a.y.min(b.y);
         let width = (a.x - b.x).abs();
         let height = (a.y - b.y).abs();
-        Self { x, y, width, height }
+        Self {
+            x,
+            y,
+            width,
+            height,
+        }
     }
 
     /// Check if a point is inside the selection rectangle.
     pub fn contains(&self, p: Point) -> bool {
-        p.x >= self.x
-            && p.x <= self.x + self.width
-            && p.y >= self.y
-            && p.y <= self.y + self.height
+        p.x >= self.x && p.x <= self.x + self.width && p.y >= self.y && p.y <= self.y + self.height
     }
 
     /// Move the selection by a delta.

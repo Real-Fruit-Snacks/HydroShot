@@ -1,4 +1,4 @@
-use hydroshot::geometry::{Point, Size, Color};
+use hydroshot::geometry::{Color, Point, Size};
 
 #[test]
 fn test_point_creation() {

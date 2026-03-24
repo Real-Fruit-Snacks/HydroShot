@@ -179,7 +179,12 @@ impl App {
                     sel.height as u32,
                     &overlay.annotations,
                 );
-                match export::save_to_file(&pixels, sel.width as u32, sel.height as u32, self.config.save_directory().as_deref()) {
+                match export::save_to_file(
+                    &pixels,
+                    sel.width as u32,
+                    sel.height as u32,
+                    self.config.save_directory().as_deref(),
+                ) {
                     Ok(Some(path)) => {
                         tracing::info!("Saved to {path}");
                         self.close_overlay();
@@ -652,7 +657,8 @@ impl ApplicationHandler for App {
                                         overlay.text_input_active = true;
                                         overlay.text_input_position = p;
                                         overlay.text_input_buffer.clear();
-                                        overlay.text_input_font_size = overlay.text_tool.font_size();
+                                        overlay.text_input_font_size =
+                                            overlay.text_tool.font_size();
                                     }
                                 }
                                 ToolKind::Pixelate => overlay.pixelate_tool.on_mouse_down(pos),
@@ -717,7 +723,8 @@ impl ApplicationHandler for App {
                 };
                 if overlay.text_input_active {
                     // Adjust font size while typing
-                    overlay.text_input_font_size = (overlay.text_input_font_size + scroll).clamp(10.0, 72.0);
+                    overlay.text_input_font_size =
+                        (overlay.text_input_font_size + scroll).clamp(10.0, 72.0);
                 } else {
                     let new_thickness = (overlay.current_thickness + scroll).clamp(1.0, 20.0);
                     overlay.current_thickness = new_thickness;
@@ -757,7 +764,12 @@ fn main() {
     tracing::info!("HydroShot starting");
 
     let config = Config::load();
-    tracing::info!("Config loaded: hotkey={}, color={}, thickness={}", config.hotkey.capture, config.general.default_color, config.general.default_thickness);
+    tracing::info!(
+        "Config loaded: hotkey={}, color={}, thickness={}",
+        config.hotkey.capture,
+        config.general.default_color,
+        config.general.default_thickness
+    );
 
     let event_loop = EventLoop::new().expect("Failed to create event loop");
 
