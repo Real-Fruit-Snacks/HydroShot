@@ -4,6 +4,7 @@ use crate::overlay::selection::{HitZone, Selection};
 use crate::tools::arrow::ArrowTool;
 use crate::tools::pencil::PencilTool;
 use crate::tools::rectangle::RectangleTool;
+use crate::tools::pixelate::PixelateTool;
 use crate::tools::text::TextTool;
 use crate::tools::{Annotation, ToolKind};
 
@@ -22,6 +23,7 @@ pub struct OverlayState {
     pub rectangle_tool: RectangleTool,
     pub pencil_tool: PencilTool,
     pub text_tool: TextTool,
+    pub pixelate_tool: PixelateTool,
     pub text_input_active: bool,
     pub text_input_buffer: String,
     pub text_input_position: Point,
@@ -47,6 +49,7 @@ impl OverlayState {
             rectangle_tool: RectangleTool::new(color, 3.0),
             pencil_tool: PencilTool::new(color, 3.0),
             text_tool: TextTool::new(color, 20.0),
+            pixelate_tool: PixelateTool::new(10),
             text_input_active: false,
             text_input_buffer: String::new(),
             text_input_position: Point::new(0.0, 0.0),

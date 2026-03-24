@@ -1,5 +1,6 @@
 pub mod arrow;
 pub mod pencil;
+pub mod pixelate;
 pub mod rectangle;
 pub mod text;
 
@@ -31,6 +32,11 @@ pub enum Annotation {
         color: Color,
         font_size: f32,
     },
+    Pixelate {
+        top_left: Point,
+        size: Size,
+        block_size: u8,
+    },
 }
 
 pub trait AnnotationTool {
@@ -47,6 +53,7 @@ pub enum ToolKind {
     Rectangle,
     Pencil,
     Text,
+    Pixelate,
 }
 
 /// Compute the three vertices of an arrowhead triangle.
@@ -91,7 +98,6 @@ pub fn render_annotation(
     screenshot_pixels: Option<&[u8]>,
     screenshot_width: Option<u32>,
 ) {
-    let _ = (screenshot_pixels, screenshot_width);
     match annotation {
         Annotation::Rectangle {
             top_left,
@@ -187,6 +193,96 @@ pub fn render_annotation(
             font_size,
         } => {
             render_text_annotation(pixmap, position, text, color, *font_size);
+        }
+        Annotation::Pixelate {
+            top_left,
+            size,
+            block_size,
+        } => {
+            let src_pixels = match screenshot_pixels {
+                Some(p) => p,
+                None => return,
+            };
+            let src_width = match screenshot_width {
+                Some(w) => w as usize,
+                None => return,
+            };
+
+            let bs = (*block_size).max(1) as usize;
+            let rx = top_left.x.max(0.0) as usize;
+            let ry = top_left.y.max(0.0) as usize;
+            let rw = size.width as usize;
+            let rh = size.height as usize;
+            let pm_w = pixmap.width() as usize;
+            let pm_h = pixmap.height() as usize;
+
+            let mut by = 0;
+            while by < rh {
+                let bh = bs.min(rh - by);
+                let mut bx = 0;
+                while bx < rw {
+                    let bw = bs.min(rw - bx);
+                    let px_x = rx + bx;
+                    let px_y = ry + by;
+
+                    // Average source pixels in this block
+                    let mut sum_r: u64 = 0;
+                    let mut sum_g: u64 = 0;
+                    let mut sum_b: u64 = 0;
+                    let mut count: u64 = 0;
+
+                    for row in 0..bh {
+                        for col in 0..bw {
+                            let sx = px_x + col;
+                            let sy = px_y + row;
+                            if sx < src_width {
+                                let si = (sy * src_width + sx) * 4;
+                                if si + 3 < src_pixels.len() {
+                                    sum_r += src_pixels[si] as u64;
+                                    sum_g += src_pixels[si + 1] as u64;
+                                    sum_b += src_pixels[si + 2] as u64;
+                                    count += 1;
+                                }
+                            }
+                        }
+                    }
+
+                    if count > 0 {
+                        let avg_r = (sum_r / count) as f32 / 255.0;
+                        let avg_g = (sum_g / count) as f32 / 255.0;
+                        let avg_b = (sum_b / count) as f32 / 255.0;
+
+                        // Clamp fill rect to pixmap bounds
+                        let fill_x = px_x.min(pm_w);
+                        let fill_y = px_y.min(pm_h);
+                        let fill_w = bw.min(pm_w.saturating_sub(fill_x));
+                        let fill_h = bh.min(pm_h.saturating_sub(fill_y));
+
+                        if fill_w > 0 && fill_h > 0 {
+                            if let Some(rect) = tiny_skia::Rect::from_xywh(
+                                fill_x as f32,
+                                fill_y as f32,
+                                fill_w as f32,
+                                fill_h as f32,
+                            ) {
+                                let mut paint = Paint::default();
+                                if let Some(c) =
+                                    tiny_skia::Color::from_rgba(avg_r, avg_g, avg_b, 1.0)
+                                {
+                                    paint.set_color(c);
+                                } else {
+                                    paint.set_color(tiny_skia::Color::BLACK);
+                                }
+                                paint.anti_alias = false;
+                                pixmap.fill_rect(rect, &paint, Transform::identity(), None);
+                            }
+                        }
+                    }
+
+                    bx += bs;
+                }
+                by += bs;
+            }
         }
     }
 }

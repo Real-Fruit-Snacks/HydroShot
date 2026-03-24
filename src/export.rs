@@ -27,7 +27,7 @@ pub fn flatten_annotations(
 
     // Render each annotation
     for annotation in annotations {
-        render_annotation(annotation, &mut pixmap, None, None);
+        render_annotation(annotation, &mut pixmap, Some(pixels), Some(width));
     }
 
     // Demultiply back to straight alpha
@@ -132,6 +132,15 @@ fn offset_annotation(annotation: &Annotation, dx: f32, dy: f32) -> Annotation {
             text: text.clone(),
             color: *color,
             font_size: *font_size,
+        },
+        Annotation::Pixelate {
+            top_left,
+            size,
+            block_size,
+        } => Annotation::Pixelate {
+            top_left: Point::new(top_left.x - dx, top_left.y - dy),
+            size: Size::new(size.width, size.height),
+            block_size: *block_size,
         },
     }
 }

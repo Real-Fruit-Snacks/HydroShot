@@ -81,8 +81,10 @@ pub fn render_overlay(state: &OverlayState, pixmap: &mut tiny_skia::Pixmap) {
     }
 
     // 5. Finalized annotations
+    let ss_pixels = Some(state.screenshot.pixels.as_slice());
+    let ss_width = Some(state.screenshot.width);
     for annotation in &state.annotations {
-        render_annotation(annotation, pixmap, None, None);
+        render_annotation(annotation, pixmap, ss_pixels, ss_width);
     }
 
     // 6. In-progress annotation preview
@@ -91,9 +93,10 @@ pub fn render_overlay(state: &OverlayState, pixmap: &mut tiny_skia::Pixmap) {
         ToolKind::Rectangle => state.rectangle_tool.in_progress_annotation(),
         ToolKind::Pencil => state.pencil_tool.in_progress_annotation(),
         ToolKind::Text => state.text_tool.in_progress_annotation(),
+        ToolKind::Pixelate => state.pixelate_tool.in_progress_annotation(),
     };
     if let Some(ref ann) = in_progress {
-        render_annotation(ann, pixmap, None, None);
+        render_annotation(ann, pixmap, ss_pixels, ss_width);
     }
 
     // 7. Toolbar (only if there is a selection)
