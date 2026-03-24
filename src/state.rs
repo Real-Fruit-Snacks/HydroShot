@@ -37,17 +37,18 @@ pub struct OverlayState {
 }
 
 impl OverlayState {
-    pub fn new(screenshot: CapturedScreen) -> Self {
-        let color = Color::red();
+    pub fn new(screenshot: CapturedScreen, config: &crate::config::Config) -> Self {
+        let color = config.default_color();
+        let thickness = config.clamped_thickness();
         Self {
             screenshot,
             selection: None,
             annotations: Vec::new(),
             redo_buffer: Vec::new(),
             active_tool: ToolKind::Arrow,
-            arrow_tool: ArrowTool::new(color, 3.0),
-            rectangle_tool: RectangleTool::new(color, 3.0),
-            pencil_tool: PencilTool::new(color, 3.0),
+            arrow_tool: ArrowTool::new(color, thickness),
+            rectangle_tool: RectangleTool::new(color, thickness),
+            pencil_tool: PencilTool::new(color, thickness),
             text_tool: TextTool::new(color, 20.0),
             pixelate_tool: PixelateTool::new(10),
             text_input_active: false,
@@ -55,7 +56,7 @@ impl OverlayState {
             text_input_position: Point::new(0.0, 0.0),
             text_input_font_size: 20.0,
             current_color: color,
-            current_thickness: 3.0,
+            current_thickness: thickness,
             is_selecting: false,
             drag_start: None,
             drag_zone: None,

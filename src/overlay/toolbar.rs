@@ -1,13 +1,13 @@
-use crate::geometry::Point;
 use super::selection::Selection;
+use crate::geometry::Point;
 
 pub const TOOLBAR_HEIGHT: f32 = 40.0;
 pub const TOOLBAR_PADDING: f32 = 8.0;
 pub const BUTTON_SIZE: f32 = 32.0;
-pub const BUTTON_COUNT: usize = 9;
+pub const BUTTON_COUNT: usize = 12;
 
 /// Toolbar that appears near the selection rectangle.
-/// Buttons: 0=Arrow, 1=Rectangle, 2-6=color swatches, 7=Copy, 8=Save
+/// Buttons: 0=Arrow, 1=Rect, 2=Pencil, 3=Text, 4=Pixelate, 5-9=colors, 10=Copy, 11=Save
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Toolbar {
     pub x: f32,
@@ -40,14 +40,21 @@ impl Toolbar {
             below_y
         };
 
-        Self { x, y, width, height }
+        Self {
+            x,
+            y,
+            width,
+            height,
+        }
     }
 
     /// Hit-test a point, returning the button index if hit.
     pub fn hit_test(&self, point: Point) -> Option<usize> {
         // Check if point is within toolbar bounds first
-        if point.x < self.x || point.x > self.x + self.width
-            || point.y < self.y || point.y > self.y + self.height
+        if point.x < self.x
+            || point.x > self.x + self.width
+            || point.y < self.y
+            || point.y > self.y + self.height
         {
             return None;
         }

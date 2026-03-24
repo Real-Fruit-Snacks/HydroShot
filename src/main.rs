@@ -11,16 +11,18 @@ use winit::window::{Fullscreen, Window, WindowAttributes, WindowId};
 use winit::application::ApplicationHandler;
 
 use hydroshot::capture;
+use hydroshot::config::Config;
 use hydroshot::export;
 use hydroshot::geometry::{Color, Point};
 use hydroshot::overlay::selection::{HitZone, Selection};
 use hydroshot::overlay::toolbar::Toolbar;
 use hydroshot::renderer::render_overlay;
 use hydroshot::state::{AppState, OverlayState};
-use hydroshot::tools::{AnnotationTool, ToolKind};
+use hydroshot::tools::{Annotation, AnnotationTool, ToolKind};
 use hydroshot::tray::{self, TrayState};
 
 struct App {
+    config: Config,
     state: AppState,
     tray: Option<TrayState>,
     overlay_window: Option<Arc<Window>>,
@@ -33,8 +35,9 @@ struct App {
 }
 
 impl App {
-    fn new() -> Self {
+    fn new(config: Config) -> Self {
         Self {
+            config,
             state: AppState::Idle,
             tray: None,
             overlay_window: None,
@@ -123,7 +126,7 @@ impl App {
             return;
         }
 
-        self.state = AppState::Capturing(Box::new(OverlayState::new(screenshot)));
+        self.state = AppState::Capturing(Box::new(OverlayState::new(screenshot, &self.config)));
         self.surface = Some(surface);
         self.pixmap = pixmap;
         self.overlay_window = Some(window);
@@ -176,7 +179,7 @@ impl App {
                     sel.height as u32,
                     &overlay.annotations,
                 );
-                match export::save_to_file(&pixels, sel.width as u32, sel.height as u32, None) {
+                match export::save_to_file(&pixels, sel.width as u32, sel.height as u32, self.config.save_directory().as_deref()) {
                     Ok(Some(path)) => {
                         tracing::info!("Saved to {path}");
                         self.close_overlay();
@@ -321,11 +324,11 @@ impl ApplicationHandler for App {
         }
 
         if self._hotkey_manager.is_none() {
-            match hydroshot::hotkey::register_hotkey("Ctrl+Shift+S") {
+            match hydroshot::hotkey::register_hotkey(&self.config.hotkey.capture) {
                 Ok((manager, id)) => {
                     self._hotkey_manager = Some(manager);
                     self.hotkey_id = Some(id);
-                    tracing::info!("Global hotkey registered: Ctrl+Shift+S");
+                    tracing::info!("Global hotkey registered: {}", self.config.hotkey.capture);
                 }
                 Err(e) => tracing::warn!("Failed to register hotkey: {}", e),
             }
@@ -362,6 +365,52 @@ impl ApplicationHandler for App {
 
             WindowEvent::KeyboardInput { event, .. } => {
                 if event.state != ElementState::Pressed {
+                    return;
+                }
+
+                // --- Text input guard: MUST be first ---
+                if overlay.text_input_active {
+                    match &event.logical_key {
+                        Key::Character(ch) => {
+                            overlay.text_input_buffer.push_str(ch.as_str());
+                            self.needs_redraw = true;
+                        }
+                        Key::Named(NamedKey::Backspace) => {
+                            overlay.text_input_buffer.pop();
+                            self.needs_redraw = true;
+                        }
+                        Key::Named(NamedKey::Enter) => {
+                            // Confirm: create annotation from buffer
+                            if !overlay.text_input_buffer.is_empty() {
+                                let ann = Annotation::Text {
+                                    position: overlay.text_input_position,
+                                    text: overlay.text_input_buffer.clone(),
+                                    color: overlay.current_color,
+                                    font_size: overlay.text_input_font_size,
+                                };
+                                overlay.annotations.push(ann);
+                                overlay.redo_buffer.clear();
+                            }
+                            overlay.text_input_buffer.clear();
+                            overlay.text_input_active = false;
+                            self.needs_redraw = true;
+                        }
+                        Key::Named(NamedKey::Escape) => {
+                            // Cancel text input
+                            overlay.text_input_buffer.clear();
+                            overlay.text_input_active = false;
+                            self.needs_redraw = true;
+                        }
+                        _ => {
+                            // Ignore all other keys while typing
+                        }
+                    }
+                    // Return early — don't fall through to other handlers
+                    if self.needs_redraw {
+                        if let Some(w) = &self.overlay_window {
+                            w.request_redraw();
+                        }
+                    }
                     return;
                 }
 
@@ -414,6 +463,47 @@ impl ApplicationHandler for App {
                                     overlay.annotations.push(ann);
                                     self.needs_redraw = true;
                                 }
+                            }
+                            // Tool keyboard shortcuts (no Ctrl)
+                            "a" if !ctrl => {
+                                let overlay = match &mut self.state {
+                                    AppState::Capturing(o) => o,
+                                    _ => return,
+                                };
+                                overlay.active_tool = ToolKind::Arrow;
+                                self.needs_redraw = true;
+                            }
+                            "r" if !ctrl => {
+                                let overlay = match &mut self.state {
+                                    AppState::Capturing(o) => o,
+                                    _ => return,
+                                };
+                                overlay.active_tool = ToolKind::Rectangle;
+                                self.needs_redraw = true;
+                            }
+                            "p" if !ctrl => {
+                                let overlay = match &mut self.state {
+                                    AppState::Capturing(o) => o,
+                                    _ => return,
+                                };
+                                overlay.active_tool = ToolKind::Pencil;
+                                self.needs_redraw = true;
+                            }
+                            "t" if !ctrl => {
+                                let overlay = match &mut self.state {
+                                    AppState::Capturing(o) => o,
+                                    _ => return,
+                                };
+                                overlay.active_tool = ToolKind::Text;
+                                self.needs_redraw = true;
+                            }
+                            "b" if !ctrl => {
+                                let overlay = match &mut self.state {
+                                    AppState::Capturing(o) => o,
+                                    _ => return,
+                                };
+                                overlay.active_tool = ToolKind::Pixelate;
+                                self.needs_redraw = true;
                             }
                             _ => {}
                         }
@@ -500,23 +590,36 @@ impl ApplicationHandler for App {
                                 overlay.active_tool = ToolKind::Rectangle;
                                 self.needs_redraw = true;
                             }
-                            2..=6 => {
+                            2 => {
+                                overlay.active_tool = ToolKind::Pencil;
+                                self.needs_redraw = true;
+                            }
+                            3 => {
+                                overlay.active_tool = ToolKind::Text;
+                                self.needs_redraw = true;
+                            }
+                            4 => {
+                                overlay.active_tool = ToolKind::Pixelate;
+                                self.needs_redraw = true;
+                            }
+                            5..=9 => {
                                 let presets = Color::presets();
-                                let idx = btn - 2;
+                                let idx = btn - 5;
                                 if idx < presets.len() {
                                     overlay.current_color = presets[idx];
                                     overlay.arrow_tool.set_color(presets[idx]);
                                     overlay.rectangle_tool.set_color(presets[idx]);
                                     overlay.pencil_tool.set_color(presets[idx]);
+                                    overlay.text_tool.set_color(presets[idx]);
                                     self.needs_redraw = true;
                                 }
                             }
-                            7 => {
+                            10 => {
                                 // Copy button
                                 self.do_copy();
                                 return;
                             }
-                            8 => {
+                            11 => {
                                 // Save button
                                 self.do_save();
                                 return;
@@ -543,7 +646,15 @@ impl ApplicationHandler for App {
                                 ToolKind::Arrow => overlay.arrow_tool.on_mouse_down(pos),
                                 ToolKind::Rectangle => overlay.rectangle_tool.on_mouse_down(pos),
                                 ToolKind::Pencil => overlay.pencil_tool.on_mouse_down(pos),
-                                ToolKind::Text => overlay.text_tool.on_mouse_down(pos),
+                                ToolKind::Text => {
+                                    overlay.text_tool.on_mouse_down(pos);
+                                    if let Some(p) = overlay.text_tool.take_pending_position() {
+                                        overlay.text_input_active = true;
+                                        overlay.text_input_position = p;
+                                        overlay.text_input_buffer.clear();
+                                        overlay.text_input_font_size = overlay.text_tool.font_size();
+                                    }
+                                }
                                 ToolKind::Pixelate => overlay.pixelate_tool.on_mouse_down(pos),
                             }
                             self.needs_redraw = true;
@@ -604,11 +715,16 @@ impl ApplicationHandler for App {
                     MouseScrollDelta::LineDelta(_, y) => y,
                     MouseScrollDelta::PixelDelta(pos) => pos.y as f32 / 20.0,
                 };
-                let new_thickness = (overlay.current_thickness + scroll).clamp(1.0, 20.0);
-                overlay.current_thickness = new_thickness;
-                overlay.arrow_tool.set_thickness(new_thickness);
-                overlay.rectangle_tool.set_thickness(new_thickness);
-                overlay.pencil_tool.set_thickness(new_thickness);
+                if overlay.text_input_active {
+                    // Adjust font size while typing
+                    overlay.text_input_font_size = (overlay.text_input_font_size + scroll).clamp(10.0, 72.0);
+                } else {
+                    let new_thickness = (overlay.current_thickness + scroll).clamp(1.0, 20.0);
+                    overlay.current_thickness = new_thickness;
+                    overlay.arrow_tool.set_thickness(new_thickness);
+                    overlay.rectangle_tool.set_thickness(new_thickness);
+                    overlay.pencil_tool.set_thickness(new_thickness);
+                }
                 self.needs_redraw = true;
             }
 
@@ -640,8 +756,11 @@ fn main() {
     tracing_subscriber::fmt::init();
     tracing::info!("HydroShot starting");
 
+    let config = Config::load();
+    tracing::info!("Config loaded: hotkey={}, color={}, thickness={}", config.hotkey.capture, config.general.default_color, config.general.default_thickness);
+
     let event_loop = EventLoop::new().expect("Failed to create event loop");
 
-    let mut app = App::new();
+    let mut app = App::new(config);
     event_loop.run_app(&mut app).expect("Event loop error");
 }
