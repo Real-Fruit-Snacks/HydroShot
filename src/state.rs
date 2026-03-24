@@ -2,12 +2,13 @@ use crate::capture::CapturedScreen;
 use crate::geometry::{Color, Point};
 use crate::overlay::selection::{HitZone, Selection};
 use crate::tools::arrow::ArrowTool;
+use crate::tools::pencil::PencilTool;
 use crate::tools::rectangle::RectangleTool;
 use crate::tools::{Annotation, ToolKind};
 
 pub enum AppState {
     Idle,
-    Capturing(OverlayState),
+    Capturing(Box<OverlayState>),
 }
 
 pub struct OverlayState {
@@ -18,6 +19,7 @@ pub struct OverlayState {
     pub active_tool: ToolKind,
     pub arrow_tool: ArrowTool,
     pub rectangle_tool: RectangleTool,
+    pub pencil_tool: PencilTool,
     pub current_color: Color,
     pub current_thickness: f32,
     pub is_selecting: bool,
@@ -37,6 +39,7 @@ impl OverlayState {
             active_tool: ToolKind::Arrow,
             arrow_tool: ArrowTool::new(color, 3.0),
             rectangle_tool: RectangleTool::new(color, 3.0),
+            pencil_tool: PencilTool::new(color, 3.0),
             current_color: color,
             current_thickness: 3.0,
             is_selecting: false,

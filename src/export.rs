@@ -27,7 +27,7 @@ pub fn flatten_annotations(
 
     // Render each annotation
     for annotation in annotations {
-        render_annotation(annotation, &mut pixmap);
+        render_annotation(annotation, &mut pixmap, None, None);
     }
 
     // Demultiply back to straight alpha
@@ -110,6 +110,18 @@ fn offset_annotation(annotation: &Annotation, dx: f32, dy: f32) -> Annotation {
             color: *color,
             thickness: *thickness,
         },
+        Annotation::Pencil {
+            points,
+            color,
+            thickness,
+        } => Annotation::Pencil {
+            points: points
+                .iter()
+                .map(|p| Point::new(p.x - dx, p.y - dy))
+                .collect(),
+            color: *color,
+            thickness: *thickness,
+        },
     }
 }
 
@@ -154,7 +166,5 @@ pub fn save_to_file(pixels: &[u8], width: u32, height: u32) -> Result<Option<Str
     img.save(&path)
         .map_err(|e| format!("Failed to save image: {e}"))?;
 
-    Ok(Some(
-        path.to_string_lossy().into_owned(),
-    ))
+    Ok(Some(path.to_string_lossy().into_owned()))
 }

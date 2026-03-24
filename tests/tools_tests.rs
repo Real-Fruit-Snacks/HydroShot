@@ -146,11 +146,14 @@ fn render_annotation_draws_to_pixmap() {
         color: Color::red(),
         thickness: 3.0,
     };
-    render_annotation(&ann, &mut pixmap);
+    render_annotation(&ann, &mut pixmap, None, None);
     // Check that a pixel on the rectangle border is non-transparent
     // Top edge at approximately (30, 10)
     let pixel = pixmap.pixel(30, 10).unwrap();
-    assert!(pixel.alpha() > 0, "Expected non-transparent pixel on rectangle edge");
+    assert!(
+        pixel.alpha() > 0,
+        "Expected non-transparent pixel on rectangle edge"
+    );
 
     // Also test arrow rendering
     let mut pixmap2 = tiny_skia::Pixmap::new(200, 200).unwrap();
@@ -160,7 +163,7 @@ fn render_annotation_draws_to_pixmap() {
         color: Color::blue(),
         thickness: 3.0,
     };
-    render_annotation(&ann2, &mut pixmap2);
+    render_annotation(&ann2, &mut pixmap2, None, None);
     // Check pixel along the arrow shaft
     let pixel2 = pixmap2.pixel(100, 100).unwrap();
     assert!(

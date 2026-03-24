@@ -1,4 +1,5 @@
 pub mod arrow;
+pub mod pencil;
 pub mod rectangle;
 
 use crate::geometry::{Color, Point, Size};
@@ -18,6 +19,11 @@ pub enum Annotation {
         color: Color,
         thickness: f32,
     },
+    Pencil {
+        points: Vec<Point>,
+        color: Color,
+        thickness: f32,
+    },
 }
 
 pub trait AnnotationTool {
@@ -32,6 +38,7 @@ pub trait AnnotationTool {
 pub enum ToolKind {
     Arrow,
     Rectangle,
+    Pencil,
 }
 
 /// Compute the three vertices of an arrowhead triangle.
@@ -70,7 +77,13 @@ pub fn arrowhead_points(start: Point, end: Point, thickness: f32) -> Vec<Point> 
 /// Render any Annotation variant onto a tiny_skia::Pixmap.
 ///
 /// This is the single rendering path used for both interactive preview and export.
-pub fn render_annotation(annotation: &Annotation, pixmap: &mut Pixmap) {
+pub fn render_annotation(
+    annotation: &Annotation,
+    pixmap: &mut Pixmap,
+    screenshot_pixels: Option<&[u8]>,
+    screenshot_width: Option<u32>,
+) {
+    let _ = (screenshot_pixels, screenshot_width);
     match annotation {
         Annotation::Rectangle {
             top_left,
@@ -86,8 +99,10 @@ pub fn render_annotation(annotation: &Annotation, pixmap: &mut Pixmap) {
             let rect = tiny_skia::Rect::from_xywh(top_left.x, top_left.y, size.width, size.height);
             if let Some(rect) = rect {
                 let path = PathBuilder::from_rect(rect);
-                let mut stroke = Stroke::default();
-                stroke.width = *thickness;
+                let stroke = Stroke {
+                    width: *thickness,
+                    ..Stroke::default()
+                };
                 pixmap.stroke_path(&path, &paint, &stroke, Transform::identity(), None);
             }
         }
@@ -107,8 +122,10 @@ pub fn render_annotation(annotation: &Annotation, pixmap: &mut Pixmap) {
             pb.move_to(start.x, start.y);
             pb.line_to(end.x, end.y);
             if let Some(path) = pb.finish() {
-                let mut stroke = Stroke::default();
-                stroke.width = *thickness;
+                let stroke = Stroke {
+                    width: *thickness,
+                    ..Stroke::default()
+                };
                 pixmap.stroke_path(&path, &paint, &stroke, Transform::identity(), None);
             }
 
@@ -121,8 +138,38 @@ pub fn render_annotation(annotation: &Annotation, pixmap: &mut Pixmap) {
                 pb.line_to(points[2].x, points[2].y);
                 pb.close();
                 if let Some(path) = pb.finish() {
-                    pixmap.fill_path(&path, &paint, tiny_skia::FillRule::Winding, Transform::identity(), None);
+                    pixmap.fill_path(
+                        &path,
+                        &paint,
+                        tiny_skia::FillRule::Winding,
+                        Transform::identity(),
+                        None,
+                    );
                 }
+            }
+        }
+        Annotation::Pencil {
+            points,
+            color,
+            thickness,
+        } => {
+            if points.len() < 2 {
+                return;
+            }
+            let mut pb = PathBuilder::new();
+            pb.move_to(points[0].x, points[0].y);
+            for p in &points[1..] {
+                pb.line_to(p.x, p.y);
+            }
+            if let Some(path) = pb.finish() {
+                let mut paint = Paint::default();
+                paint.set_color((*color).into());
+                paint.anti_alias = true;
+                let stroke = Stroke {
+                    width: *thickness,
+                    ..Stroke::default()
+                };
+                pixmap.stroke_path(&path, &paint, &stroke, Transform::identity(), None);
             }
         }
     }

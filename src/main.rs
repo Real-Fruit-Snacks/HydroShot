@@ -111,11 +111,15 @@ impl App {
 
         let pixmap = tiny_skia::Pixmap::new(screenshot.width, screenshot.height);
         if pixmap.is_none() {
-            tracing::error!("Failed to create pixmap ({}x{})", screenshot.width, screenshot.height);
+            tracing::error!(
+                "Failed to create pixmap ({}x{})",
+                screenshot.width,
+                screenshot.height
+            );
             return;
         }
 
-        self.state = AppState::Capturing(OverlayState::new(screenshot));
+        self.state = AppState::Capturing(Box::new(OverlayState::new(screenshot)));
         self.surface = Some(surface);
         self.pixmap = pixmap;
         self.overlay_window = Some(window);
@@ -185,16 +189,14 @@ impl App {
 
     fn process_tray_events(&mut self, event_loop: &ActiveEventLoop) {
         while let Ok(event) = TrayIconEvent::receiver().try_recv() {
-            match event {
-                TrayIconEvent::Click {
-                    button: MouseButton::Left,
-                    button_state: MouseButtonState::Up,
-                    ..
-                } => {
-                    tracing::info!("Tray icon clicked — triggering capture");
-                    self.trigger_capture(event_loop);
-                }
-                _ => {}
+            if let TrayIconEvent::Click {
+                button: MouseButton::Left,
+                button_state: MouseButtonState::Up,
+                ..
+            } = event
+            {
+                tracing::info!("Tray icon clicked — triggering capture");
+                self.trigger_capture(event_loop);
             }
         }
 
@@ -443,6 +445,12 @@ impl ApplicationHandler for App {
                                 self.needs_redraw = true;
                             }
                         }
+                        ToolKind::Pencil => {
+                            if overlay.pencil_tool.is_drawing() {
+                                overlay.pencil_tool.on_mouse_move(pos);
+                                self.needs_redraw = true;
+                            }
+                        }
                     }
                 }
             }
@@ -474,6 +482,7 @@ impl ApplicationHandler for App {
                                     overlay.current_color = presets[idx];
                                     overlay.arrow_tool.set_color(presets[idx]);
                                     overlay.rectangle_tool.set_color(presets[idx]);
+                                    overlay.pencil_tool.set_color(presets[idx]);
                                     self.needs_redraw = true;
                                 }
                             }
@@ -508,6 +517,7 @@ impl ApplicationHandler for App {
                             match overlay.active_tool {
                                 ToolKind::Arrow => overlay.arrow_tool.on_mouse_down(pos),
                                 ToolKind::Rectangle => overlay.rectangle_tool.on_mouse_down(pos),
+                                ToolKind::Pencil => overlay.pencil_tool.on_mouse_down(pos),
                             }
                             self.needs_redraw = true;
                         }
@@ -550,6 +560,7 @@ impl ApplicationHandler for App {
                     let annotation = match overlay.active_tool {
                         ToolKind::Arrow => overlay.arrow_tool.on_mouse_up(pos),
                         ToolKind::Rectangle => overlay.rectangle_tool.on_mouse_up(pos),
+                        ToolKind::Pencil => overlay.pencil_tool.on_mouse_up(pos),
                     };
                     if let Some(ann) = annotation {
                         overlay.annotations.push(ann);
@@ -568,6 +579,7 @@ impl ApplicationHandler for App {
                 overlay.current_thickness = new_thickness;
                 overlay.arrow_tool.set_thickness(new_thickness);
                 overlay.rectangle_tool.set_thickness(new_thickness);
+                overlay.pencil_tool.set_thickness(new_thickness);
                 self.needs_redraw = true;
             }
 
