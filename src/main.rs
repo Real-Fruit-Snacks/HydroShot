@@ -28,6 +28,8 @@ struct App {
     pixmap: Option<tiny_skia::Pixmap>,
     modifiers: ModifiersState,
     needs_redraw: bool,
+    _hotkey_manager: Option<global_hotkey::GlobalHotKeyManager>,
+    hotkey_id: Option<u32>,
 }
 
 impl App {
@@ -40,6 +42,8 @@ impl App {
             pixmap: None,
             modifiers: ModifiersState::empty(),
             needs_redraw: false,
+            _hotkey_manager: None,
+            hotkey_id: None,
         }
     }
 
@@ -313,6 +317,17 @@ impl ApplicationHandler for App {
                 Err(e) => {
                     tracing::error!("Failed to create tray icon: {e}");
                 }
+            }
+        }
+
+        if self._hotkey_manager.is_none() {
+            match hydroshot::hotkey::register_hotkey("Ctrl+Shift+S") {
+                Ok((manager, id)) => {
+                    self._hotkey_manager = Some(manager);
+                    self.hotkey_id = Some(id);
+                    tracing::info!("Global hotkey registered: Ctrl+Shift+S");
+                }
+                Err(e) => tracing::warn!("Failed to register hotkey: {}", e),
             }
         }
     }
@@ -609,6 +624,14 @@ impl ApplicationHandler for App {
 
     fn about_to_wait(&mut self, event_loop: &ActiveEventLoop) {
         self.process_tray_events(event_loop);
+
+        if let Ok(event) = global_hotkey::GlobalHotKeyEvent::receiver().try_recv() {
+            if Some(event.id) == self.hotkey_id {
+                tracing::info!("Global hotkey pressed — triggering capture");
+                self.trigger_capture(event_loop);
+            }
+        }
+
         self.render();
     }
 }

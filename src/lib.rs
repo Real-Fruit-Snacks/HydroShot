@@ -2,6 +2,7 @@ pub mod capture;
 pub mod config;
 pub mod export;
 pub mod geometry;
+pub mod hotkey;
 pub mod overlay;
 pub mod renderer;
 pub mod state;
