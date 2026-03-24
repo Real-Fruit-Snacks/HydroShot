@@ -1,8 +1,9 @@
 pub mod capture;
+pub mod config;
 pub mod export;
 pub mod geometry;
 pub mod overlay;
+pub mod renderer;
 pub mod state;
 pub mod tools;
-pub mod renderer;
 pub mod tray;
