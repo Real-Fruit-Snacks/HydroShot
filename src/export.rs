@@ -162,22 +162,36 @@ pub fn copy_to_clipboard(pixels: &[u8], width: u32, height: u32) -> Result<(), S
         .map_err(|e| format!("Failed to copy image to clipboard: {e}"))
 }
 
-/// Open a native save dialog and save pixel data as PNG.
+/// Save pixel data as PNG.
+///
+/// When `default_dir` is `Some`, auto-saves to that directory with a
+/// timestamped filename (no dialog). When `None`, opens a native save dialog.
 ///
 /// Returns `Ok(Some(path))` on success, `Ok(None)` if the user cancelled,
 /// or `Err` on failure.
-pub fn save_to_file(pixels: &[u8], width: u32, height: u32) -> Result<Option<String>, String> {
+pub fn save_to_file(
+    pixels: &[u8],
+    width: u32,
+    height: u32,
+    default_dir: Option<&std::path::Path>,
+) -> Result<Option<String>, String> {
     let now = chrono::Local::now();
     let default_name = now.format("hydroshot_%Y-%m-%d_%H%M%S.png").to_string();
 
-    let path = rfd::FileDialog::new()
-        .set_file_name(&default_name)
-        .add_filter("PNG Image", &["png"])
-        .save_file();
+    let path = if let Some(dir) = default_dir {
+        std::fs::create_dir_all(dir)
+            .map_err(|e| format!("Failed to create save directory: {e}"))?;
+        dir.join(&default_name)
+    } else {
+        let chosen = rfd::FileDialog::new()
+            .set_file_name(&default_name)
+            .add_filter("PNG Image", &["png"])
+            .save_file();
 
-    let path = match path {
-        Some(p) => p,
-        None => return Ok(None),
+        match chosen {
+            Some(p) => p,
+            None => return Ok(None),
+        }
     };
 
     let img = image::RgbaImage::from_raw(width, height, pixels.to_vec())

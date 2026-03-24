@@ -172,7 +172,7 @@ impl App {
                     sel.height as u32,
                     &overlay.annotations,
                 );
-                match export::save_to_file(&pixels, sel.width as u32, sel.height as u32) {
+                match export::save_to_file(&pixels, sel.width as u32, sel.height as u32, None) {
                     Ok(Some(path)) => {
                         tracing::info!("Saved to {path}");
                         self.close_overlay();
