@@ -451,6 +451,10 @@ impl ApplicationHandler for App {
                                 self.needs_redraw = true;
                             }
                         }
+                        ToolKind::Text => {
+                            // Text tool does not use mouse move
+                            overlay.text_tool.on_mouse_move(pos);
+                        }
                     }
                 }
             }
@@ -518,6 +522,7 @@ impl ApplicationHandler for App {
                                 ToolKind::Arrow => overlay.arrow_tool.on_mouse_down(pos),
                                 ToolKind::Rectangle => overlay.rectangle_tool.on_mouse_down(pos),
                                 ToolKind::Pencil => overlay.pencil_tool.on_mouse_down(pos),
+                                ToolKind::Text => overlay.text_tool.on_mouse_down(pos),
                             }
                             self.needs_redraw = true;
                         }
@@ -561,6 +566,7 @@ impl ApplicationHandler for App {
                         ToolKind::Arrow => overlay.arrow_tool.on_mouse_up(pos),
                         ToolKind::Rectangle => overlay.rectangle_tool.on_mouse_up(pos),
                         ToolKind::Pencil => overlay.pencil_tool.on_mouse_up(pos),
+                        ToolKind::Text => overlay.text_tool.on_mouse_up(pos),
                     };
                     if let Some(ann) = annotation {
                         overlay.annotations.push(ann);

@@ -122,6 +122,17 @@ fn offset_annotation(annotation: &Annotation, dx: f32, dy: f32) -> Annotation {
             color: *color,
             thickness: *thickness,
         },
+        Annotation::Text {
+            position,
+            text,
+            color,
+            font_size,
+        } => Annotation::Text {
+            position: Point::new(position.x - dx, position.y - dy),
+            text: text.clone(),
+            color: *color,
+            font_size: *font_size,
+        },
     }
 }
 

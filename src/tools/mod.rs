@@ -1,6 +1,7 @@
 pub mod arrow;
 pub mod pencil;
 pub mod rectangle;
+pub mod text;
 
 use crate::geometry::{Color, Point, Size};
 use tiny_skia::{Paint, PathBuilder, Pixmap, Stroke, Transform};
@@ -24,6 +25,12 @@ pub enum Annotation {
         color: Color,
         thickness: f32,
     },
+    Text {
+        position: Point,
+        text: String,
+        color: Color,
+        font_size: f32,
+    },
 }
 
 pub trait AnnotationTool {
@@ -39,6 +46,7 @@ pub enum ToolKind {
     Arrow,
     Rectangle,
     Pencil,
+    Text,
 }
 
 /// Compute the three vertices of an arrowhead triangle.
@@ -172,5 +180,98 @@ pub fn render_annotation(
                 pixmap.stroke_path(&path, &paint, &stroke, Transform::identity(), None);
             }
         }
+        Annotation::Text {
+            position,
+            text,
+            color,
+            font_size,
+        } => {
+            render_text_annotation(pixmap, position, text, color, *font_size);
+        }
+    }
+}
+
+/// Rasterize a single-line text annotation onto a pixmap using fontdue.
+fn render_text_annotation(
+    pixmap: &mut Pixmap,
+    position: &Point,
+    text: &str,
+    color: &Color,
+    font_size: f32,
+) {
+    use fontdue::{Font, FontSettings};
+
+    static FONT_DATA: &[u8] = include_bytes!("../../assets/font.ttf");
+
+    let font = Font::from_bytes(FONT_DATA, FontSettings::default()).expect("failed to load font");
+
+    let pw = pixmap.width() as i32;
+    let ph = pixmap.height() as i32;
+
+    let sr = (color.r * 255.0) as u8;
+    let sg = (color.g * 255.0) as u8;
+    let sb = (color.b * 255.0) as u8;
+    let sa = color.a;
+
+    let mut cursor_x = position.x;
+    let baseline_y = position.y;
+
+    let pixels = pixmap.data_mut();
+
+    for ch in text.chars() {
+        let (metrics, bitmap) = font.rasterize(ch, font_size);
+        if metrics.width == 0 || metrics.height == 0 {
+            cursor_x += metrics.advance_width;
+            continue;
+        }
+
+        // fontdue metrics: ymin is distance from baseline to bottom of glyph (can be negative)
+        // The glyph origin y = baseline_y - metrics.height as offset from top
+        let glyph_x = cursor_x as i32 + metrics.xmin;
+        let glyph_y = baseline_y as i32 - metrics.height as i32 - metrics.ymin;
+
+        for row in 0..metrics.height {
+            for col in 0..metrics.width {
+                let px_x = glyph_x + col as i32;
+                let px_y = glyph_y + row as i32;
+
+                if px_x < 0 || px_x >= pw || px_y < 0 || px_y >= ph {
+                    continue;
+                }
+
+                let coverage = bitmap[row * metrics.width + col] as f32 / 255.0;
+                let alpha = coverage * sa;
+                if alpha < 1.0 / 255.0 {
+                    continue;
+                }
+
+                let idx = ((px_y as u32 * pw as u32 + px_x as u32) * 4) as usize;
+
+                // Alpha-blend with premultiplied destination.
+                // Source is straight; destination is premultiplied.
+                let src_r = (sr as f32 * alpha) as u8;
+                let src_g = (sg as f32 * alpha) as u8;
+                let src_b = (sb as f32 * alpha) as u8;
+                let src_a = (alpha * 255.0) as u8;
+
+                let dst_r = pixels[idx];
+                let dst_g = pixels[idx + 1];
+                let dst_b = pixels[idx + 2];
+                let dst_a = pixels[idx + 3];
+
+                let inv_alpha = 1.0 - alpha;
+                let out_r = src_r as f32 + dst_r as f32 * inv_alpha;
+                let out_g = src_g as f32 + dst_g as f32 * inv_alpha;
+                let out_b = src_b as f32 + dst_b as f32 * inv_alpha;
+                let out_a = src_a as f32 + dst_a as f32 * inv_alpha;
+
+                pixels[idx] = out_r.min(255.0) as u8;
+                pixels[idx + 1] = out_g.min(255.0) as u8;
+                pixels[idx + 2] = out_b.min(255.0) as u8;
+                pixels[idx + 3] = out_a.min(255.0) as u8;
+            }
+        }
+
+        cursor_x += metrics.advance_width;
     }
 }

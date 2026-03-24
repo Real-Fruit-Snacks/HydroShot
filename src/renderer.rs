@@ -90,6 +90,7 @@ pub fn render_overlay(state: &OverlayState, pixmap: &mut tiny_skia::Pixmap) {
         ToolKind::Arrow => state.arrow_tool.in_progress_annotation(),
         ToolKind::Rectangle => state.rectangle_tool.in_progress_annotation(),
         ToolKind::Pencil => state.pencil_tool.in_progress_annotation(),
+        ToolKind::Text => state.text_tool.in_progress_annotation(),
     };
     if let Some(ref ann) = in_progress {
         render_annotation(ann, pixmap, None, None);
