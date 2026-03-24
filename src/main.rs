@@ -6,9 +6,11 @@ use tray_icon::{MouseButton, MouseButtonState, TrayIconEvent};
 use winit::event::{ElementState, MouseButton as WinitMouseButton, MouseScrollDelta, WindowEvent};
 use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop};
 use winit::keyboard::{Key, ModifiersState, NamedKey};
-use winit::window::{Fullscreen, Window, WindowAttributes, WindowId};
+use winit::window::{CursorIcon, Fullscreen, Window, WindowAttributes, WindowId};
 
 use winit::application::ApplicationHandler;
+
+use notify_rust::Notification;
 
 use hydroshot::capture;
 use hydroshot::config::Config;
@@ -159,7 +161,14 @@ impl App {
                     &overlay.annotations,
                 );
                 match export::copy_to_clipboard(&pixels, sel.width as u32, sel.height as u32) {
-                    Ok(()) => tracing::info!("Copied to clipboard"),
+                    Ok(()) => {
+                        tracing::info!("Copied to clipboard");
+                        let _ = Notification::new()
+                            .summary("HydroShot")
+                            .body("Copied to clipboard")
+                            .timeout(2000)
+                            .show();
+                    }
                     Err(e) => tracing::error!("Clipboard copy failed: {e}"),
                 }
                 self.close_overlay();
@@ -187,6 +196,11 @@ impl App {
                 ) {
                     Ok(Some(path)) => {
                         tracing::info!("Saved to {path}");
+                        let _ = Notification::new()
+                            .summary("HydroShot")
+                            .body(&format!("Saved to {path}"))
+                            .timeout(2000)
+                            .show();
                         self.close_overlay();
                     }
                     Ok(None) => {
@@ -308,6 +322,59 @@ impl App {
         }
 
         self.needs_redraw = false;
+    }
+}
+
+/// Determine the appropriate cursor icon based on the current overlay state and mouse position.
+fn determine_cursor(overlay: &OverlayState, pos: Point) -> CursorIcon {
+    // Text input active — always show text cursor
+    if overlay.text_input_active {
+        return CursorIcon::Text;
+    }
+
+    // Check toolbar hover (only if selection exists)
+    if let Some(ref sel) = overlay.selection {
+        let toolbar = Toolbar::position_for(sel, overlay.screenshot.height as f32);
+        if toolbar.hit_test(pos).is_some() {
+            return CursorIcon::Pointer;
+        }
+    }
+
+    // Currently dragging to create selection
+    if overlay.is_selecting {
+        return CursorIcon::Crosshair;
+    }
+
+    // Currently dragging a resize/move zone
+    if let Some(zone) = overlay.drag_zone {
+        return hitzone_to_cursor(zone, overlay);
+    }
+
+    // Selection exists — hit-test it
+    if let Some(ref sel) = overlay.selection {
+        if let Some(zone) = sel.hit_test(pos, 8.0) {
+            return hitzone_to_cursor(zone, overlay);
+        }
+    }
+
+    // No selection yet (idle) — crosshair
+    CursorIcon::Crosshair
+}
+
+/// Map a HitZone to the appropriate cursor icon.
+fn hitzone_to_cursor(zone: HitZone, overlay: &OverlayState) -> CursorIcon {
+    match zone {
+        HitZone::TopLeft | HitZone::BottomRight => CursorIcon::NwseResize,
+        HitZone::TopRight | HitZone::BottomLeft => CursorIcon::NeswResize,
+        HitZone::Top | HitZone::Bottom => CursorIcon::NsResize,
+        HitZone::Left | HitZone::Right => CursorIcon::EwResize,
+        HitZone::Inside => {
+            // Inside selection — cursor depends on active tool
+            match overlay.active_tool {
+                ToolKind::Text => CursorIcon::Text,
+                _ => CursorIcon::Crosshair,
+            }
+        }
     }
 }
 
@@ -486,12 +553,36 @@ impl ApplicationHandler for App {
                                 overlay.active_tool = ToolKind::Rectangle;
                                 self.needs_redraw = true;
                             }
+                            "c" if !ctrl => {
+                                let overlay = match &mut self.state {
+                                    AppState::Capturing(o) => o,
+                                    _ => return,
+                                };
+                                overlay.active_tool = ToolKind::Circle;
+                                self.needs_redraw = true;
+                            }
+                            "l" if !ctrl => {
+                                let overlay = match &mut self.state {
+                                    AppState::Capturing(o) => o,
+                                    _ => return,
+                                };
+                                overlay.active_tool = ToolKind::Line;
+                                self.needs_redraw = true;
+                            }
                             "p" if !ctrl => {
                                 let overlay = match &mut self.state {
                                     AppState::Capturing(o) => o,
                                     _ => return,
                                 };
                                 overlay.active_tool = ToolKind::Pencil;
+                                self.needs_redraw = true;
+                            }
+                            "h" if !ctrl => {
+                                let overlay = match &mut self.state {
+                                    AppState::Capturing(o) => o,
+                                    _ => return,
+                                };
+                                overlay.active_tool = ToolKind::Highlight;
                                 self.needs_redraw = true;
                             }
                             "t" if !ctrl => {
@@ -555,9 +646,27 @@ impl ApplicationHandler for App {
                                 self.needs_redraw = true;
                             }
                         }
+                        ToolKind::Circle => {
+                            if overlay.circle_tool.is_drawing() {
+                                overlay.circle_tool.on_mouse_move(pos);
+                                self.needs_redraw = true;
+                            }
+                        }
+                        ToolKind::Line => {
+                            if overlay.line_tool.is_drawing() {
+                                overlay.line_tool.on_mouse_move(pos);
+                                self.needs_redraw = true;
+                            }
+                        }
                         ToolKind::Pencil => {
                             if overlay.pencil_tool.is_drawing() {
                                 overlay.pencil_tool.on_mouse_move(pos);
+                                self.needs_redraw = true;
+                            }
+                        }
+                        ToolKind::Highlight => {
+                            if overlay.highlight_tool.is_drawing() {
+                                overlay.highlight_tool.on_mouse_move(pos);
                                 self.needs_redraw = true;
                             }
                         }
@@ -572,6 +681,12 @@ impl ApplicationHandler for App {
                             }
                         }
                     }
+                }
+
+                // Update cursor icon based on current state
+                if let Some(ref window) = self.overlay_window {
+                    let cursor = determine_cursor(overlay, pos);
+                    window.set_cursor(cursor);
                 }
             }
 
@@ -596,35 +711,50 @@ impl ApplicationHandler for App {
                                 self.needs_redraw = true;
                             }
                             2 => {
-                                overlay.active_tool = ToolKind::Pencil;
+                                overlay.active_tool = ToolKind::Circle;
                                 self.needs_redraw = true;
                             }
                             3 => {
-                                overlay.active_tool = ToolKind::Text;
+                                overlay.active_tool = ToolKind::Line;
                                 self.needs_redraw = true;
                             }
                             4 => {
+                                overlay.active_tool = ToolKind::Pencil;
+                                self.needs_redraw = true;
+                            }
+                            5 => {
+                                overlay.active_tool = ToolKind::Highlight;
+                                self.needs_redraw = true;
+                            }
+                            6 => {
+                                overlay.active_tool = ToolKind::Text;
+                                self.needs_redraw = true;
+                            }
+                            7 => {
                                 overlay.active_tool = ToolKind::Pixelate;
                                 self.needs_redraw = true;
                             }
-                            5..=9 => {
+                            8..=12 => {
                                 let presets = Color::presets();
-                                let idx = btn - 5;
+                                let idx = btn - 8;
                                 if idx < presets.len() {
                                     overlay.current_color = presets[idx];
                                     overlay.arrow_tool.set_color(presets[idx]);
                                     overlay.rectangle_tool.set_color(presets[idx]);
+                                    overlay.circle_tool.set_color(presets[idx]);
+                                    overlay.line_tool.set_color(presets[idx]);
                                     overlay.pencil_tool.set_color(presets[idx]);
+                                    overlay.highlight_tool.set_color(presets[idx]);
                                     overlay.text_tool.set_color(presets[idx]);
                                     self.needs_redraw = true;
                                 }
                             }
-                            10 => {
+                            13 => {
                                 // Copy button
                                 self.do_copy();
                                 return;
                             }
-                            11 => {
+                            14 => {
                                 // Save button
                                 self.do_save();
                                 return;
@@ -650,7 +780,10 @@ impl ApplicationHandler for App {
                             match overlay.active_tool {
                                 ToolKind::Arrow => overlay.arrow_tool.on_mouse_down(pos),
                                 ToolKind::Rectangle => overlay.rectangle_tool.on_mouse_down(pos),
+                                ToolKind::Circle => overlay.circle_tool.on_mouse_down(pos),
+                                ToolKind::Line => overlay.line_tool.on_mouse_down(pos),
                                 ToolKind::Pencil => overlay.pencil_tool.on_mouse_down(pos),
+                                ToolKind::Highlight => overlay.highlight_tool.on_mouse_down(pos),
                                 ToolKind::Text => {
                                     overlay.text_tool.on_mouse_down(pos);
                                     if let Some(p) = overlay.text_tool.take_pending_position() {
@@ -704,7 +837,10 @@ impl ApplicationHandler for App {
                     let annotation = match overlay.active_tool {
                         ToolKind::Arrow => overlay.arrow_tool.on_mouse_up(pos),
                         ToolKind::Rectangle => overlay.rectangle_tool.on_mouse_up(pos),
+                        ToolKind::Circle => overlay.circle_tool.on_mouse_up(pos),
+                        ToolKind::Line => overlay.line_tool.on_mouse_up(pos),
                         ToolKind::Pencil => overlay.pencil_tool.on_mouse_up(pos),
+                        ToolKind::Highlight => overlay.highlight_tool.on_mouse_up(pos),
                         ToolKind::Text => overlay.text_tool.on_mouse_up(pos),
                         ToolKind::Pixelate => overlay.pixelate_tool.on_mouse_up(pos),
                     };
@@ -730,6 +866,8 @@ impl ApplicationHandler for App {
                     overlay.current_thickness = new_thickness;
                     overlay.arrow_tool.set_thickness(new_thickness);
                     overlay.rectangle_tool.set_thickness(new_thickness);
+                    overlay.circle_tool.set_thickness(new_thickness);
+                    overlay.line_tool.set_thickness(new_thickness);
                     overlay.pencil_tool.set_thickness(new_thickness);
                 }
                 self.needs_redraw = true;
