@@ -39,6 +39,7 @@ pub fn extract_text(pixels: &[u8], width: u32, height: u32) -> Result<String, St
 fn extract_text_powershell(image_path: &str) -> Result<String, String> {
     let script = format!(
         r#"
+$ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName System.Runtime.WindowsRuntime
 
 # Helper to await WinRT async operations
@@ -67,7 +68,7 @@ $engine = [Windows.Media.Ocr.OcrEngine]::TryCreateFromUserProfileLanguages()
 $result = Await ($engine.RecognizeAsync($bitmap)) ([Windows.Media.Ocr.OcrResult])
 Write-Output $result.Text
 "#,
-        image_path.replace('\\', "\\\\").replace('"', "`\"")
+        image_path.replace('"', "`\"")
     );
 
     let output = std::process::Command::new("powershell")
