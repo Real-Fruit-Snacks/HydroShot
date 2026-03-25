@@ -239,9 +239,7 @@ pub fn render_overlay(state: &mut OverlayState, pixmap: &mut tiny_skia::Pixmap) 
             let hex = format!("#{:02x}{:02x}{:02x}", r8, g8, b8);
 
             let font_size = 12.0_f32;
-            static FONT_DATA: &[u8] = include_bytes!("../assets/font.ttf");
-            let font = fontdue::Font::from_bytes(FONT_DATA, fontdue::FontSettings::default())
-                .expect("font");
+            let font = &*crate::font::FONT;
             let text_width: f32 = hex
                 .chars()
                 .map(|ch| font.rasterize(ch, font_size).0.advance_width)
@@ -278,9 +276,7 @@ pub fn render_overlay(state: &mut OverlayState, pixmap: &mut tiny_skia::Pixmap) 
     state.clear_expired_toast();
     if let Some(ref msg) = state.toast_message {
         let font_size = 14.0_f32;
-        static FONT_DATA: &[u8] = include_bytes!("../assets/font.ttf");
-        let font = fontdue::Font::from_bytes(FONT_DATA, fontdue::FontSettings::default())
-            .expect("font");
+        let font = &*crate::font::FONT;
         let text_width: f32 = msg
             .chars()
             .map(|ch| font.rasterize(ch, font_size).0.advance_width)
@@ -699,9 +695,7 @@ fn render_toolbar(state: &mut OverlayState, selection: &Selection, pixmap: &mut 
             let (btn_x, _btn_y, btn_w, _btn_h) = toolbar.button_rect(vis_idx);
 
             // Measure text width
-            static FONT_DATA: &[u8] = include_bytes!("../assets/font.ttf");
-            let font = fontdue::Font::from_bytes(FONT_DATA, fontdue::FontSettings::default())
-                .expect("font");
+            let font = &*crate::font::FONT;
             let font_size = 12.0;
             let text_width: f32 = label
                 .chars()
@@ -769,11 +763,7 @@ fn render_size_label(
     screen_w: f32,
     screen_h: f32,
 ) {
-    use fontdue::{Font, FontSettings};
-
-    static FONT_DATA: &[u8] = include_bytes!("../assets/font.ttf");
-
-    let font = Font::from_bytes(FONT_DATA, FontSettings::default()).expect("failed to load font");
+    let font = &*crate::font::FONT;
     let font_size = 14.0;
 
     let label = format!("{} \u{00D7} {}", sel.width as u32, sel.height as u32);

@@ -4,6 +4,7 @@ pub mod cli;
 pub mod color_picker;
 pub mod config;
 pub mod export;
+pub mod font;
 pub mod geometry;
 pub mod history;
 pub mod history_ui;

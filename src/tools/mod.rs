@@ -516,9 +516,7 @@ pub fn render_annotation(
             let fs = size * 0.55;
 
             // Measure actual text dimensions using fontdue for precise centering
-            static FONT_DATA: &[u8] = include_bytes!("../../assets/font.ttf");
-            let font = fontdue::Font::from_bytes(FONT_DATA, fontdue::FontSettings::default())
-                .expect("failed to load font");
+            let font = &*crate::font::FONT;
 
             // Measure total advance width
             let total_width: f32 = num_str
@@ -767,11 +765,7 @@ pub fn render_text_annotation(
     color: &Color,
     font_size: f32,
 ) {
-    use fontdue::{Font, FontSettings};
-
-    static FONT_DATA: &[u8] = include_bytes!("../../assets/font.ttf");
-
-    let font = Font::from_bytes(FONT_DATA, FontSettings::default()).expect("failed to load font");
+    let font = &*crate::font::FONT;
 
     let pw = pixmap.width() as i32;
     let ph = pixmap.height() as i32;
