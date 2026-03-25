@@ -55,6 +55,7 @@ pub fn apply_undo(
                 }
             }
         }
+        cap_undo_stack(redo_stack);
         true
     } else {
         false
@@ -842,28 +843,23 @@ pub fn render_text_annotation(
 
                 let idx = ((px_y as u32 * pw as u32 + px_x as u32) * 4) as usize;
 
-                // Alpha-blend with premultiplied destination.
-                // Source is straight; destination is premultiplied.
-                let src_r = (sr as f32 * alpha) as u8;
-                let src_g = (sg as f32 * alpha) as u8;
-                let src_b = (sb as f32 * alpha) as u8;
-                let src_a = (alpha * 255.0) as u8;
-
-                let dst_r = pixels[idx];
-                let dst_g = pixels[idx + 1];
-                let dst_b = pixels[idx + 2];
-                let dst_a = pixels[idx + 3];
+                // Alpha-blend: source (straight) over destination (premultiplied).
+                // Keep everything in f32 to avoid precision loss at low alpha.
+                let src_r_f = sr as f32 * alpha;
+                let src_g_f = sg as f32 * alpha;
+                let src_b_f = sb as f32 * alpha;
+                let src_a_f = alpha * 255.0;
 
                 let inv_alpha = 1.0 - alpha;
-                let out_r = src_r as f32 + dst_r as f32 * inv_alpha;
-                let out_g = src_g as f32 + dst_g as f32 * inv_alpha;
-                let out_b = src_b as f32 + dst_b as f32 * inv_alpha;
-                let out_a = src_a as f32 + dst_a as f32 * inv_alpha;
+                let out_r = src_r_f + pixels[idx] as f32 * inv_alpha;
+                let out_g = src_g_f + pixels[idx + 1] as f32 * inv_alpha;
+                let out_b = src_b_f + pixels[idx + 2] as f32 * inv_alpha;
+                let out_a = src_a_f + pixels[idx + 3] as f32 * inv_alpha;
 
-                pixels[idx] = out_r.min(255.0) as u8;
-                pixels[idx + 1] = out_g.min(255.0) as u8;
-                pixels[idx + 2] = out_b.min(255.0) as u8;
-                pixels[idx + 3] = out_a.min(255.0) as u8;
+                pixels[idx] = (out_r + 0.5).min(255.0) as u8;
+                pixels[idx + 1] = (out_g + 0.5).min(255.0) as u8;
+                pixels[idx + 2] = (out_b + 0.5).min(255.0) as u8;
+                pixels[idx + 3] = (out_a + 0.5).min(255.0) as u8;
             }
         }
 
@@ -972,7 +968,7 @@ pub fn hit_test_annotation(annotation: &Annotation, point: &Point, threshold: f3
             ..
         } => {
             let char_width = font_size * 0.6;
-            let text_width = char_width * text.len() as f32;
+            let text_width = char_width * text.chars().count() as f32;
             let text_height = *font_size;
             point.x >= position.x
                 && point.x <= position.x + text_width
@@ -1079,6 +1075,11 @@ pub fn resize_annotation(annotation: &mut Annotation, handle: ResizeHandle, new_
 
         // Don't allow negative/zero size
         if new_w < 4.0 || new_h < 4.0 {
+            return;
+        }
+
+        // Guard against degenerate bounding box (division by zero)
+        if bw < 0.001 || bh < 0.001 {
             return;
         }
 
@@ -1219,7 +1220,7 @@ pub fn annotation_bounding_box(annotation: &Annotation) -> Option<(f32, f32, f32
             ..
         } => {
             let char_width = font_size * 0.6;
-            let text_width = char_width * text.len() as f32;
+            let text_width = char_width * text.chars().count() as f32;
             Some((position.x, position.y, text_width, *font_size))
         }
         Annotation::StepMarker { position, size, .. } => {

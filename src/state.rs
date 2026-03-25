@@ -78,14 +78,19 @@ impl OverlayState {
         // Pre-convert screenshot to tiny-skia pixmap format (done once, not per frame)
         let w = screenshot.width;
         let h = screenshot.height;
-        let mut screenshot_pixmap =
-            tiny_skia::Pixmap::new(w, h).expect("Failed to create screenshot pixmap");
+        let mut screenshot_pixmap = match tiny_skia::Pixmap::new(w, h) {
+            Some(p) => p,
+            None => {
+                // Zero-dimension screen or allocation failure — create 1x1 fallback
+                tiny_skia::Pixmap::new(1, 1).unwrap()
+            }
+        };
         {
             let pixels = screenshot_pixmap.data_mut();
             let src = &screenshot.pixels;
             // Bulk convert RGBA to premultiplied — screenshots are fully opaque (a=255)
             // so premultiplication is a no-op, we can just copy bytes directly
-            let len = (w * h * 4) as usize;
+            let len = (w as usize) * (h as usize) * 4;
             if src.len() >= len {
                 pixels[..len].copy_from_slice(&src[..len]);
             }

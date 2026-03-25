@@ -42,15 +42,15 @@ impl Toolbar {
         let width = Self::toolbar_width_dynamic(visible_count);
         let height = TOOLBAR_HEIGHT;
 
-        // Center horizontally on the selection
-        let x = selection.x + (selection.width - width) / 2.0;
+        // Center horizontally on the selection, clamped to screen bounds
+        let x = (selection.x + (selection.width - width) / 2.0).max(0.0);
 
         // Place below the selection by default
         let below_y = selection.y + selection.height + TOOLBAR_PADDING;
 
-        // Flip above if toolbar would go off screen bottom
+        // Flip above if toolbar would go off screen bottom, clamp to 0 minimum
         let y = if below_y + height > screen_height {
-            selection.y - height - TOOLBAR_PADDING
+            (selection.y - height - TOOLBAR_PADDING).max(0.0)
         } else {
             below_y
         };

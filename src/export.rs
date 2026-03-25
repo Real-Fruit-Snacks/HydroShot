@@ -13,11 +13,18 @@ pub fn flatten_annotations(
     height: u32,
     annotations: &[Annotation],
 ) -> Vec<u8> {
-    let mut pixmap = Pixmap::new(width, height).expect("failed to create Pixmap");
+    let mut pixmap = match Pixmap::new(width, height) {
+        Some(p) => p,
+        None => return pixels.to_vec(), // zero-dimension: return input unchanged
+    };
 
     // Copy source pixels into pixmap WITH premultiplication
+    let expected_len = (width as usize) * (height as usize) * 4;
+    if pixels.len() < expected_len {
+        return pixels.to_vec(); // undersized buffer: return input unchanged
+    }
     let pm_pixels = pixmap.pixels_mut();
-    for i in 0..(width * height) as usize {
+    for i in 0..(width as usize) * (height as usize) {
         let r = pixels[i * 4];
         let g = pixels[i * 4 + 1];
         let b = pixels[i * 4 + 2];
@@ -32,7 +39,7 @@ pub fn flatten_annotations(
 
     // Demultiply back to straight alpha
     let pm_pixels = pixmap.pixels();
-    let mut output = Vec::with_capacity((width * height * 4) as usize);
+    let mut output = Vec::with_capacity((width as usize) * (height as usize) * 4);
     for px in pm_pixels {
         let a = px.alpha();
         if a == 0 {
@@ -68,12 +75,19 @@ pub fn crop_and_flatten(
     sel_h: u32,
     annotations: &[Annotation],
 ) -> Vec<u8> {
+    // Clamp selection to screenshot bounds to prevent out-of-bounds access
+    let screenshot_height = screenshot_pixels.len() as u32 / (screenshot_width * 4).max(1);
+    let clamped_w = sel_w.min(screenshot_width.saturating_sub(sel_x));
+    let clamped_h = sel_h.min(screenshot_height.saturating_sub(sel_y));
+
     // Crop the pixel buffer
-    let mut cropped = Vec::with_capacity((sel_w * sel_h * 4) as usize);
-    for row in sel_y..(sel_y + sel_h) {
+    let mut cropped = Vec::with_capacity((clamped_w as usize) * (clamped_h as usize) * 4);
+    for row in sel_y..(sel_y + clamped_h) {
         let start = ((row * screenshot_width + sel_x) * 4) as usize;
-        let end = start + (sel_w * 4) as usize;
-        cropped.extend_from_slice(&screenshot_pixels[start..end]);
+        let end = start + (clamped_w * 4) as usize;
+        if end <= screenshot_pixels.len() {
+            cropped.extend_from_slice(&screenshot_pixels[start..end]);
+        }
     }
 
     // Offset annotations to selection-relative coordinates
@@ -82,7 +96,7 @@ pub fn crop_and_flatten(
         .map(|a| offset_annotation(a, sel_x as f32, sel_y as f32))
         .collect();
 
-    flatten_annotations(&cropped, sel_w, sel_h, &offset_annotations)
+    flatten_annotations(&cropped, clamped_w, clamped_h, &offset_annotations)
 }
 
 /// Offset an annotation's coordinates by (-dx, -dy).

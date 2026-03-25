@@ -202,7 +202,7 @@ fn toolbar_position_below_selection() {
     let toolbar = Toolbar::position_for(&sel, 1080.0);
     // Should be centered below selection
     let expected_width = Toolbar::toolbar_width();
-    let expected_x = sel.x + (sel.width - expected_width) / 2.0;
+    let expected_x = (sel.x + (sel.width - expected_width) / 2.0).max(0.0);
     assert_eq!(toolbar.x, expected_x);
     assert_eq!(toolbar.y, sel.y + sel.height + 8.0); // TOOLBAR_PADDING below
 }

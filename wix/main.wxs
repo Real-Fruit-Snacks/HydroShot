@@ -38,7 +38,7 @@
 
         <Icon Id='ProductICO' SourceFile='assets\icon.ico' />
         <Property Id='ARPPRODUCTICON' Value='ProductICO' />
-        <Property Id='ARPHELPLINK' Value='https://github.com/Matt/hydroshot' />
+        <Property Id='ARPHELPLINK' Value='https://github.com/Real-Fruit-Snacks/HydroShot' />
 
         <Directory Id='TARGETDIR' Name='SourceDir'>
             <Directory Id='$(var.PlatformProgramFilesFolder)' Name='PFiles'>

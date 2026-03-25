@@ -480,36 +480,52 @@ impl App {
             self.needs_redraw = true;
 
             // Encode to PNG bytes
-            let img = image::RgbaImage::from_raw(w, h, pixels).expect("Invalid image");
-            let mut png_bytes = Vec::new();
-            img.write_to(
-                &mut std::io::Cursor::new(&mut png_bytes),
-                image::ImageFormat::Png,
-            )
-            .expect("PNG encode failed");
-
-            // Upload (blocking)
-            let toast_msg = match hydroshot::upload::upload_to_imgur(&png_bytes) {
-                Ok(url) => {
-                    if let Ok(mut clipboard) = arboard::Clipboard::new() {
-                        let _ = clipboard.set_text(&url);
+            let img = match image::RgbaImage::from_raw(w, h, pixels) {
+                Some(img) => img,
+                None => {
+                    tracing::error!("Failed to create image for upload");
+                    if let AppState::Capturing(ref mut o) = self.state {
+                        o.show_toast("Upload failed: invalid image data".into(), 3000);
                     }
-                    tracing::info!("Uploaded to Imgur: {}", url);
-                    format!("Uploaded! URL copied: {}", url)
-                }
-                Err(e) => {
-                    tracing::error!("Imgur upload failed: {}", e);
-                    format!("Upload failed: {}", e)
+                    return;
                 }
             };
+            let mut png_bytes = Vec::new();
+            if let Err(e) = img.write_to(
+                &mut std::io::Cursor::new(&mut png_bytes),
+                image::ImageFormat::Png,
+            ) {
+                tracing::error!("PNG encode failed: {}", e);
+                if let AppState::Capturing(ref mut o) = self.state {
+                    o.show_toast(format!("Upload failed: {}", e), 3000);
+                }
+                return;
+            }
 
-            // Show result as in-overlay toast, then close
-            let _ = Notification::new()
-                .summary("HydroShot")
-                .body(&toast_msg)
-                .timeout(3000)
-                .show();
+            // Close overlay immediately, upload in background thread
             self.close_overlay();
+
+            std::thread::spawn(move || {
+                let toast_msg = match hydroshot::upload::upload_to_imgur(&png_bytes) {
+                    Ok(url) => {
+                        if let Ok(mut clipboard) = arboard::Clipboard::new() {
+                            let _ = clipboard.set_text(&url);
+                        }
+                        tracing::info!("Uploaded to Imgur: {}", url);
+                        format!("Uploaded! URL copied: {}", url)
+                    }
+                    Err(e) => {
+                        tracing::error!("Imgur upload failed: {}", e);
+                        format!("Upload failed: {}", e)
+                    }
+                };
+
+                let _ = Notification::new()
+                    .summary("HydroShot")
+                    .body(&toast_msg)
+                    .timeout(3000)
+                    .show();
+            });
         }
     }
 
@@ -557,7 +573,7 @@ impl App {
                     }
                     tracing::info!("OCR extracted {} chars", text.len());
                     if text.len() > 80 {
-                        format!("Copied {} chars: {}...", text.len(), &text[..80])
+                        format!("Copied {} chars: {}...", text.len(), text.chars().take(80).collect::<String>())
                     } else {
                         format!("Copied: {}", text)
                     }
@@ -1287,10 +1303,19 @@ impl ApplicationHandler for App {
                 } => {
                     let pin = &self.pinned_windows[pin_idx];
                     if let Some(ref path) = pin.temp_path {
-                        let _ = std::process::Command::new("explorer")
-                            .arg("/select,")
-                            .arg(path)
-                            .spawn();
+                        #[cfg(target_os = "windows")]
+                        {
+                            let _ = std::process::Command::new("explorer")
+                                .arg("/select,")
+                                .arg(path)
+                                .spawn();
+                        }
+                        #[cfg(target_os = "linux")]
+                        {
+                            let _ = std::process::Command::new("xdg-open")
+                                .arg(path.parent().unwrap_or(path))
+                                .spawn();
+                        }
                     }
                 }
                 WindowEvent::MouseInput {
@@ -2547,8 +2572,13 @@ fn run_cli_capture(clipboard: bool, save: Option<String>, delay: u64) {
             }
         }
     } else if let Some(path) = save {
-        let img = image::RgbaImage::from_raw(screen.width, screen.height, screen.pixels.clone())
-            .expect("Invalid image data");
+        let img = match image::RgbaImage::from_raw(screen.width, screen.height, screen.pixels.clone()) {
+            Some(img) => img,
+            None => {
+                eprintln!("Invalid image data ({}x{})", screen.width, screen.height);
+                std::process::exit(1);
+            }
+        };
         match img.save(&path) {
             Ok(_) => println!("Saved to {}", path),
             Err(e) => {
@@ -2569,7 +2599,7 @@ fn main() {
         use windows::core::w;
         use windows::Win32::UI::Shell::SetCurrentProcessExplicitAppUserModelID;
         unsafe {
-            let _ = SetCurrentProcessExplicitAppUserModelID(w!("HydroShot.HydroShot.0.4.0"));
+            let _ = SetCurrentProcessExplicitAppUserModelID(w!("HydroShot.HydroShot.0.5.1"));
         }
     }
 

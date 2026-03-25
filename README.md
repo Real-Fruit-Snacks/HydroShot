@@ -30,7 +30,7 @@ Built with Rust, winit, and tiny-skia.
 - **Multi-monitor support** — Captures the entire virtual desktop across all connected monitors.
 - **Fullscreen overlay** — Semi-transparent overlay dims inactive areas for precise region selection.
 
-### Annotation Tools (16 tools)
+### Annotation Tools (14 tools)
 
 - **Select/Move** (V) — Reposition and resize annotations after placement. Drag corner handles to resize.
 - **Arrow** (A) — Draw directional arrows to highlight points of interest.
@@ -111,7 +111,7 @@ Download the latest release from the [Releases](https://github.com/Real-Fruit-Sn
 ```bash
 # Clone the repository
 git clone https://github.com/Real-Fruit-Snacks/HydroShot.git
-cd hydroshot
+cd HydroShot
 
 # Build in release mode
 cargo build --release
@@ -194,18 +194,29 @@ HydroShot stores its configuration in a TOML file:
 ### Example Configuration
 
 ```toml
-[capture]
-save_path = "~/Pictures/Screenshots"
-copy_to_clipboard = true
-show_notifications = true
-
-[appearance]
+[general]
 default_color = "#89b4fa"
 default_thickness = 3.0
+save_directory = ""
 
-[behavior]
-auto_start = false
-global_hotkey = "Ctrl+Shift+S"
+[hotkey]
+capture = "Ctrl+Shift+S"
+
+[shortcuts]
+arrow = "a"
+rectangle = "r"
+circle = "c"
+line = "l"
+pencil = "p"
+highlight = "h"
+text = "t"
+pixelate = "b"
+
+[toolbar]
+arrow = true
+rectangle = true
+circle = true
+# ... all tools default to true
 ```
 
 Settings can also be changed through the in-app Settings UI (General, Shortcuts, and Toolbar tabs) accessible from the tray menu.
@@ -217,7 +228,7 @@ Settings can also be changed through the in-app Settings UI (General, Shortcuts,
 - [Rust](https://rustup.rs/) 1.75 or later
 - Platform-specific dependencies:
   - **Windows:** No additional dependencies
-  - **Linux:** `libx11-dev`, `libxrandr-dev`, `libxcomposite-dev`
+  - **Linux:** `libxkbcommon-dev`, `libwayland-dev`, `libglib2.0-dev`, `libgtk-3-dev`, `libxdo-dev`
 
 ### Building
 
@@ -248,6 +259,11 @@ hydroshot/
 │   ├── icons.rs             # Lucide SVG icon loading
 │   ├── geometry.rs          # Geometry utilities
 │   ├── export.rs            # Clipboard and file export
+│   ├── upload.rs            # Imgur anonymous upload
+│   ├── history.rs           # Recent captures history
+│   ├── history_ui.rs        # History panel rendering
+│   ├── ocr.rs               # OCR text extraction (Windows)
+│   ├── font.rs              # Font loading and caching
 │   ├── color_picker.rs      # Color selection UI
 │   ├── settings_ui.rs       # Settings window (tabbed)
 │   ├── autostart.rs         # Auto-start on login
@@ -265,7 +281,6 @@ hydroshot/
 │       ├── mod.rs           # Tool trait and registry
 │       ├── arrow.rs         # Arrow tool
 │       ├── circle.rs        # Circle/ellipse tool
-│       ├── eyedropper.rs    # Color eyedropper tool
 │       ├── highlight.rs     # Highlight marker tool
 │       ├── line.rs          # Line tool
 │       ├── measurement.rs   # Measurement tool

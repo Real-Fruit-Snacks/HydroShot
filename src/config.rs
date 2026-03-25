@@ -263,16 +263,15 @@ impl Config {
             }
         };
 
-        if !path.exists() {
-            tracing::info!("Config file not found, creating with defaults");
-            let cfg = Self::default();
-            if let Err(e) = cfg.save() {
-                tracing::warn!("Failed to write default config: {e}");
-            }
-            return cfg;
-        }
-
         match std::fs::read_to_string(&path) {
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
+                tracing::info!("Config file not found, creating with defaults");
+                let cfg = Self::default();
+                if let Err(e) = cfg.save() {
+                    tracing::warn!("Failed to write default config: {e}");
+                }
+                cfg
+            }
             Ok(contents) => match toml::from_str::<Config>(&contents) {
                 Ok(cfg) => cfg,
                 Err(e) => {

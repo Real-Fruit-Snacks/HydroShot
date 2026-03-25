@@ -75,6 +75,9 @@ fn letter_to_code(c: char) -> Code {
         'x' => Code::KeyX,
         'y' => Code::KeyY,
         'z' => Code::KeyZ,
-        _ => Code::KeyA, // fallback, shouldn't reach here
+        _ => {
+            tracing::warn!("Unknown hotkey character '{}', ignoring", c);
+            Code::KeyA
+        }
     }
 }

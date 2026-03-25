@@ -51,9 +51,8 @@ fn prune_keeps_only_max_entries() {
     let mut paths = vec![];
 
     for _ in 0..22 {
-        match hydroshot::history::save_to_history(&pixels, 1, 1) {
-            Ok(p) => paths.push(p),
-            Err(_) => {} // timestamps may collide, that's fine
+        if let Ok(p) = hydroshot::history::save_to_history(&pixels, 1, 1) {
+            paths.push(p);
         }
         // Small delay to get different timestamps
         std::thread::sleep(std::time::Duration::from_millis(50));

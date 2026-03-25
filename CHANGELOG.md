@@ -2,7 +2,27 @@
 
 All notable changes to HydroShot will be documented in this file.
 
-## [0.5.0] - 2026-03-25
+## [0.5.1] - 2026-03-25
+
+### Fixed
+- Fixed command injection vulnerability in OCR PowerShell integration
+- Externalized Imgur client ID to environment variable
+- Fixed integer overflow in screen capture buffer sizing on multi-monitor setups
+- Replaced panicking unwrap/expect calls with graceful error handling
+- Moved Imgur upload to background thread to prevent UI freezing
+- Fixed string slicing panics on non-ASCII text (CJK, emoji)
+- Fixed selection resize allowing negative dimensions
+- Fixed alpha blending precision loss in text rendering
+- Added bounds checking in crop_and_flatten to prevent panics
+- Fixed toolbar positioning going off-screen
+- Fixed hardcoded DPI scale factor (now queries actual system DPI)
+- Fixed version mismatches across CHANGELOG, webpage, and installer
+- Fixed README: correct tool count (14, not 16), accurate project structure, matching config example, correct Linux build deps
+- Fixed webpage: correct tool count, removed non-tool from tools grid, clarified Linux Wayland support
+- Fixed installer help URL pointing to wrong GitHub repository
+- Added `rust-version` to Cargo.toml to enforce MSRV 1.75
+
+## [0.5.0] - 2026-03-24
 
 ### Added
 

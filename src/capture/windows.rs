@@ -1,7 +1,8 @@
 use super::{CaptureError, CapturedScreen, ScreenCapture};
 use windows::Win32::Graphics::Gdi::{
     BitBlt, CreateCompatibleBitmap, CreateCompatibleDC, DeleteDC, DeleteObject, GetDIBits,
-    SelectObject, BITMAPINFO, BITMAPINFOHEADER, BI_RGB, DIB_RGB_COLORS, SRCCOPY,
+    GetDeviceCaps, SelectObject, BITMAPINFO, BITMAPINFOHEADER, BI_RGB, DIB_RGB_COLORS, LOGPIXELSX,
+    SRCCOPY,
 };
 use windows::Win32::Graphics::Gdi::{GetDC, ReleaseDC};
 use windows::Win32::UI::WindowsAndMessaging::{
@@ -89,7 +90,7 @@ unsafe fn capture_virtual_desktop() -> Result<CapturedScreen, CaptureError> {
         bmiColors: [Default::default()],
     };
 
-    let buf_size = (width * height * 4) as usize;
+    let buf_size = (width as usize) * (height as usize) * 4;
     let mut bgra_pixels: Vec<u8> = vec![0u8; buf_size];
 
     let lines = unsafe {
@@ -103,6 +104,10 @@ unsafe fn capture_virtual_desktop() -> Result<CapturedScreen, CaptureError> {
             DIB_RGB_COLORS,
         )
     };
+
+    // Query system DPI before releasing the screen DC (96 = 100% scaling)
+    let dpi = unsafe { GetDeviceCaps(hdc_screen, LOGPIXELSX) };
+    let scale_factor = if dpi > 0 { dpi as f64 / 96.0 } else { 1.0 };
 
     // Clean up GDI resources
     unsafe {
@@ -129,6 +134,6 @@ unsafe fn capture_virtual_desktop() -> Result<CapturedScreen, CaptureError> {
         height: height as u32,
         x_offset: x,
         y_offset: y,
-        scale_factor: 1.0,
+        scale_factor,
     })
 }

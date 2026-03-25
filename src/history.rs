@@ -14,7 +14,7 @@ pub fn save_to_history(pixels: &[u8], width: u32, height: u32) -> Result<PathBuf
     let timestamp = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .unwrap_or_default()
-        .as_secs();
+        .as_millis();
     let filename = format!("{}.png", timestamp);
     let path = dir.join(&filename);
 

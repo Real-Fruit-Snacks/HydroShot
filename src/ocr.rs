@@ -37,29 +37,28 @@ pub fn extract_text(pixels: &[u8], width: u32, height: u32) -> Result<String, St
 
 #[cfg(target_os = "windows")]
 fn extract_text_powershell(image_path: &str) -> Result<String, String> {
-    let script = format!(
-        r#"
+    let script = r#"
 $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName System.Runtime.WindowsRuntime
 
 # Helper to await WinRT async operations
 $asTaskGeneric = ([System.WindowsRuntimeSystemExtensions].GetMethods() |
-    Where-Object {{ $_.Name -eq 'AsTask' -and $_.GetParameters().Count -eq 1 -and
-    $_.GetParameters()[0].ParameterType.Name -eq 'IAsyncOperation`1' }})[0]
+    Where-Object { $_.Name -eq 'AsTask' -and $_.GetParameters().Count -eq 1 -and
+    $_.GetParameters()[0].ParameterType.Name -eq 'IAsyncOperation`1' })[0]
 
-Function Await($WinRtTask, $ResultType) {{
+Function Await($WinRtTask, $ResultType) {
     $asTask = $asTaskGeneric.MakeGenericMethod($ResultType)
     $netTask = $asTask.Invoke($null, @($WinRtTask))
     $netTask.Wait(-1) | Out-Null
     $netTask.Result
-}}
+}
 
 # Load required WinRT types
 [Windows.Storage.StorageFile, Windows.Storage, ContentType = WindowsRuntime] | Out-Null
 [Windows.Graphics.Imaging.BitmapDecoder, Windows.Foundation.UniversalApiContract, ContentType = WindowsRuntime] | Out-Null
 [Windows.Media.Ocr.OcrEngine, Windows.Foundation.UniversalApiContract, ContentType = WindowsRuntime] | Out-Null
 
-$path = "{}"
+$path = $env:HYDROSHOT_OCR_PATH
 $file = Await ([Windows.Storage.StorageFile]::GetFileFromPathAsync($path)) ([Windows.Storage.StorageFile])
 $stream = Await ($file.OpenAsync([Windows.Storage.FileAccessMode]::Read)) ([Windows.Storage.Streams.IRandomAccessStream])
 $decoder = Await ([Windows.Graphics.Imaging.BitmapDecoder]::CreateAsync($stream)) ([Windows.Graphics.Imaging.BitmapDecoder])
@@ -67,12 +66,11 @@ $bitmap = Await ($decoder.GetSoftwareBitmapAsync()) ([Windows.Graphics.Imaging.S
 $engine = [Windows.Media.Ocr.OcrEngine]::TryCreateFromUserProfileLanguages()
 $result = Await ($engine.RecognizeAsync($bitmap)) ([Windows.Media.Ocr.OcrResult])
 Write-Output $result.Text
-"#,
-        image_path.replace('"', "`\"")
-    );
+"#;
 
     let output = std::process::Command::new("powershell")
-        .args(["-NoProfile", "-NonInteractive", "-Command", &script])
+        .env("HYDROSHOT_OCR_PATH", image_path)
+        .args(["-NoProfile", "-NonInteractive", "-Command", script])
         .output()
         .map_err(|e| format!("Failed to run PowerShell: {e}"))?;
 

@@ -145,5 +145,14 @@ impl Selection {
                 // Moving, not resizing — no-op here; use move_by instead
             }
         }
+        // Normalize: if a handle was dragged past its opposite, flip so dimensions stay positive
+        if self.width < 0.0 {
+            self.x += self.width;
+            self.width = -self.width;
+        }
+        if self.height < 0.0 {
+            self.y += self.height;
+            self.height = -self.height;
+        }
     }
 }
