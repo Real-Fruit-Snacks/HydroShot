@@ -2,7 +2,7 @@
 
 All notable changes to HydroShot will be documented in this file.
 
-## [0.5.1] - 2026-03-25
+## [0.5.2] - 2026-03-25
 
 ### Fixed
 - Fixed command injection vulnerability in OCR PowerShell integration
