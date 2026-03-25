@@ -666,57 +666,49 @@ pub fn render_annotation(
             paint.set_color((*color).into());
             paint.anti_alias = true;
 
-            // Dashed line
+            // Solid measurement line (2px, clearly visible)
             let mut pb = PathBuilder::new();
             pb.move_to(start.x, start.y);
             pb.line_to(end.x, end.y);
             if let Some(path) = pb.finish() {
                 let stroke = Stroke {
-                    width: 1.5,
-                    dash: tiny_skia::StrokeDash::new(vec![6.0, 4.0], 0.0),
+                    width: 2.0,
                     ..Stroke::default()
                 };
                 pixmap.stroke_path(&path, &paint, &stroke, Transform::identity(), None);
             }
 
-            // Endpoint circles (small filled dots)
+            // Perpendicular end caps (crossbars at each endpoint, like a ruler)
+            let dx = end.x - start.x;
+            let dy = end.y - start.y;
+            let len = (dx * dx + dy * dy).sqrt();
+            if len > 0.1 {
+                let px = -dy / len * 7.0;
+                let py = dx / len * 7.0;
+                for pt in [start, end] {
+                    let mut pb = PathBuilder::new();
+                    pb.move_to(pt.x + px, pt.y + py);
+                    pb.line_to(pt.x - px, pt.y - py);
+                    if let Some(path) = pb.finish() {
+                        let stroke = Stroke {
+                            width: 2.0,
+                            ..Stroke::default()
+                        };
+                        pixmap.stroke_path(&path, &paint, &stroke, Transform::identity(), None);
+                    }
+                }
+            }
+
+            // Endpoint dots (small filled circles for extra visibility)
             for pt in [start, end] {
                 let r = 3.0;
                 let k: f32 = 0.5522848;
                 let mut pb = PathBuilder::new();
                 pb.move_to(pt.x + r, pt.y);
-                pb.cubic_to(
-                    pt.x + r,
-                    pt.y + r * k,
-                    pt.x + r * k,
-                    pt.y + r,
-                    pt.x,
-                    pt.y + r,
-                );
-                pb.cubic_to(
-                    pt.x - r * k,
-                    pt.y + r,
-                    pt.x - r,
-                    pt.y + r * k,
-                    pt.x - r,
-                    pt.y,
-                );
-                pb.cubic_to(
-                    pt.x - r,
-                    pt.y - r * k,
-                    pt.x - r * k,
-                    pt.y - r,
-                    pt.x,
-                    pt.y - r,
-                );
-                pb.cubic_to(
-                    pt.x + r * k,
-                    pt.y - r,
-                    pt.x + r,
-                    pt.y - r * k,
-                    pt.x + r,
-                    pt.y,
-                );
+                pb.cubic_to(pt.x + r, pt.y + r * k, pt.x + r * k, pt.y + r, pt.x, pt.y + r);
+                pb.cubic_to(pt.x - r * k, pt.y + r, pt.x - r, pt.y + r * k, pt.x - r, pt.y);
+                pb.cubic_to(pt.x - r, pt.y - r * k, pt.x - r * k, pt.y - r, pt.x, pt.y - r);
+                pb.cubic_to(pt.x + r * k, pt.y - r, pt.x + r, pt.y - r * k, pt.x + r, pt.y);
                 pb.close();
                 if let Some(path) = pb.finish() {
                     pixmap.fill_path(
