@@ -573,7 +573,11 @@ impl App {
                     }
                     tracing::info!("OCR extracted {} chars", text.len());
                     if text.len() > 80 {
-                        format!("Copied {} chars: {}...", text.len(), text.chars().take(80).collect::<String>())
+                        format!(
+                            "Copied {} chars: {}...",
+                            text.len(),
+                            text.chars().take(80).collect::<String>()
+                        )
                     } else {
                         format!("Copied: {}", text)
                     }
@@ -2572,13 +2576,14 @@ fn run_cli_capture(clipboard: bool, save: Option<String>, delay: u64) {
             }
         }
     } else if let Some(path) = save {
-        let img = match image::RgbaImage::from_raw(screen.width, screen.height, screen.pixels.clone()) {
-            Some(img) => img,
-            None => {
-                eprintln!("Invalid image data ({}x{})", screen.width, screen.height);
-                std::process::exit(1);
-            }
-        };
+        let img =
+            match image::RgbaImage::from_raw(screen.width, screen.height, screen.pixels.clone()) {
+                Some(img) => img,
+                None => {
+                    eprintln!("Invalid image data ({}x{})", screen.width, screen.height);
+                    std::process::exit(1);
+                }
+            };
         match img.save(&path) {
             Ok(_) => println!("Saved to {}", path),
             Err(e) => {

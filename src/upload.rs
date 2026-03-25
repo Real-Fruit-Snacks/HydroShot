@@ -5,7 +5,8 @@
 const DEFAULT_IMGUR_CLIENT_ID: &str = "546c25a59c58ad7";
 
 fn imgur_client_id() -> String {
-    std::env::var("HYDROSHOT_IMGUR_CLIENT_ID").unwrap_or_else(|_| DEFAULT_IMGUR_CLIENT_ID.to_string())
+    std::env::var("HYDROSHOT_IMGUR_CLIENT_ID")
+        .unwrap_or_else(|_| DEFAULT_IMGUR_CLIENT_ID.to_string())
 }
 
 pub fn upload_to_imgur(png_data: &[u8]) -> Result<String, String> {

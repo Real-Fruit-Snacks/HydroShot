@@ -303,7 +303,14 @@ impl SettingsWindow {
             &self.config.general.save_directory
         };
         let dir_short: String = if dir_display.chars().count() > 34 {
-            let suffix: String = dir_display.chars().rev().take(31).collect::<Vec<_>>().into_iter().rev().collect();
+            let suffix: String = dir_display
+                .chars()
+                .rev()
+                .take(31)
+                .collect::<Vec<_>>()
+                .into_iter()
+                .rev()
+                .collect();
             format!("...{}", suffix)
         } else {
             dir_display.to_string()
