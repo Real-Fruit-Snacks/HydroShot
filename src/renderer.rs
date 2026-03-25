@@ -78,6 +78,7 @@ pub fn render_overlay(state: &mut OverlayState, pixmap: &mut tiny_skia::Pixmap) 
         ToolKind::Text => state.text_tool.in_progress_annotation(),
         ToolKind::Pixelate => state.pixelate_tool.in_progress_annotation(),
         ToolKind::StepMarker => state.step_marker_tool.in_progress_annotation(),
+        ToolKind::Eyedropper => None,
     };
     if let Some(ref ann) = in_progress {
         render_annotation(ann, pixmap, ss_pixels, ss_width);
@@ -126,6 +127,69 @@ pub fn render_overlay(state: &mut OverlayState, pixmap: &mut tiny_skia::Pixmap) 
     // 8. Toolbar (only if there is a selection)
     if let Some(sel) = state.selection {
         render_toolbar(state, &sel, pixmap);
+    }
+
+    // 9. Eyedropper preview (color swatch + hex near cursor)
+    if state.active_tool == ToolKind::Eyedropper {
+        if let Some(color) = state.eyedropper_preview {
+            let mx = state.last_mouse_pos.x;
+            let my = state.last_mouse_pos.y;
+
+            // Small filled square showing the color
+            let swatch_size = 24.0_f32;
+            let swatch_x = mx + 16.0;
+            let swatch_y = my + 16.0;
+
+            if let Some(rect) = tiny_skia::Rect::from_xywh(swatch_x, swatch_y, swatch_size, swatch_size) {
+                let mut paint = Paint::default();
+                if let Some(c) = tiny_skia::Color::from_rgba(color.r, color.g, color.b, 1.0) {
+                    paint.set_color(c);
+                }
+                paint.anti_alias = false;
+                pixmap.fill_rect(rect, &paint, Transform::identity(), None);
+
+                // White border around swatch
+                let path = PathBuilder::from_rect(rect);
+                let mut border = Paint::default();
+                border.set_color(tiny_skia::Color::WHITE);
+                border.anti_alias = true;
+                let stroke = Stroke { width: 1.5, ..Stroke::default() };
+                pixmap.stroke_path(&path, &border, &stroke, Transform::identity(), None);
+            }
+
+            // Hex code label below swatch
+            let r8 = (color.r * 255.0) as u8;
+            let g8 = (color.g * 255.0) as u8;
+            let b8 = (color.b * 255.0) as u8;
+            let hex = format!("#{:02x}{:02x}{:02x}", r8, g8, b8);
+
+            let font_size = 12.0_f32;
+            static FONT_DATA: &[u8] = include_bytes!("../assets/font.ttf");
+            let font = fontdue::Font::from_bytes(FONT_DATA, fontdue::FontSettings::default())
+                .expect("font");
+            let text_width: f32 = hex.chars()
+                .map(|ch| font.rasterize(ch, font_size).0.advance_width)
+                .sum();
+
+            let pad_x = 4.0_f32;
+            let pad_y = 2.0_f32;
+            let pill_w = text_width + pad_x * 2.0;
+            let pill_h = font_size + pad_y * 2.0;
+            let pill_x = swatch_x;
+            let pill_y = swatch_y + swatch_size + 2.0;
+
+            if let Some(bg) = rounded_rect_path(pill_x, pill_y, pill_w, pill_h, 3.0) {
+                let mut bg_paint = Paint::default();
+                bg_paint.set_color(tiny_skia::Color::from_rgba(0.067, 0.067, 0.094, 0.9).unwrap());
+                bg_paint.anti_alias = true;
+                pixmap.fill_path(&bg, &bg_paint, tiny_skia::FillRule::Winding, Transform::identity(), None);
+            }
+
+            use crate::tools::render_text_annotation;
+            let text_pos = crate::geometry::Point::new(pill_x + pad_x, pill_y + pad_y);
+            let white = crate::geometry::Color::new(0.804, 0.839, 0.957, 1.0);
+            render_text_annotation(pixmap, &text_pos, &hex, &white, font_size);
+        }
     }
 }
 
@@ -239,7 +303,7 @@ fn render_toolbar(state: &mut OverlayState, selection: &Selection, pixmap: &mut 
 
     // --- Separators between button groups (tools | colors | actions) ---
     let sep_color = tiny_skia::Color::from_rgba(0.804, 0.839, 0.957, 0.15).unwrap();
-    for &after_btn in &[9usize, 14] {
+    for &after_btn in &[10usize, 15] {
         let (bx, _, bw, _) = toolbar.button_rect(after_btn);
         let sep_x = bx + bw + TOOLBAR_PADDING / 2.0;
         let sep_y1 = toolbar.y + 8.0;
@@ -260,7 +324,7 @@ fn render_toolbar(state: &mut OverlayState, selection: &Selection, pixmap: &mut 
     }
 
     // --- Render each button ---
-    for i in 0..19usize {
+    for i in 0..20usize {
         let (bx, by, bw, bh) = toolbar.button_rect(i);
 
         let is_active = match i {
@@ -274,8 +338,9 @@ fn render_toolbar(state: &mut OverlayState, selection: &Selection, pixmap: &mut 
             7 => state.active_tool == ToolKind::Text,
             8 => state.active_tool == ToolKind::Pixelate,
             9 => state.active_tool == ToolKind::StepMarker,
-            10..=14 => {
-                let idx = i - 10;
+            10 => state.active_tool == ToolKind::Eyedropper,
+            11..=15 => {
+                let idx = i - 11;
                 idx < presets.len() && state.current_color == presets[idx]
             }
             _ => false,
@@ -332,10 +397,11 @@ fn render_toolbar(state: &mut OverlayState, selection: &Selection, pixmap: &mut 
             7 => Some("text"),
             8 => Some("pixelate"),
             9 => Some("step-marker"),
-            15 => Some("upload"),
-            16 => Some("pin"),
-            17 => Some("copy"),
-            18 => Some("save"),
+            10 => Some("eyedropper"),
+            16 => Some("upload"),
+            17 => Some("pin"),
+            18 => Some("copy"),
+            19 => Some("save"),
             _ => None,
         };
 
@@ -349,10 +415,10 @@ fn render_toolbar(state: &mut OverlayState, selection: &Selection, pixmap: &mut 
             }
         }
 
-        if let 10..=14 = i {
+        if let 11..=15 = i {
             {
                 // Color swatch: rounded filled rect with border
-                let idx = i - 10;
+                let idx = i - 11;
                 if idx < SWATCH_COLORS.len() {
                     let (r, g, b) = SWATCH_COLORS[idx];
                     let inset = 6.0;
@@ -412,15 +478,16 @@ fn render_toolbar(state: &mut OverlayState, selection: &Selection, pixmap: &mut 
             7 => "Text (T)",
             8 => "Pixelate (B)",
             9 => "Step Marker (N)",
-            10 => "Red (right-click: pick)",
-            11 => "Blue (right-click: pick)",
-            12 => "Green (right-click: pick)",
-            13 => "Yellow (right-click: pick)",
-            14 => "Mauve (right-click: pick)",
-            15 => "Upload (Imgur)",
-            16 => "Pin",
-            17 => "Copy (Ctrl+C)",
-            18 => "Save (Ctrl+S)",
+            10 => "Eyedropper (I)",
+            11 => "Red (right-click: pick)",
+            12 => "Blue (right-click: pick)",
+            13 => "Green (right-click: pick)",
+            14 => "Yellow (right-click: pick)",
+            15 => "Mauve (right-click: pick)",
+            16 => "Upload (Imgur)",
+            17 => "Pin",
+            18 => "Copy (Ctrl+C)",
+            19 => "Save (Ctrl+S)",
             _ => "",
         };
 

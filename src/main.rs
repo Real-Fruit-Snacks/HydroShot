@@ -866,6 +866,7 @@ fn hitzone_to_cursor(zone: HitZone, overlay: &OverlayState) -> CursorIcon {
                 ToolKind::Select => CursorIcon::Default,
                 ToolKind::Text => CursorIcon::Text,
                 ToolKind::StepMarker => CursorIcon::Cell,
+                ToolKind::Eyedropper => CursorIcon::Crosshair,
                 ToolKind::Arrow | ToolKind::Line | ToolKind::Pencil => CursorIcon::Crosshair,
                 ToolKind::Rectangle | ToolKind::Circle | ToolKind::Highlight | ToolKind::Pixelate => CursorIcon::Crosshair,
             }
@@ -1352,6 +1353,14 @@ impl ApplicationHandler for App {
                                 overlay.active_tool = ToolKind::Select;
                                 self.needs_redraw = true;
                             }
+                            "i" if !ctrl => {
+                                let overlay = match &mut self.state {
+                                    AppState::Capturing(o) => o,
+                                    _ => return,
+                                };
+                                overlay.active_tool = ToolKind::Eyedropper;
+                                self.needs_redraw = true;
+                            }
                             _ => {}
                         }
                     }
@@ -1475,6 +1484,21 @@ impl ApplicationHandler for App {
                         ToolKind::StepMarker => {
                             overlay.step_marker_tool.on_mouse_move(pos);
                         }
+                        ToolKind::Eyedropper => {
+                            // Read color from screenshot pixels at cursor position
+                            let px = pos.x as u32;
+                            let py = pos.y as u32;
+                            if px < overlay.screenshot.width && py < overlay.screenshot.height {
+                                let idx = ((py * overlay.screenshot.width + px) * 4) as usize;
+                                if idx + 3 < overlay.screenshot.pixels.len() {
+                                    let r = overlay.screenshot.pixels[idx] as f32 / 255.0;
+                                    let g = overlay.screenshot.pixels[idx + 1] as f32 / 255.0;
+                                    let b = overlay.screenshot.pixels[idx + 2] as f32 / 255.0;
+                                    overlay.eyedropper_preview = Some(Color::new(r, g, b, 1.0));
+                                }
+                            }
+                            self.needs_redraw = true;
+                        }
                     }
                 }
 
@@ -1560,9 +1584,14 @@ impl ApplicationHandler for App {
                                 overlay.selected_index = None;
                                 self.needs_redraw = true;
                             }
-                            10..=14 => {
+                            10 => {
+                                overlay.active_tool = ToolKind::Eyedropper;
+                                overlay.selected_index = None;
+                                self.needs_redraw = true;
+                            }
+                            11..=15 => {
                                 let presets = Color::presets();
-                                let idx = btn - 10;
+                                let idx = btn - 11;
                                 if idx < presets.len() {
                                     // If an annotation is selected, recolor it
                                     if let Some(sel_idx) = overlay.selected_index {
@@ -1583,22 +1612,22 @@ impl ApplicationHandler for App {
                                     self.needs_redraw = true;
                                 }
                             }
-                            15 => {
+                            16 => {
                                 // Upload button
                                 self.do_upload();
                                 return;
                             }
-                            16 => {
+                            17 => {
                                 // Pin button
                                 self.do_pin(_event_loop);
                                 return;
                             }
-                            17 => {
+                            18 => {
                                 // Copy button
                                 self.do_copy();
                                 return;
                             }
-                            18 => {
+                            19 => {
                                 // Save button
                                 self.do_save();
                                 return;
@@ -1671,6 +1700,20 @@ impl ApplicationHandler for App {
                                 }
                                 ToolKind::Pixelate => overlay.pixelate_tool.on_mouse_down(pos),
                                 ToolKind::StepMarker => overlay.step_marker_tool.on_mouse_down(pos),
+                                ToolKind::Eyedropper => {
+                                    if let Some(color) = overlay.eyedropper_preview {
+                                        overlay.current_color = color;
+                                        overlay.arrow_tool.set_color(color);
+                                        overlay.rectangle_tool.set_color(color);
+                                        overlay.circle_tool.set_color(color);
+                                        overlay.line_tool.set_color(color);
+                                        overlay.pencil_tool.set_color(color);
+                                        overlay.highlight_tool.set_color(color);
+                                        overlay.text_tool.set_color(color);
+                                        overlay.step_marker_tool.set_color(color);
+                                        overlay.active_tool = ToolKind::Arrow;
+                                    }
+                                }
                             }
                             self.needs_redraw = true;
                         }
@@ -1724,6 +1767,7 @@ impl ApplicationHandler for App {
                         ToolKind::Text => overlay.text_tool.on_mouse_up(pos),
                         ToolKind::Pixelate => overlay.pixelate_tool.on_mouse_up(pos),
                         ToolKind::StepMarker => overlay.step_marker_tool.on_mouse_up(pos),
+                        ToolKind::Eyedropper => None,
                     };
                     if let Some(ann) = annotation {
                         overlay.annotations.push(ann);
@@ -1744,8 +1788,8 @@ impl ApplicationHandler for App {
                         let toolbar = Toolbar::position_for(sel, overlay.screenshot.height as f32);
                         let pos = overlay.last_mouse_pos;
                         if let Some(btn) = toolbar.hit_test(pos) {
-                            if (10..=14).contains(&btn) {
-                                let swatch_idx = btn - 10;
+                            if (11..=15).contains(&btn) {
+                                let swatch_idx = btn - 11;
                                 let current = Color::presets()[swatch_idx];
                                 if let Some(new_color) = hydroshot::color_picker::pick_color(&current) {
                                     overlay.current_color = new_color;

@@ -50,6 +50,7 @@ pub struct OverlayState {
     pub selected_index: Option<usize>,
     pub select_drag_start: Option<Point>,
     pub icon_cache: IconCache,
+    pub eyedropper_preview: Option<Color>,
 }
 
 impl OverlayState {
@@ -112,6 +113,7 @@ impl OverlayState {
             selected_index: None,
             select_drag_start: None,
             icon_cache: IconCache::new(),
+            eyedropper_preview: None,
         }
     }
 }

@@ -87,6 +87,7 @@ pub enum ToolKind {
     Text,
     Pixelate,
     StepMarker,
+    Eyedropper,
 }
 
 /// Compute the three vertices of an arrowhead triangle.
