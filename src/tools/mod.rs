@@ -94,7 +94,11 @@ pub fn apply_redo(
 }
 
 /// Record a new action on the undo stack, clearing the redo stack (new branch).
-pub fn record_undo(undo_stack: &mut Vec<UndoAction>, redo_stack: &mut Vec<UndoAction>, action: UndoAction) {
+pub fn record_undo(
+    undo_stack: &mut Vec<UndoAction>,
+    redo_stack: &mut Vec<UndoAction>,
+    action: UndoAction,
+) {
     redo_stack.clear();
     undo_stack.push(action);
     cap_undo_stack(undo_stack);

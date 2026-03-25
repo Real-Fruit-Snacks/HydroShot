@@ -103,7 +103,14 @@ impl HistoryWindow {
         fill_rect_rgb(&mut pixmap, 0.0, 0.0, WIN_W as f32, WIN_H as f32, BASE);
 
         // Title
-        draw_label(&mut pixmap, PADDING, 14.0, "Recent Captures", 16.0, TEXT_RGB);
+        draw_label(
+            &mut pixmap,
+            PADDING,
+            14.0,
+            "Recent Captures",
+            16.0,
+            TEXT_RGB,
+        );
 
         // Separator
         fill_rect_rgb(

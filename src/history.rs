@@ -18,8 +18,8 @@ pub fn save_to_history(pixels: &[u8], width: u32, height: u32) -> Result<PathBuf
     let filename = format!("{}.png", timestamp);
     let path = dir.join(&filename);
 
-    let img = image::RgbaImage::from_raw(width, height, pixels.to_vec())
-        .ok_or("Invalid image data")?;
+    let img =
+        image::RgbaImage::from_raw(width, height, pixels.to_vec()).ok_or("Invalid image data")?;
     img.save(&path).map_err(|e| e.to_string())?;
 
     // Prune old entries (keep only MAX_HISTORY most recent)
