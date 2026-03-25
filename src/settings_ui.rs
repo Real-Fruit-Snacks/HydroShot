@@ -9,8 +9,8 @@ use crate::geometry::{Color, Point};
 use crate::tools::render_text_annotation;
 
 /// Width / height of the settings window in physical pixels.
-pub const WIN_W: u32 = 400;
-pub const WIN_H: u32 = 1120;
+pub const WIN_W: u32 = 420;
+pub const WIN_H: u32 = 520;
 
 // Catppuccin Mocha palette
 const BASE: (u8, u8, u8) = (0x1e, 0x1e, 0x2e);
@@ -41,6 +41,7 @@ pub enum Action {
     ClickShortcut(usize),
     ToggleToolbar(usize),
     SaveClose,
+    SwitchTab(usize),
 }
 
 /// A clickable rectangle mapped to an action.
@@ -62,6 +63,8 @@ pub struct SettingsWindow {
     pub cursor_pos: (f32, f32),
     /// Index of the shortcut currently being edited (0-13), or None.
     pub editing_shortcut: Option<usize>,
+    /// Active tab index: 0=General, 1=Shortcuts, 2=Toolbar.
+    pub active_tab: usize,
 }
 
 impl SettingsWindow {
@@ -79,6 +82,7 @@ impl SettingsWindow {
             hit_rects: Vec::new(),
             cursor_pos: (0.0, 0.0),
             editing_shortcut: None,
+            active_tab: 0,
         }
     }
 
@@ -101,7 +105,43 @@ impl SettingsWindow {
         draw_label(&mut pixmap, left, y, "HydroShot Settings", 16.0, TEXT_RGB);
         y += 30.0;
 
-        // Separator
+        // ── Tab bar ──
+        let tab_names = ["General", "Shortcuts", "Toolbar"];
+        let tab_w = (WIN_W as f32 - left * 2.0) / 3.0;
+        let tab_h: f32 = 32.0;
+        let tab_y = y;
+
+        for (i, name) in tab_names.iter().enumerate() {
+            let tx = left + i as f32 * tab_w;
+
+            if i == self.active_tab {
+                fill_rect_rgb(&mut pixmap, tx, tab_y, tab_w, tab_h, SURFACE0);
+                draw_label(&mut pixmap, tx + 12.0, tab_y + 8.0, name, 14.0, LAVENDER);
+            } else {
+                if self.is_hovered(tx, tab_y, tab_w, tab_h) {
+                    fill_rect_rgb(
+                        &mut pixmap,
+                        tx,
+                        tab_y,
+                        tab_w,
+                        tab_h,
+                        (0x25, 0x25, 0x38),
+                    );
+                }
+                draw_label(&mut pixmap, tx + 12.0, tab_y + 8.0, name, 14.0, SUBTEXT0);
+            }
+
+            self.hit_rects.push(HitRect {
+                x: tx,
+                y: tab_y,
+                w: tab_w,
+                h: tab_h,
+                action: Action::SwitchTab(i),
+            });
+        }
+
+        // Separator line below tabs
+        y = tab_y + tab_h + 2.0;
         fill_rect_rgb(
             &mut pixmap,
             left,
@@ -112,330 +152,36 @@ impl SettingsWindow {
         );
         y += 16.0;
 
-        // ── Default Color ──
-        draw_label(&mut pixmap, left, y, "Default Color", 14.0, SUBTEXT0);
-        y += 24.0;
-
-        let swatch_size: f32 = 28.0;
-        let swatch_gap: f32 = 10.0;
-        for (i, &(name, r, g, b)) in COLOR_CHOICES.iter().enumerate() {
-            let sx = left + i as f32 * (swatch_size + swatch_gap);
-            let sy = y;
-
-            // Selected border
-            if self.config.general.default_color == name {
-                fill_rect_rgb(
-                    &mut pixmap,
-                    sx - 2.0,
-                    sy - 2.0,
-                    swatch_size + 4.0,
-                    swatch_size + 4.0,
-                    LAVENDER,
-                );
+        // ── Tab content ──
+        match self.active_tab {
+            0 => {
+                self.render_general_tab(&mut pixmap, left, y);
             }
-
-            // Hover highlight
-            if self.is_hovered(sx, sy, swatch_size, swatch_size) {
-                fill_rect_rgb(
-                    &mut pixmap,
-                    sx - 1.0,
-                    sy - 1.0,
-                    swatch_size + 2.0,
-                    swatch_size + 2.0,
-                    SURFACE1,
-                );
+            1 => {
+                self.render_shortcuts_tab(&mut pixmap, left, y);
             }
-
-            fill_rect_rgb(&mut pixmap, sx, sy, swatch_size, swatch_size, (r, g, b));
-
-            self.hit_rects.push(HitRect {
-                x: sx,
-                y: sy,
-                w: swatch_size,
-                h: swatch_size,
-                action: Action::SelectColor(i),
-            });
-        }
-        y += swatch_size + 20.0;
-
-        // ── Default Thickness ──
-        draw_label(&mut pixmap, left, y, "Default Thickness", 14.0, SUBTEXT0);
-        let thickness_label = format!("{:.1}", self.config.general.default_thickness);
-        draw_label(
-            &mut pixmap,
-            left + 160.0,
-            y,
-            &thickness_label,
-            14.0,
-            TEXT_RGB,
-        );
-        y += 26.0;
-
-        let btn_w: f32 = 36.0;
-        let btn_h: f32 = 28.0;
-
-        // [ - ] button
-        let bx = left;
-        draw_button(
-            &mut pixmap,
-            bx,
-            y,
-            btn_w,
-            btn_h,
-            "-",
-            self.is_hovered(bx, y, btn_w, btn_h),
-        );
-        self.hit_rects.push(HitRect {
-            x: bx,
-            y,
-            w: btn_w,
-            h: btn_h,
-            action: Action::ThicknessDown,
-        });
-
-        // [ + ] button
-        let bx2 = bx + btn_w + 12.0;
-        draw_button(
-            &mut pixmap,
-            bx2,
-            y,
-            btn_w,
-            btn_h,
-            "+",
-            self.is_hovered(bx2, y, btn_w, btn_h),
-        );
-        self.hit_rects.push(HitRect {
-            x: bx2,
-            y,
-            w: btn_w,
-            h: btn_h,
-            action: Action::ThicknessUp,
-        });
-        y += btn_h + 20.0;
-
-        // ── Save Directory ──
-        draw_label(&mut pixmap, left, y, "Save Directory", 14.0, SUBTEXT0);
-        y += 22.0;
-
-        let dir_display = if self.config.general.save_directory.is_empty() {
-            "(default — file picker)"
-        } else {
-            &self.config.general.save_directory
-        };
-        // Truncate long paths for display
-        let dir_short: String = if dir_display.len() > 34 {
-            format!("...{}", &dir_display[dir_display.len() - 31..])
-        } else {
-            dir_display.to_string()
-        };
-        draw_label(&mut pixmap, left, y, &dir_short, 12.0, TEXT_RGB);
-
-        // [Browse] button
-        let browse_w: f32 = 64.0;
-        let browse_x = WIN_W as f32 - left - browse_w;
-        let browse_y = y - 2.0;
-        draw_button(
-            &mut pixmap,
-            browse_x,
-            browse_y,
-            browse_w,
-            btn_h,
-            "Browse",
-            self.is_hovered(browse_x, browse_y, browse_w, btn_h),
-        );
-        self.hit_rects.push(HitRect {
-            x: browse_x,
-            y: browse_y,
-            w: browse_w,
-            h: btn_h,
-            action: Action::BrowseDir,
-        });
-        y += btn_h + 20.0;
-
-        // ── Hotkey ──
-        let hotkey_label = format!("Hotkey: {}", self.config.hotkey.capture);
-        draw_label(&mut pixmap, left, y, &hotkey_label, 14.0, SUBTEXT0);
-        y += 30.0;
-
-        // ── Auto-start ──
-        let autostart_on = crate::autostart::is_enabled();
-        draw_label(&mut pixmap, left, y, "Auto-start:", 14.0, SUBTEXT0);
-
-        let toggle_x = left + 110.0;
-        let toggle_w: f32 = 56.0;
-        let toggle_h: f32 = 26.0;
-        let toggle_bg = if autostart_on { GREEN_RGB } else { SURFACE0 };
-        let hovered = self.is_hovered(toggle_x, y - 2.0, toggle_w, toggle_h);
-        if hovered {
-            fill_rect_rgb(&mut pixmap, toggle_x, y - 2.0, toggle_w, toggle_h, SURFACE1);
-        }
-        fill_rect_rgb(
-            &mut pixmap,
-            toggle_x + 1.0,
-            y - 1.0,
-            toggle_w - 2.0,
-            toggle_h - 2.0,
-            toggle_bg,
-        );
-
-        let toggle_label = if autostart_on { "ON" } else { "OFF" };
-        let tl_x = toggle_x + if autostart_on { 18.0 } else { 14.0 };
-        draw_label(&mut pixmap, tl_x, y + 2.0, toggle_label, 12.0, TEXT_RGB);
-
-        self.hit_rects.push(HitRect {
-            x: toggle_x,
-            y: y - 2.0,
-            w: toggle_w,
-            h: toggle_h,
-            action: Action::ToggleAutostart,
-        });
-        y += toggle_h + 20.0;
-
-        // ── Shortcuts ──
-        draw_label(&mut pixmap, left, y, "Shortcuts", 14.0, SUBTEXT0);
-        y += 4.0;
-        fill_rect_rgb(
-            &mut pixmap,
-            left,
-            y + 14.0,
-            WIN_W as f32 - left * 2.0,
-            1.0,
-            SURFACE0,
-        );
-        y += 22.0;
-
-        let row_h: f32 = 22.0;
-        let key_btn_w: f32 = 50.0;
-        let key_btn_h: f32 = 20.0;
-        let key_btn_x = WIN_W as f32 - left - key_btn_w;
-
-        let entries = self.config.shortcuts.entries();
-        for (i, (symbol, label, key_val)) in entries.iter().enumerate() {
-            let ry = y + i as f32 * row_h;
-
-            // Highlight row if editing
-            if self.editing_shortcut == Some(i) {
-                fill_rect_rgb(
-                    &mut pixmap,
-                    left - 4.0,
-                    ry - 2.0,
-                    WIN_W as f32 - (left - 4.0) * 2.0,
-                    row_h,
-                    SURFACE0,
-                );
+            _ => {
+                self.render_toolbar_tab(&mut pixmap, left, y);
             }
-
-            // Symbol (tool icon hint) in accent color
-            draw_label(&mut pixmap, left, ry, symbol, 12.0, LAVENDER);
-            // Tool name
-            draw_label(&mut pixmap, left + 36.0, ry, label, 12.0, TEXT_RGB);
-
-            // Key button
-            let display = if self.editing_shortcut == Some(i) {
-                "..."
-            } else {
-                key_val
-            };
-            let btn_hovered = self.is_hovered(key_btn_x, ry - 1.0, key_btn_w, key_btn_h);
-            draw_button(
-                &mut pixmap,
-                key_btn_x,
-                ry - 1.0,
-                key_btn_w,
-                key_btn_h,
-                &display.to_uppercase(),
-                btn_hovered,
-            );
-
-            self.hit_rects.push(HitRect {
-                x: key_btn_x,
-                y: ry - 1.0,
-                w: key_btn_w,
-                h: key_btn_h,
-                action: Action::ClickShortcut(i),
-            });
         }
-        y += entries.len() as f32 * row_h + 16.0;
 
-        // ── Toolbar Visibility ──
-        draw_label(&mut pixmap, left, y, "Toolbar", 14.0, SUBTEXT0);
-        y += 4.0;
-        fill_rect_rgb(
-            &mut pixmap,
-            left,
-            y + 14.0,
-            WIN_W as f32 - left * 2.0,
-            1.0,
-            SURFACE0,
-        );
-        y += 22.0;
-
-        let toolbar_entries = self.config.toolbar.entries();
-        let toggle_w: f32 = 50.0;
-        let toggle_h: f32 = 20.0;
-        let toggle_x = WIN_W as f32 - left - toggle_w;
-
-        for (i, (symbol, label, enabled)) in toolbar_entries.iter().enumerate() {
-            let ry = y + i as f32 * row_h;
-
-            // Symbol in accent color
-            draw_label(&mut pixmap, left, ry, symbol, 12.0, LAVENDER);
-            // Tool name
-            draw_label(&mut pixmap, left + 36.0, ry, label, 12.0, TEXT_RGB);
-
-            // Toggle button
-            let toggle_label = if *enabled { "ON" } else { "OFF" };
-            let toggle_bg = if *enabled { GREEN_RGB } else { SURFACE0 };
-            let btn_hovered = self.is_hovered(toggle_x, ry - 1.0, toggle_w, toggle_h);
-
-            if btn_hovered {
-                fill_rect_rgb(
-                    &mut pixmap,
-                    toggle_x,
-                    ry - 1.0,
-                    toggle_w,
-                    toggle_h,
-                    SURFACE1,
-                );
-            }
-            fill_rect_rgb(
-                &mut pixmap,
-                toggle_x + 1.0,
-                ry,
-                toggle_w - 2.0,
-                toggle_h - 2.0,
-                toggle_bg,
-            );
-
-            let tl_x = toggle_x + if *enabled { 14.0 } else { 12.0 };
-            draw_label(&mut pixmap, tl_x, ry + 2.0, toggle_label, 12.0, TEXT_RGB);
-
-            self.hit_rects.push(HitRect {
-                x: toggle_x,
-                y: ry - 1.0,
-                w: toggle_w,
-                h: toggle_h,
-                action: Action::ToggleToolbar(i),
-            });
-        }
-        y += toolbar_entries.len() as f32 * row_h + 16.0;
-
-        // ── Save & Close button ──
+        // ── Save & Close button (always at bottom) ──
         let sc_w: f32 = 140.0;
         let sc_h: f32 = 34.0;
         let sc_x = (WIN_W as f32 - sc_w) / 2.0;
+        let sc_y = WIN_H as f32 - sc_h - 20.0;
         draw_button(
             &mut pixmap,
             sc_x,
-            y,
+            sc_y,
             sc_w,
             sc_h,
             "Save & Close",
-            self.is_hovered(sc_x, y, sc_w, sc_h),
+            self.is_hovered(sc_x, sc_y, sc_w, sc_h),
         );
         self.hit_rects.push(HitRect {
             x: sc_x,
-            y,
+            y: sc_y,
             w: sc_w,
             h: sc_h,
             action: Action::SaveClose,
@@ -460,6 +206,269 @@ impl SettingsWindow {
         }
 
         self.needs_redraw = false;
+    }
+
+    /// Render the General tab content.
+    fn render_general_tab(&mut self, pixmap: &mut Pixmap, left: f32, mut y: f32) {
+        // ── Default Color ──
+        draw_label(pixmap, left, y, "Default Color", 14.0, SUBTEXT0);
+        y += 24.0;
+
+        let swatch_size: f32 = 28.0;
+        let swatch_gap: f32 = 10.0;
+        for (i, &(name, r, g, b)) in COLOR_CHOICES.iter().enumerate() {
+            let sx = left + i as f32 * (swatch_size + swatch_gap);
+            let sy = y;
+
+            if self.config.general.default_color == name {
+                fill_rect_rgb(
+                    pixmap,
+                    sx - 2.0,
+                    sy - 2.0,
+                    swatch_size + 4.0,
+                    swatch_size + 4.0,
+                    LAVENDER,
+                );
+            }
+
+            if self.is_hovered(sx, sy, swatch_size, swatch_size) {
+                fill_rect_rgb(
+                    pixmap,
+                    sx - 1.0,
+                    sy - 1.0,
+                    swatch_size + 2.0,
+                    swatch_size + 2.0,
+                    SURFACE1,
+                );
+            }
+
+            fill_rect_rgb(pixmap, sx, sy, swatch_size, swatch_size, (r, g, b));
+
+            self.hit_rects.push(HitRect {
+                x: sx,
+                y: sy,
+                w: swatch_size,
+                h: swatch_size,
+                action: Action::SelectColor(i),
+            });
+        }
+        y += swatch_size + 20.0;
+
+        // ── Default Thickness ──
+        draw_label(pixmap, left, y, "Default Thickness", 14.0, SUBTEXT0);
+        let thickness_label = format!("{:.1}", self.config.general.default_thickness);
+        draw_label(pixmap, left + 160.0, y, &thickness_label, 14.0, TEXT_RGB);
+        y += 26.0;
+
+        let btn_w: f32 = 36.0;
+        let btn_h: f32 = 28.0;
+
+        let bx = left;
+        draw_button(
+            pixmap,
+            bx,
+            y,
+            btn_w,
+            btn_h,
+            "-",
+            self.is_hovered(bx, y, btn_w, btn_h),
+        );
+        self.hit_rects.push(HitRect {
+            x: bx,
+            y,
+            w: btn_w,
+            h: btn_h,
+            action: Action::ThicknessDown,
+        });
+
+        let bx2 = bx + btn_w + 12.0;
+        draw_button(
+            pixmap,
+            bx2,
+            y,
+            btn_w,
+            btn_h,
+            "+",
+            self.is_hovered(bx2, y, btn_w, btn_h),
+        );
+        self.hit_rects.push(HitRect {
+            x: bx2,
+            y,
+            w: btn_w,
+            h: btn_h,
+            action: Action::ThicknessUp,
+        });
+        y += btn_h + 20.0;
+
+        // ── Save Directory ──
+        draw_label(pixmap, left, y, "Save Directory", 14.0, SUBTEXT0);
+        y += 22.0;
+
+        let dir_display = if self.config.general.save_directory.is_empty() {
+            "(default \u{2014} file picker)"
+        } else {
+            &self.config.general.save_directory
+        };
+        let dir_short: String = if dir_display.len() > 34 {
+            format!("...{}", &dir_display[dir_display.len() - 31..])
+        } else {
+            dir_display.to_string()
+        };
+        draw_label(pixmap, left, y, &dir_short, 12.0, TEXT_RGB);
+
+        let browse_w: f32 = 64.0;
+        let browse_x = WIN_W as f32 - left - browse_w;
+        let browse_y = y - 2.0;
+        let btn_h: f32 = 28.0;
+        draw_button(
+            pixmap,
+            browse_x,
+            browse_y,
+            browse_w,
+            btn_h,
+            "Browse",
+            self.is_hovered(browse_x, browse_y, browse_w, btn_h),
+        );
+        self.hit_rects.push(HitRect {
+            x: browse_x,
+            y: browse_y,
+            w: browse_w,
+            h: btn_h,
+            action: Action::BrowseDir,
+        });
+        y += btn_h + 20.0;
+
+        // ── Hotkey ──
+        let hotkey_label = format!("Hotkey: {}", self.config.hotkey.capture);
+        draw_label(pixmap, left, y, &hotkey_label, 14.0, SUBTEXT0);
+        y += 30.0;
+
+        // ── Auto-start ──
+        let autostart_on = crate::autostart::is_enabled();
+        draw_label(pixmap, left, y, "Auto-start:", 14.0, SUBTEXT0);
+
+        let toggle_x = left + 110.0;
+        let toggle_w: f32 = 56.0;
+        let toggle_h: f32 = 26.0;
+        let toggle_bg = if autostart_on { GREEN_RGB } else { SURFACE0 };
+        let hovered = self.is_hovered(toggle_x, y - 2.0, toggle_w, toggle_h);
+        if hovered {
+            fill_rect_rgb(pixmap, toggle_x, y - 2.0, toggle_w, toggle_h, SURFACE1);
+        }
+        fill_rect_rgb(
+            pixmap,
+            toggle_x + 1.0,
+            y - 1.0,
+            toggle_w - 2.0,
+            toggle_h - 2.0,
+            toggle_bg,
+        );
+
+        let toggle_label = if autostart_on { "ON" } else { "OFF" };
+        let tl_x = toggle_x + if autostart_on { 18.0 } else { 14.0 };
+        draw_label(pixmap, tl_x, y + 2.0, toggle_label, 12.0, TEXT_RGB);
+
+        self.hit_rects.push(HitRect {
+            x: toggle_x,
+            y: y - 2.0,
+            w: toggle_w,
+            h: toggle_h,
+            action: Action::ToggleAutostart,
+        });
+    }
+
+    /// Render the Shortcuts tab content.
+    fn render_shortcuts_tab(&mut self, pixmap: &mut Pixmap, left: f32, y: f32) {
+        let row_h: f32 = 22.0;
+        let key_btn_w: f32 = 50.0;
+        let key_btn_h: f32 = 20.0;
+        let key_btn_x = WIN_W as f32 - left - key_btn_w;
+
+        let entries = self.config.shortcuts.entries();
+        for (i, (symbol, label, key_val)) in entries.iter().enumerate() {
+            let ry = y + i as f32 * row_h;
+
+            if self.editing_shortcut == Some(i) {
+                fill_rect_rgb(
+                    pixmap,
+                    left - 4.0,
+                    ry - 2.0,
+                    WIN_W as f32 - (left - 4.0) * 2.0,
+                    row_h,
+                    SURFACE0,
+                );
+            }
+
+            draw_label(pixmap, left, ry, symbol, 12.0, LAVENDER);
+            draw_label(pixmap, left + 36.0, ry, label, 12.0, TEXT_RGB);
+
+            let display = if self.editing_shortcut == Some(i) {
+                "..."
+            } else {
+                key_val
+            };
+            let btn_hovered = self.is_hovered(key_btn_x, ry - 1.0, key_btn_w, key_btn_h);
+            draw_button(
+                pixmap,
+                key_btn_x,
+                ry - 1.0,
+                key_btn_w,
+                key_btn_h,
+                &display.to_uppercase(),
+                btn_hovered,
+            );
+
+            self.hit_rects.push(HitRect {
+                x: key_btn_x,
+                y: ry - 1.0,
+                w: key_btn_w,
+                h: key_btn_h,
+                action: Action::ClickShortcut(i),
+            });
+        }
+    }
+
+    /// Render the Toolbar tab content.
+    fn render_toolbar_tab(&mut self, pixmap: &mut Pixmap, left: f32, y: f32) {
+        let row_h: f32 = 22.0;
+        let toggle_w: f32 = 50.0;
+        let toggle_h: f32 = 20.0;
+        let toggle_x = WIN_W as f32 - left - toggle_w;
+
+        let toolbar_entries = self.config.toolbar.entries();
+        for (i, (symbol, label, enabled)) in toolbar_entries.iter().enumerate() {
+            let ry = y + i as f32 * row_h;
+
+            draw_label(pixmap, left, ry, symbol, 12.0, LAVENDER);
+            draw_label(pixmap, left + 36.0, ry, label, 12.0, TEXT_RGB);
+
+            let toggle_label = if *enabled { "ON" } else { "OFF" };
+            let toggle_bg = if *enabled { GREEN_RGB } else { SURFACE0 };
+            let btn_hovered = self.is_hovered(toggle_x, ry - 1.0, toggle_w, toggle_h);
+
+            if btn_hovered {
+                fill_rect_rgb(pixmap, toggle_x, ry - 1.0, toggle_w, toggle_h, SURFACE1);
+            }
+            fill_rect_rgb(
+                pixmap,
+                toggle_x + 1.0,
+                ry,
+                toggle_w - 2.0,
+                toggle_h - 2.0,
+                toggle_bg,
+            );
+
+            let tl_x = toggle_x + if *enabled { 14.0 } else { 12.0 };
+            draw_label(pixmap, tl_x, ry + 2.0, toggle_label, 12.0, TEXT_RGB);
+
+            self.hit_rects.push(HitRect {
+                x: toggle_x,
+                y: ry - 1.0,
+                w: toggle_w,
+                h: toggle_h,
+                action: Action::ToggleToolbar(i),
+            });
+        }
     }
 
     /// Update cursor position and return whether a redraw is needed.
@@ -532,6 +541,12 @@ impl SettingsWindow {
                     tracing::error!("Failed to save config: {e}");
                 }
                 true
+            }
+            Action::SwitchTab(idx) => {
+                self.active_tab = idx;
+                self.editing_shortcut = None;
+                self.needs_redraw = true;
+                false
             }
         }
     }
