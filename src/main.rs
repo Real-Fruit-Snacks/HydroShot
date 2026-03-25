@@ -481,61 +481,65 @@ impl App {
     }
 
     fn do_ocr(&mut self) {
-        if let AppState::Capturing(ref overlay) = self.state {
+        // Extract cropped pixels (immutable borrow of state)
+        let ocr_data = if let AppState::Capturing(ref overlay) = self.state {
             if let Some(ref sel) = overlay.selection {
                 let w = sel.width as u32;
                 let h = sel.height as u32;
                 if w == 0 || h == 0 {
-                    return;
-                }
-
-                // Crop raw screenshot pixels (no annotations) for OCR
-                let mut cropped = vec![0u8; (w * h * 4) as usize];
-                let src_w = overlay.screenshot.width;
-                let sel_x = sel.x as u32;
-                let sel_y = sel.y as u32;
-                for row in 0..h {
-                    let src_row = sel_y + row;
-                    if src_row >= overlay.screenshot.height {
-                        break;
-                    }
-                    let src_offset = ((src_row * src_w + sel_x) * 4) as usize;
-                    let dst_offset = (row * w * 4) as usize;
-                    let copy_w = w.min(src_w.saturating_sub(sel_x)) as usize * 4;
-                    let src_end = (src_offset + copy_w).min(overlay.screenshot.pixels.len());
-                    let actual = src_end - src_offset;
-                    cropped[dst_offset..dst_offset + actual]
-                        .copy_from_slice(&overlay.screenshot.pixels[src_offset..src_end]);
-                }
-
-                match hydroshot::ocr::extract_text(&cropped, w, h) {
-                    Ok(text) => {
-                        if let Ok(mut clipboard) = arboard::Clipboard::new() {
-                            let _ = clipboard.set_text(&text);
+                    None
+                } else {
+                    let mut cropped = vec![0u8; (w * h * 4) as usize];
+                    let src_w = overlay.screenshot.width;
+                    let sel_x = sel.x as u32;
+                    let sel_y = sel.y as u32;
+                    for row in 0..h {
+                        let src_row = sel_y + row;
+                        if src_row >= overlay.screenshot.height {
+                            break;
                         }
-                        let preview = if text.len() > 100 {
-                            format!("{}...", &text[..100])
-                        } else {
-                            text.clone()
-                        };
-                        let _ = Notification::new()
-                            .summary("HydroShot")
-                            .body(&format!("OCR text copied:\n{preview}"))
-                            .timeout(3000)
-                            .show();
-                        tracing::info!("OCR extracted {} chars", text.len());
+                        let src_offset = ((src_row * src_w + sel_x) * 4) as usize;
+                        let dst_offset = (row * w * 4) as usize;
+                        let copy_w = w.min(src_w.saturating_sub(sel_x)) as usize * 4;
+                        let src_end =
+                            (src_offset + copy_w).min(overlay.screenshot.pixels.len());
+                        let actual = src_end - src_offset;
+                        cropped[dst_offset..dst_offset + actual]
+                            .copy_from_slice(&overlay.screenshot.pixels[src_offset..src_end]);
                     }
-                    Err(e) => {
-                        let _ = Notification::new()
-                            .summary("HydroShot")
-                            .body(&format!("OCR failed: {e}"))
-                            .timeout(3000)
-                            .show();
-                        tracing::error!("OCR failed: {e}");
+                    Some((cropped, w, h))
+                }
+            } else {
+                None
+            }
+        } else {
+            None
+        };
+
+        // Run OCR and show toast (mutable borrow of state)
+        if let Some((cropped, w, h)) = ocr_data {
+            let toast_msg = match hydroshot::ocr::extract_text(&cropped, w, h) {
+                Ok(text) => {
+                    if let Ok(mut clipboard) = arboard::Clipboard::new() {
+                        let _ = clipboard.set_text(&text);
+                    }
+                    tracing::info!("OCR extracted {} chars", text.len());
+                    if text.len() > 80 {
+                        format!("Copied {} chars: {}...", text.len(), &text[..80])
+                    } else {
+                        format!("Copied: {}", text)
                     }
                 }
-                // Don't close overlay — user might want to do more
+                Err(e) => {
+                    tracing::error!("OCR failed: {e}");
+                    format!("OCR failed: {e}")
+                }
+            };
+
+            if let AppState::Capturing(ref mut o) = self.state {
+                o.show_toast(toast_msg, 3000);
             }
+            self.needs_redraw = true;
         }
     }
 
@@ -2362,7 +2366,17 @@ impl ApplicationHandler for App {
                 event_loop.set_control_flow(ControlFlow::WaitUntil(capture_time));
             }
         } else if !self.needs_redraw {
-            event_loop.set_control_flow(ControlFlow::Wait);
+            // Check if there's an active toast that needs to expire
+            if let AppState::Capturing(ref overlay) = self.state {
+                if let Some(until) = overlay.toast_until {
+                    event_loop.set_control_flow(ControlFlow::WaitUntil(until));
+                    self.needs_redraw = true;
+                } else {
+                    event_loop.set_control_flow(ControlFlow::Wait);
+                }
+            } else {
+                event_loop.set_control_flow(ControlFlow::Wait);
+            }
         }
 
         // Frame rate cap: only render if enough time has passed since last frame

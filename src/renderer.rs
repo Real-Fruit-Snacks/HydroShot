@@ -273,6 +273,55 @@ pub fn render_overlay(state: &mut OverlayState, pixmap: &mut tiny_skia::Pixmap) 
             render_text_annotation(pixmap, &text_pos, &hex, &white, font_size);
         }
     }
+
+    // 10. In-overlay toast notification
+    state.clear_expired_toast();
+    if let Some(ref msg) = state.toast_message {
+        let font_size = 14.0_f32;
+        static FONT_DATA: &[u8] = include_bytes!("../assets/font.ttf");
+        let font = fontdue::Font::from_bytes(FONT_DATA, fontdue::FontSettings::default())
+            .expect("font");
+        let text_width: f32 = msg
+            .chars()
+            .map(|ch| font.rasterize(ch, font_size).0.advance_width)
+            .sum();
+
+        let pad_x = 16.0_f32;
+        let pad_y = 10.0_f32;
+        let toast_w = text_width + pad_x * 2.0;
+        let toast_h = font_size + pad_y * 2.0;
+        let toast_x = (pixmap.width() as f32 - toast_w) / 2.0;
+        let toast_y = pixmap.height() as f32 - 80.0;
+
+        // Background pill
+        if let Some(bg) = rounded_rect_path(toast_x, toast_y, toast_w, toast_h, 8.0) {
+            let mut bg_paint = Paint::default();
+            bg_paint.set_color(tiny_skia::Color::from_rgba(0.067, 0.067, 0.094, 0.92).unwrap());
+            bg_paint.anti_alias = true;
+            pixmap.fill_path(
+                &bg,
+                &bg_paint,
+                tiny_skia::FillRule::Winding,
+                Transform::identity(),
+                None,
+            );
+            // Border
+            let mut border = Paint::default();
+            border.set_color(tiny_skia::Color::from_rgba(0.651, 0.890, 0.631, 0.6).unwrap()); // green tint
+            border.anti_alias = true;
+            let stroke = Stroke {
+                width: 1.0,
+                ..Stroke::default()
+            };
+            pixmap.stroke_path(&bg, &border, &stroke, Transform::identity(), None);
+        }
+
+        // Text
+        use crate::tools::render_text_annotation;
+        let text_pos = crate::geometry::Point::new(toast_x + pad_x, toast_y + pad_y);
+        let text_color = crate::geometry::Color::new(0.804, 0.839, 0.957, 1.0);
+        render_text_annotation(pixmap, &text_pos, msg, &text_color, font_size);
+    }
 }
 
 /// Catppuccin Mocha swatch colors matching Color::presets() order.

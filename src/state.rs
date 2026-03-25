@@ -61,6 +61,9 @@ pub struct OverlayState {
     pub resize_handle: Option<ResizeHandle>,
     pub icon_cache: IconCache,
     pub eyedropper_preview: Option<Color>,
+    /// In-overlay toast notification (visible on top of the overlay)
+    pub toast_message: Option<String>,
+    pub toast_until: Option<std::time::Instant>,
 }
 
 impl OverlayState {
@@ -130,6 +133,24 @@ impl OverlayState {
             resize_handle: None,
             icon_cache: IconCache::new(),
             eyedropper_preview: None,
+            toast_message: None,
+            toast_until: None,
+        }
+    }
+
+    /// Show an in-overlay toast for the given duration
+    pub fn show_toast(&mut self, message: String, duration_ms: u64) {
+        self.toast_message = Some(message);
+        self.toast_until = Some(std::time::Instant::now() + std::time::Duration::from_millis(duration_ms));
+    }
+
+    /// Clear expired toast
+    pub fn clear_expired_toast(&mut self) {
+        if let Some(until) = self.toast_until {
+            if std::time::Instant::now() >= until {
+                self.toast_message = None;
+                self.toast_until = None;
+            }
         }
     }
 }
