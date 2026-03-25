@@ -20,6 +20,39 @@ pub fn render_overlay(state: &mut OverlayState, pixmap: &mut tiny_skia::Pixmap) 
     let copy_len = dimmed_data.len().min(pixmap_data.len());
     pixmap_data[..copy_len].copy_from_slice(&dimmed_data[..copy_len]);
 
+    // 2b. Crosshair guide lines through cursor for precise alignment
+    let show_crosshair = state.selection.is_none() || state.is_selecting;
+    if show_crosshair {
+        let mx = state.last_mouse_pos.x;
+        let my = state.last_mouse_pos.y;
+        let pw = pixmap.width() as f32;
+        let ph = pixmap.height() as f32;
+
+        let mut paint = Paint::default();
+        paint.set_color(tiny_skia::Color::from_rgba(0.706, 0.745, 0.996, 0.5).unwrap()); // Lavender #b4befe 50%
+        paint.anti_alias = true;
+        let stroke = Stroke {
+            width: 1.0,
+            ..Stroke::default()
+        };
+
+        // Vertical line
+        let mut pb = PathBuilder::new();
+        pb.move_to(mx, 0.0);
+        pb.line_to(mx, ph);
+        if let Some(path) = pb.finish() {
+            pixmap.stroke_path(&path, &paint, &stroke, Transform::identity(), None);
+        }
+
+        // Horizontal line
+        let mut pb = PathBuilder::new();
+        pb.move_to(0.0, my);
+        pb.line_to(pw, my);
+        if let Some(path) = pb.finish() {
+            pixmap.stroke_path(&path, &paint, &stroke, Transform::identity(), None);
+        }
+    }
+
     // 3. If selection exists, restore brightness by copying from cached screenshot pixmap
     if let Some(sel) = &state.selection {
         let src_w = state.screenshot_pixmap.width() as usize;
