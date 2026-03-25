@@ -402,8 +402,7 @@ fn render_selection_highlight(pixmap: &mut tiny_skia::Pixmap, x: f32, y: f32, w:
 fn render_toolbar(state: &mut OverlayState, selection: &Selection, pixmap: &mut tiny_skia::Pixmap) {
     let visible = &state.visible_buttons;
     let visible_count = visible.len();
-    let toolbar =
-        Toolbar::position_for_dynamic(selection, pixmap.height() as f32, visible_count);
+    let toolbar = Toolbar::position_for_dynamic(selection, pixmap.height() as f32, visible_count);
     let presets = Color::presets();
 
     // --- Toolbar background: rounded rect with subtle border ---

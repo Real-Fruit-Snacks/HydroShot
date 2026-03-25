@@ -117,20 +117,20 @@ impl ToolbarConfig {
     /// Ordered list of (symbol, label, enabled) for the Settings UI.
     pub fn entries(&self) -> Vec<(&'static str, &'static str, bool)> {
         vec![
-            ("->",  "Select / Move", self.select),
-            (">>",  "Arrow",         self.arrow),
-            ("[]",  "Rectangle",     self.rectangle),
-            ("()",  "Circle",        self.circle),
-            ("[.]", "Rounded Rect",  self.rounded_rect),
-            ("--",  "Line",          self.line),
-            ("~",   "Pencil",        self.pencil),
-            ("##",  "Highlight",     self.highlight),
-            ("**",  "Spotlight",     self.spotlight),
-            ("Aa",  "Text",          self.text),
-            ("::",  "Pixelate",      self.pixelate),
-            ("1.",  "Step Marker",   self.step_marker),
-            ("/|",  "Eyedropper",    self.eyedropper),
-            ("|<>", "Measurement",   self.measurement),
+            ("->", "Select / Move", self.select),
+            (">>", "Arrow", self.arrow),
+            ("[]", "Rectangle", self.rectangle),
+            ("()", "Circle", self.circle),
+            ("[.]", "Rounded Rect", self.rounded_rect),
+            ("--", "Line", self.line),
+            ("~", "Pencil", self.pencil),
+            ("##", "Highlight", self.highlight),
+            ("**", "Spotlight", self.spotlight),
+            ("Aa", "Text", self.text),
+            ("::", "Pixelate", self.pixelate),
+            ("1.", "Step Marker", self.step_marker),
+            ("/|", "Eyedropper", self.eyedropper),
+            ("|<>", "Measurement", self.measurement),
         ]
     }
 
@@ -181,20 +181,20 @@ impl ShortcutsConfig {
     /// Ordered list of (symbol, label, current key) for UI display.
     pub fn entries(&self) -> Vec<(&'static str, &'static str, &str)> {
         vec![
-            ("->",  "Select / Move", &self.select),
-            (">>",  "Arrow",         &self.arrow),
-            ("[]",  "Rectangle",     &self.rectangle),
-            ("()",  "Circle",        &self.circle),
-            ("[.]", "Rounded Rect",  &self.rounded_rect),
-            ("--",  "Line",          &self.line),
-            ("~",   "Pencil",        &self.pencil),
-            ("##",  "Highlight",     &self.highlight),
-            ("**",  "Spotlight",     &self.spotlight),
-            ("Aa",  "Text",          &self.text),
-            ("::",  "Pixelate",      &self.pixelate),
-            ("1.",  "Step Marker",   &self.step_marker),
-            ("/|",  "Eyedropper",    &self.eyedropper),
-            ("|<>", "Measurement",   &self.measurement),
+            ("->", "Select / Move", &self.select),
+            (">>", "Arrow", &self.arrow),
+            ("[]", "Rectangle", &self.rectangle),
+            ("()", "Circle", &self.circle),
+            ("[.]", "Rounded Rect", &self.rounded_rect),
+            ("--", "Line", &self.line),
+            ("~", "Pencil", &self.pencil),
+            ("##", "Highlight", &self.highlight),
+            ("**", "Spotlight", &self.spotlight),
+            ("Aa", "Text", &self.text),
+            ("::", "Pixelate", &self.pixelate),
+            ("1.", "Step Marker", &self.step_marker),
+            ("/|", "Eyedropper", &self.eyedropper),
+            ("|<>", "Measurement", &self.measurement),
         ]
     }
 

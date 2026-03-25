@@ -119,14 +119,7 @@ impl SettingsWindow {
                 draw_label(&mut pixmap, tx + 12.0, tab_y + 8.0, name, 14.0, LAVENDER);
             } else {
                 if self.is_hovered(tx, tab_y, tab_w, tab_h) {
-                    fill_rect_rgb(
-                        &mut pixmap,
-                        tx,
-                        tab_y,
-                        tab_w,
-                        tab_h,
-                        (0x25, 0x25, 0x38),
-                    );
+                    fill_rect_rgb(&mut pixmap, tx, tab_y, tab_w, tab_h, (0x25, 0x25, 0x38));
                 }
                 draw_label(&mut pixmap, tx + 12.0, tab_y + 8.0, name, 14.0, SUBTEXT0);
             }

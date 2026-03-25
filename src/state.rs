@@ -147,7 +147,8 @@ impl OverlayState {
     /// Show an in-overlay toast for the given duration
     pub fn show_toast(&mut self, message: String, duration_ms: u64) {
         self.toast_message = Some(message);
-        self.toast_until = Some(std::time::Instant::now() + std::time::Duration::from_millis(duration_ms));
+        self.toast_until =
+            Some(std::time::Instant::now() + std::time::Duration::from_millis(duration_ms));
     }
 
     /// Clear expired toast

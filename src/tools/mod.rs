@@ -703,10 +703,38 @@ pub fn render_annotation(
                 let k: f32 = 0.5522848;
                 let mut pb = PathBuilder::new();
                 pb.move_to(pt.x + r, pt.y);
-                pb.cubic_to(pt.x + r, pt.y + r * k, pt.x + r * k, pt.y + r, pt.x, pt.y + r);
-                pb.cubic_to(pt.x - r * k, pt.y + r, pt.x - r, pt.y + r * k, pt.x - r, pt.y);
-                pb.cubic_to(pt.x - r, pt.y - r * k, pt.x - r * k, pt.y - r, pt.x, pt.y - r);
-                pb.cubic_to(pt.x + r * k, pt.y - r, pt.x + r, pt.y - r * k, pt.x + r, pt.y);
+                pb.cubic_to(
+                    pt.x + r,
+                    pt.y + r * k,
+                    pt.x + r * k,
+                    pt.y + r,
+                    pt.x,
+                    pt.y + r,
+                );
+                pb.cubic_to(
+                    pt.x - r * k,
+                    pt.y + r,
+                    pt.x - r,
+                    pt.y + r * k,
+                    pt.x - r,
+                    pt.y,
+                );
+                pb.cubic_to(
+                    pt.x - r,
+                    pt.y - r * k,
+                    pt.x - r * k,
+                    pt.y - r,
+                    pt.x,
+                    pt.y - r,
+                );
+                pb.cubic_to(
+                    pt.x + r * k,
+                    pt.y - r,
+                    pt.x + r,
+                    pt.y - r * k,
+                    pt.x + r,
+                    pt.y,
+                );
                 pb.close();
                 if let Some(path) = pb.finish() {
                     pixmap.fill_path(

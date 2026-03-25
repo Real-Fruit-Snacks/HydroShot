@@ -532,8 +532,7 @@ impl App {
                         let src_offset = ((src_row * src_w + sel_x) * 4) as usize;
                         let dst_offset = (row * w * 4) as usize;
                         let copy_w = w.min(src_w.saturating_sub(sel_x)) as usize * 4;
-                        let src_end =
-                            (src_offset + copy_w).min(overlay.screenshot.pixels.len());
+                        let src_end = (src_offset + copy_w).min(overlay.screenshot.pixels.len());
                         let actual = src_end - src_offset;
                         cropped[dst_offset..dst_offset + actual]
                             .copy_from_slice(&overlay.screenshot.pixels[src_offset..src_end]);
@@ -1043,7 +1042,8 @@ fn determine_cursor(overlay: &OverlayState, pos: Point) -> CursorIcon {
     // Check toolbar hover (only if selection exists)
     if let Some(ref sel) = overlay.selection {
         let visible_count = overlay.visible_buttons.len();
-        let toolbar = Toolbar::position_for_dynamic(sel, overlay.screenshot.height as f32, visible_count);
+        let toolbar =
+            Toolbar::position_for_dynamic(sel, overlay.screenshot.height as f32, visible_count);
         if toolbar.hit_test_dynamic(pos, visible_count).is_some() {
             return CursorIcon::Pointer;
         }
@@ -1913,7 +1913,11 @@ impl ApplicationHandler for App {
                 // 1. Check toolbar hit first (only if selection exists)
                 if let Some(ref sel) = overlay.selection {
                     let visible_count = overlay.visible_buttons.len();
-                    let toolbar = Toolbar::position_for_dynamic(sel, overlay.screenshot.height as f32, visible_count);
+                    let toolbar = Toolbar::position_for_dynamic(
+                        sel,
+                        overlay.screenshot.height as f32,
+                        visible_count,
+                    );
                     if let Some(vis_idx) = toolbar.hit_test_dynamic(pos, visible_count) {
                         let btn = overlay.visible_buttons[vis_idx];
                         // Reset upload confirmation if clicking anything other than Upload
@@ -2285,7 +2289,11 @@ impl ApplicationHandler for App {
                 if let AppState::Capturing(ref mut overlay) = self.state {
                     if let Some(ref sel) = overlay.selection {
                         let visible_count = overlay.visible_buttons.len();
-                        let toolbar = Toolbar::position_for_dynamic(sel, overlay.screenshot.height as f32, visible_count);
+                        let toolbar = Toolbar::position_for_dynamic(
+                            sel,
+                            overlay.screenshot.height as f32,
+                            visible_count,
+                        );
                         let pos = overlay.last_mouse_pos;
                         if let Some(vis_idx) = toolbar.hit_test_dynamic(pos, visible_count) {
                             let btn = overlay.visible_buttons[vis_idx];
@@ -2520,8 +2528,8 @@ fn main() {
     // Set Windows Application User Model ID so toast notifications display
     #[cfg(target_os = "windows")]
     {
-        use windows::Win32::UI::Shell::SetCurrentProcessExplicitAppUserModelID;
         use windows::core::w;
+        use windows::Win32::UI::Shell::SetCurrentProcessExplicitAppUserModelID;
         unsafe {
             let _ = SetCurrentProcessExplicitAppUserModelID(w!("HydroShot.HydroShot.0.4.0"));
         }
