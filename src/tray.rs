@@ -7,6 +7,7 @@ pub struct TrayState {
     pub delay_3_id: tray_icon::menu::MenuId,
     pub delay_5_id: tray_icon::menu::MenuId,
     pub delay_10_id: tray_icon::menu::MenuId,
+    pub history_id: tray_icon::menu::MenuId,
     pub autostart_id: tray_icon::menu::MenuId,
     pub settings_id: tray_icon::menu::MenuId,
     pub about_id: tray_icon::menu::MenuId,
@@ -30,6 +31,7 @@ pub fn create_tray() -> Result<TrayState, String> {
     let delay_3_item = MenuItem::new("Capture in 3s", true, None);
     let delay_5_item = MenuItem::new("Capture in 5s", true, None);
     let delay_10_item = MenuItem::new("Capture in 10s", true, None);
+    let history_item = MenuItem::new("History", true, None);
     let autostart_item =
         CheckMenuItem::new("Start on login", true, crate::autostart::is_enabled(), None);
     let settings_item = MenuItem::new("Settings", true, None);
@@ -40,6 +42,7 @@ pub fn create_tray() -> Result<TrayState, String> {
     let delay_3_id = delay_3_item.id().clone();
     let delay_5_id = delay_5_item.id().clone();
     let delay_10_id = delay_10_item.id().clone();
+    let history_id = history_item.id().clone();
     let autostart_id = autostart_item.id().clone();
     let settings_id = settings_item.id().clone();
     let about_id = about_item.id().clone();
@@ -50,6 +53,7 @@ pub fn create_tray() -> Result<TrayState, String> {
     menu.append(&delay_3_item).map_err(|e| e.to_string())?;
     menu.append(&delay_5_item).map_err(|e| e.to_string())?;
     menu.append(&delay_10_item).map_err(|e| e.to_string())?;
+    menu.append(&history_item).map_err(|e| e.to_string())?;
     menu.append(&autostart_item).map_err(|e| e.to_string())?;
     menu.append(&settings_item).map_err(|e| e.to_string())?;
     menu.append(&about_item).map_err(|e| e.to_string())?;
@@ -69,6 +73,7 @@ pub fn create_tray() -> Result<TrayState, String> {
         delay_3_id,
         delay_5_id,
         delay_10_id,
+        history_id,
         autostart_id,
         settings_id,
         about_id,

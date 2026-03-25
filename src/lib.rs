@@ -5,6 +5,8 @@ pub mod color_picker;
 pub mod config;
 pub mod export;
 pub mod geometry;
+pub mod history;
+pub mod history_ui;
 pub mod hotkey;
 pub mod icons;
 pub mod overlay;

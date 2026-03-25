@@ -23,6 +23,7 @@ use hydroshot::geometry::{Color, Point};
 use hydroshot::overlay::selection::{HitZone, Selection};
 use hydroshot::overlay::toolbar::Toolbar;
 use hydroshot::renderer::render_overlay;
+use hydroshot::history_ui::HistoryWindow;
 use hydroshot::settings_ui::SettingsWindow;
 use hydroshot::state::{AppState, OverlayState};
 use hydroshot::tools::{
@@ -71,6 +72,7 @@ struct App {
     window_capture_mode: bool,
     window_rects: Vec<window_detect::WinRect>,
     settings_window: Option<SettingsWindow>,
+    history_window: Option<HistoryWindow>,
 }
 
 const FRAME_INTERVAL: Duration = Duration::from_millis(16); // ~60fps cap
@@ -100,6 +102,7 @@ impl App {
             window_capture_mode: false,
             window_rects: Vec::new(),
             settings_window: None,
+            history_window: None,
         }
     }
 
@@ -270,6 +273,72 @@ impl App {
         tracing::info!("Settings window closed");
     }
 
+    fn open_history(&mut self, event_loop: &ActiveEventLoop) {
+        if self.history_window.is_some() {
+            tracing::info!("History window already open");
+            return;
+        }
+
+        // Load window icon from embedded PNG
+        let win_icon = {
+            let icon_bytes = include_bytes!("../assets/icon.png");
+            let img = image::load_from_memory(icon_bytes)
+                .ok()
+                .map(|i| i.to_rgba8());
+            img.and_then(|i| {
+                let (w, h) = i.dimensions();
+                winit::window::Icon::from_rgba(i.into_raw(), w, h).ok()
+            })
+        };
+
+        let mut attrs = WindowAttributes::default()
+            .with_title("HydroShot \u{2014} History")
+            .with_inner_size(winit::dpi::PhysicalSize::new(
+                hydroshot::history_ui::WIN_W,
+                hydroshot::history_ui::WIN_H,
+            ))
+            .with_resizable(false)
+            .with_decorations(true);
+
+        if let Some(icon) = win_icon {
+            attrs = attrs.with_window_icon(Some(icon));
+        }
+
+        let window = match event_loop.create_window(attrs) {
+            Ok(w) => Arc::new(w),
+            Err(e) => {
+                tracing::error!("Failed to create history window: {e}");
+                return;
+            }
+        };
+
+        let context = match softbuffer::Context::new(Arc::clone(&window)) {
+            Ok(c) => c,
+            Err(e) => {
+                tracing::error!("Failed to create history context: {e}");
+                return;
+            }
+        };
+
+        let surface = match softbuffer::Surface::new(&context, Arc::clone(&window)) {
+            Ok(s) => s,
+            Err(e) => {
+                tracing::error!("Failed to create history surface: {e}");
+                return;
+            }
+        };
+
+        let mut hw = HistoryWindow::new(window, surface);
+        hw.render();
+        tracing::info!("History window opened");
+        self.history_window = Some(hw);
+    }
+
+    fn close_history(&mut self) {
+        self.history_window = None;
+        tracing::info!("History window closed");
+    }
+
     fn close_overlay(&mut self) {
         self.surface = None;
         self.pixmap = None;
@@ -295,6 +364,11 @@ impl App {
                 );
                 match export::copy_to_clipboard(&pixels, sel.width as u32, sel.height as u32) {
                     Ok(()) => {
+                        let _ = hydroshot::history::save_to_history(
+                            &pixels,
+                            sel.width as u32,
+                            sel.height as u32,
+                        );
                         tracing::info!("Copied to clipboard");
                         let _ = Notification::new()
                             .summary("HydroShot")
@@ -328,6 +402,11 @@ impl App {
                     self.config.save_directory().as_deref(),
                 ) {
                     Ok(Some(path)) => {
+                        let _ = hydroshot::history::save_to_history(
+                            &pixels,
+                            sel.width as u32,
+                            sel.height as u32,
+                        );
                         tracing::info!("Saved to {path}");
                         let _ = Notification::new()
                             .summary("HydroShot")
@@ -360,6 +439,8 @@ impl App {
                 );
                 let w = sel.width as u32;
                 let h = sel.height as u32;
+
+                let _ = hydroshot::history::save_to_history(&pixels, w, h);
 
                 // Encode to PNG bytes
                 let img = image::RgbaImage::from_raw(w, h, pixels).expect("Invalid image");
@@ -415,6 +496,8 @@ impl App {
                     pin_h,
                     &overlay.annotations,
                 );
+
+                let _ = hydroshot::history::save_to_history(&pixels, pin_w, pin_h);
 
                 // Add a Catppuccin-themed border + shadow around the image
                 let border = PIN_BORDER;
@@ -731,6 +814,9 @@ impl App {
                             if new_state { "enabled" } else { "disabled" }
                         );
                     }
+                } else if event.id == tray.history_id {
+                    tracing::info!("History menu item clicked");
+                    self.open_history(event_loop);
                 } else if event.id == tray.quit_id {
                     tracing::info!("Quit requested");
                     event_loop.exit();
@@ -1047,6 +1133,54 @@ impl ApplicationHandler for App {
                 _ => {}
             }
             return;
+        }
+
+        // Check if event is for the history window
+        if let Some(ref hw) = self.history_window {
+            if hw.window.id() == _window_id {
+                match event {
+                    WindowEvent::CloseRequested => {
+                        self.close_history();
+                        return;
+                    }
+                    WindowEvent::RedrawRequested => {
+                        if let Some(ref mut hw) = self.history_window {
+                            hw.render();
+                        }
+                        return;
+                    }
+                    WindowEvent::CursorMoved { position, .. } => {
+                        if let Some(ref mut hw) = self.history_window {
+                            if hw.on_cursor_moved(position.x as f32, position.y as f32) {
+                                hw.needs_redraw = true;
+                                hw.window.request_redraw();
+                            }
+                        }
+                        return;
+                    }
+                    WindowEvent::MouseInput {
+                        state: ElementState::Pressed,
+                        button: WinitMouseButton::Left,
+                        ..
+                    } => {
+                        if let Some(ref hw) = self.history_window {
+                            let (cx, cy) = hw.cursor_pos;
+                            hw.on_click(cx, cy);
+                        }
+                        return;
+                    }
+                    WindowEvent::KeyboardInput { ref event, .. } => {
+                        if event.state == ElementState::Pressed {
+                            if let Key::Named(NamedKey::Escape) = &event.logical_key {
+                                self.close_history();
+                                return;
+                            }
+                        }
+                    }
+                    _ => {}
+                }
+                return;
+            }
         }
 
         // Check if event is for the settings window
