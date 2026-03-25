@@ -22,6 +22,8 @@ serde = { version = "1", features = ["derive"] }
 dirs = "6"
 clap = { version = "4", features = ["derive"] }
 notify-rust = "4"
+ureq = "2"
+base64 = "0.22"
 resvg = "0.44"
 
 [build-dependencies]

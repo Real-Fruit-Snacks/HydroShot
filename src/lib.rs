@@ -13,4 +13,5 @@ pub mod state;
 pub mod settings_ui;
 pub mod tools;
 pub mod tray;
+pub mod upload;
 pub mod window_detect;

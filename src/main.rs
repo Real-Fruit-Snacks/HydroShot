@@ -340,6 +340,57 @@ impl App {
         }
     }
 
+    fn do_upload(&mut self) {
+        if let AppState::Capturing(ref overlay) = self.state {
+            if let Some(ref sel) = overlay.selection {
+                let pixels = export::crop_and_flatten(
+                    &overlay.screenshot.pixels,
+                    overlay.screenshot.width,
+                    sel.x as u32,
+                    sel.y as u32,
+                    sel.width as u32,
+                    sel.height as u32,
+                    &overlay.annotations,
+                );
+                let w = sel.width as u32;
+                let h = sel.height as u32;
+
+                // Encode to PNG bytes
+                let img = image::RgbaImage::from_raw(w, h, pixels).expect("Invalid image");
+                let mut png_bytes = Vec::new();
+                img.write_to(
+                    &mut std::io::Cursor::new(&mut png_bytes),
+                    image::ImageFormat::Png,
+                )
+                .expect("PNG encode failed");
+
+                // Upload (blocking)
+                match hydroshot::upload::upload_to_imgur(&png_bytes) {
+                    Ok(url) => {
+                        if let Ok(mut clipboard) = arboard::Clipboard::new() {
+                            let _ = clipboard.set_text(&url);
+                        }
+                        let _ = Notification::new()
+                            .summary("HydroShot")
+                            .body(&format!("Uploaded! URL copied: {}", url))
+                            .timeout(3000)
+                            .show();
+                        tracing::info!("Uploaded to Imgur: {}", url);
+                    }
+                    Err(e) => {
+                        let _ = Notification::new()
+                            .summary("HydroShot")
+                            .body(&format!("Upload failed: {}", e))
+                            .timeout(3000)
+                            .show();
+                        tracing::error!("Imgur upload failed: {}", e);
+                    }
+                }
+                self.close_overlay();
+            }
+        }
+    }
+
     fn do_pin(&mut self, event_loop: &ActiveEventLoop) {
         if let AppState::Capturing(ref overlay) = self.state {
             if let Some(ref sel) = overlay.selection {
@@ -1533,16 +1584,21 @@ impl ApplicationHandler for App {
                                 }
                             }
                             15 => {
+                                // Upload button
+                                self.do_upload();
+                                return;
+                            }
+                            16 => {
                                 // Pin button
                                 self.do_pin(_event_loop);
                                 return;
                             }
-                            16 => {
+                            17 => {
                                 // Copy button
                                 self.do_copy();
                                 return;
                             }
-                            17 => {
+                            18 => {
                                 // Save button
                                 self.do_save();
                                 return;
