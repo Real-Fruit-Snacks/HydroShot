@@ -81,7 +81,7 @@ impl OverlayState {
         let mut screenshot_pixmap = match tiny_skia::Pixmap::new(w, h) {
             Some(p) => p,
             None => {
-                // Zero-dimension screen or allocation failure — create 1x1 fallback
+                tracing::warn!("Failed to create {w}x{h} pixmap — falling back to 1x1");
                 tiny_skia::Pixmap::new(1, 1).unwrap()
             }
         };
@@ -90,9 +90,18 @@ impl OverlayState {
             let src = &screenshot.pixels;
             // Bulk convert RGBA to premultiplied — screenshots are fully opaque (a=255)
             // so premultiplication is a no-op, we can just copy bytes directly
-            let len = (w as usize) * (h as usize) * 4;
-            if src.len() >= len {
+            let len = (w as usize)
+                .checked_mul(h as usize)
+                .and_then(|wh| wh.checked_mul(4))
+                .unwrap_or(0);
+            if len > 0 && src.len() >= len {
                 pixels[..len].copy_from_slice(&src[..len]);
+            } else if len > 0 {
+                tracing::warn!(
+                    "Screenshot pixel buffer too small: expected {} bytes, got {}",
+                    len,
+                    src.len()
+                );
             }
         }
 

@@ -461,7 +461,7 @@
   <!-- Hero -->
   <section class="hero">
     <div class="container">
-      <div class="hero-badge">v0.5.2 &bull; Open Source</div>
+      <div class="hero-badge">v0.5.3 &bull; Open Source</div>
       <h1>
         Screenshot capture,<br>
         <span class="gradient">beautifully simple.</span>
@@ -756,7 +756,7 @@
           </div>
           <div class="terminal-body">
             <div><span class="prompt">$</span> <span class="cmd">git clone</span> <span class="arg">https://github.com/Real-Fruit-Snacks/HydroShot.git</span></div>
-            <div><span class="prompt">$</span> <span class="cmd">cd</span> <span class="arg">hydroshot</span></div>
+            <div><span class="prompt">$</span> <span class="cmd">cd</span> <span class="arg">HydroShot</span></div>
             <div><span class="prompt">$</span> <span class="cmd">cargo build</span> <span class="flag">--release</span></div>
           </div>
         </div>
@@ -780,7 +780,7 @@
           <li><a href="https://github.com/Real-Fruit-Snacks/HydroShot/releases">Releases</a></li>
         </ul>
         <p class="footer-note">
-          Made with <span class="rust-color">Rust</span> &bull; MIT License &bull; &copy; 2026 HydroShot
+          Made with <span class="rust-color">Rust</span> &bull; MIT License &bull; &copy; 2026 Matt
         </p>
       </div>
     </div>
@@ -799,7 +799,7 @@
     document.querySelectorAll('.fade-in').forEach(el => observer.observe(el));
 
     // Smooth scroll for nav links
-    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+    document.querySelectorAll('a[href^="#"]:not([href="#"])').forEach(anchor => {
       anchor.addEventListener('click', function(e) {
         e.preventDefault();
         const target = document.querySelector(this.getAttribute('href'));

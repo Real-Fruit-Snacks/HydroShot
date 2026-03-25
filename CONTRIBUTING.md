@@ -5,7 +5,7 @@ Thanks for your interest in contributing to HydroShot!
 ## Getting Started
 
 1. Fork the repository
-2. Clone your fork: `git clone https://github.com/Real-Fruit-Snacks/HydroShot.git`
+2. Clone your fork: `git clone https://github.com/<your-username>/HydroShot.git`
 3. Create a branch: `git checkout -b my-feature`
 4. Make your changes
 5. Run tests: `cargo test`
@@ -18,8 +18,8 @@ Thanks for your interest in contributing to HydroShot!
 
 ### Prerequisites
 
-- Rust 1.75+ (install via [rustup](https://rustup.rs))
-- Windows 10+ or Linux (X11)
+- Rust 1.80+ (install via [rustup](https://rustup.rs))
+- Windows 10+ or Linux (X11/Wayland experimental)
 
 ### Building
 

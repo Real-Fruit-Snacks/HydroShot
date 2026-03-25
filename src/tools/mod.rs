@@ -28,38 +28,56 @@ pub enum UndoAction {
     Modify(usize, Annotation),
 }
 
+/// Apply one undo/redo step from `from_stack`, pushing the inverse onto `to_stack`.
+/// Returns false if the stack is empty or the action references a stale index.
+fn apply_stack_action(
+    annotations: &mut Vec<Annotation>,
+    from_stack: &mut Vec<UndoAction>,
+    to_stack: &mut Vec<UndoAction>,
+) -> bool {
+    // Peek first — only pop if the action is applicable, so stale actions are
+    // not silently lost.
+    let actionable = match from_stack.last() {
+        Some(UndoAction::Add(idx)) => *idx < annotations.len(),
+        Some(UndoAction::Modify(idx, _)) => *idx < annotations.len(),
+        Some(UndoAction::Delete(_, _)) => true,
+        None => return false,
+    };
+    if !actionable {
+        // Stale index — discard the action rather than silently losing it
+        // with no inverse recorded. Log so it can be diagnosed.
+        let _ = from_stack.pop();
+        tracing::warn!("Discarded undo/redo action with stale index");
+        return false;
+    }
+    let action = from_stack.pop().unwrap();
+    match action {
+        UndoAction::Add(idx) => {
+            let removed = annotations.remove(idx);
+            to_stack.push(UndoAction::Delete(idx, removed));
+        }
+        UndoAction::Delete(idx, ann) => {
+            let idx = idx.min(annotations.len());
+            annotations.insert(idx, ann);
+            to_stack.push(UndoAction::Add(idx));
+        }
+        UndoAction::Modify(idx, old_ann) => {
+            let current = annotations[idx].clone();
+            annotations[idx] = old_ann;
+            to_stack.push(UndoAction::Modify(idx, current));
+        }
+    }
+    cap_undo_stack(to_stack);
+    true
+}
+
 /// Apply one undo step: pop from `undo_stack`, reverse it, push the inverse onto `redo_stack`.
 pub fn apply_undo(
     annotations: &mut Vec<Annotation>,
     undo_stack: &mut Vec<UndoAction>,
     redo_stack: &mut Vec<UndoAction>,
 ) -> bool {
-    if let Some(action) = undo_stack.pop() {
-        match action {
-            UndoAction::Add(idx) => {
-                if idx < annotations.len() {
-                    let removed = annotations.remove(idx);
-                    redo_stack.push(UndoAction::Delete(idx, removed));
-                }
-            }
-            UndoAction::Delete(idx, ann) => {
-                let idx = idx.min(annotations.len());
-                annotations.insert(idx, ann);
-                redo_stack.push(UndoAction::Add(idx));
-            }
-            UndoAction::Modify(idx, old_ann) => {
-                if idx < annotations.len() {
-                    let current = annotations[idx].clone();
-                    annotations[idx] = old_ann;
-                    redo_stack.push(UndoAction::Modify(idx, current));
-                }
-            }
-        }
-        cap_undo_stack(redo_stack);
-        true
-    } else {
-        false
-    }
+    apply_stack_action(annotations, undo_stack, redo_stack)
 }
 
 /// Apply one redo step: pop from `redo_stack`, reverse it, push the inverse onto `undo_stack`.
@@ -68,32 +86,7 @@ pub fn apply_redo(
     undo_stack: &mut Vec<UndoAction>,
     redo_stack: &mut Vec<UndoAction>,
 ) -> bool {
-    if let Some(action) = redo_stack.pop() {
-        match action {
-            UndoAction::Add(idx) => {
-                if idx < annotations.len() {
-                    let removed = annotations.remove(idx);
-                    undo_stack.push(UndoAction::Delete(idx, removed));
-                }
-            }
-            UndoAction::Delete(idx, ann) => {
-                let idx = idx.min(annotations.len());
-                annotations.insert(idx, ann);
-                undo_stack.push(UndoAction::Add(idx));
-            }
-            UndoAction::Modify(idx, old_ann) => {
-                if idx < annotations.len() {
-                    let current = annotations[idx].clone();
-                    annotations[idx] = old_ann;
-                    undo_stack.push(UndoAction::Modify(idx, current));
-                }
-            }
-        }
-        cap_undo_stack(undo_stack);
-        true
-    } else {
-        false
-    }
+    apply_stack_action(annotations, redo_stack, undo_stack)
 }
 
 /// Record a new action on the undo stack, clearing the redo stack (new branch).
@@ -109,8 +102,9 @@ pub fn record_undo(
 
 /// Keep the undo stack within the cap by removing the oldest entries.
 fn cap_undo_stack(stack: &mut Vec<UndoAction>) {
-    while stack.len() > UNDO_STACK_CAP {
-        stack.remove(0);
+    if stack.len() > UNDO_STACK_CAP {
+        let excess = stack.len() - UNDO_STACK_CAP;
+        stack.drain(..excess);
     }
 }
 
@@ -799,9 +793,9 @@ pub fn render_text_annotation(
     let pw = pixmap.width() as i32;
     let ph = pixmap.height() as i32;
 
-    let sr = (color.r * 255.0) as u8;
-    let sg = (color.g * 255.0) as u8;
-    let sb = (color.b * 255.0) as u8;
+    let sr = (color.r * 255.0 + 0.5) as u8;
+    let sg = (color.g * 255.0 + 0.5) as u8;
+    let sb = (color.b * 255.0 + 0.5) as u8;
     let sa = color.a;
 
     let mut cursor_x = position.x;
@@ -823,8 +817,8 @@ pub fn render_text_annotation(
         // fontdue: ymin is the distance from baseline to the bottom of the glyph bitmap
         // glyph top = baseline - (height + ymin) ... but we use the standard formula:
         // glyph_y = baseline - glyph_top_offset, where glyph_top_offset = height + ymin
-        let glyph_x = cursor_x as i32 + metrics.xmin;
-        let glyph_y = baseline_y as i32 - metrics.height as i32 - metrics.ymin;
+        let glyph_x = cursor_x.round() as i32 + metrics.xmin;
+        let glyph_y = baseline_y.round() as i32 - metrics.height as i32 - metrics.ymin;
 
         for row in 0..metrics.height {
             for col in 0..metrics.width {

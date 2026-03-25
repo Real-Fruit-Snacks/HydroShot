@@ -29,14 +29,35 @@ pub fn register_hotkey(binding: &str) -> Result<(GlobalHotKeyManager, u32), Stri
             "f4" => key_code = Some(Code::F4),
             "f5" => key_code = Some(Code::F5),
             "f6" => key_code = Some(Code::F6),
-            s if s.len() == 1 && s.chars().next().unwrap().is_ascii_alphabetic() => {
-                key_code = Some(letter_to_code(s.chars().next().unwrap()));
+            "f7" => key_code = Some(Code::F7),
+            "f8" => key_code = Some(Code::F8),
+            "f9" => key_code = Some(Code::F9),
+            "f10" => key_code = Some(Code::F10),
+            "f11" => key_code = Some(Code::F11),
+            "f12" => key_code = Some(Code::F12),
+            s if s.len() == 1 => {
+                let c = s.chars().next().unwrap();
+                if c.is_ascii_alphabetic() {
+                    key_code = Some(
+                        letter_to_code(c).ok_or_else(|| format!("Unknown key: {c}"))?,
+                    );
+                } else {
+                    return Err(format!("Unknown hotkey part: {s}"));
+                }
             }
             other => return Err(format!("Unknown hotkey part: {other}")),
         }
     }
 
     let code = key_code.ok_or("No key code found in hotkey binding")?;
+
+    if modifiers.is_empty() {
+        tracing::warn!(
+            "Hotkey '{}' has no modifier keys — this will intercept normal typing",
+            binding
+        );
+    }
+
     let hotkey = HotKey::new(Some(modifiers), code);
     let id = hotkey.id();
 
@@ -47,8 +68,8 @@ pub fn register_hotkey(binding: &str) -> Result<(GlobalHotKeyManager, u32), Stri
     Ok((manager, id))
 }
 
-fn letter_to_code(c: char) -> Code {
-    match c.to_ascii_lowercase() {
+fn letter_to_code(c: char) -> Option<Code> {
+    Some(match c.to_ascii_lowercase() {
         'a' => Code::KeyA,
         'b' => Code::KeyB,
         'c' => Code::KeyC,
@@ -75,9 +96,6 @@ fn letter_to_code(c: char) -> Code {
         'x' => Code::KeyX,
         'y' => Code::KeyY,
         'z' => Code::KeyZ,
-        _ => {
-            tracing::warn!("Unknown hotkey character '{}', ignoring", c);
-            Code::KeyA
-        }
-    }
+        _ => return None,
+    })
 }

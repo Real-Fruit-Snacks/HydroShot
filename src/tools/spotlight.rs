@@ -34,9 +34,14 @@ impl SpotlightTool {
         let min_y = start.y.min(end.y);
         let max_x = start.x.max(end.x);
         let max_y = start.y.max(end.y);
+        let w = max_x - min_x;
+        let h = max_y - min_y;
+        if w < 2.0 || h < 2.0 {
+            return None;
+        }
         Some(Annotation::Spotlight {
             top_left: Point::new(min_x, min_y),
-            size: Size::new(max_x - min_x, max_y - min_y),
+            size: Size::new(w, h),
         })
     }
 }

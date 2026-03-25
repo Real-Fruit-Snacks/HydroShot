@@ -21,7 +21,24 @@ pub struct Selection {
     pub height: f32,
 }
 
+/// Selection coordinates clamped to valid u32 range within screenshot bounds.
+pub struct ClampedRect {
+    pub x: u32,
+    pub y: u32,
+    pub w: u32,
+    pub h: u32,
+}
+
 impl Selection {
+    /// Return selection coordinates clamped to `[0, max_w)` / `[0, max_h)` and cast to u32.
+    pub fn clamped(&self, max_w: u32, max_h: u32) -> ClampedRect {
+        let x = self.x.max(0.0).min(max_w as f32) as u32;
+        let y = self.y.max(0.0).min(max_h as f32) as u32;
+        let w = self.width.max(0.0).min((max_w.saturating_sub(x)) as f32) as u32;
+        let h = self.height.max(0.0).min((max_h.saturating_sub(y)) as f32) as u32;
+        ClampedRect { x, y, w, h }
+    }
+
     /// Create a selection from two points, normalizing so x/y is the minimum.
     pub fn from_points(a: Point, b: Point) -> Self {
         let x = a.x.min(b.x);

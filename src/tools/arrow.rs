@@ -30,6 +30,11 @@ impl ArrowTool {
 
     fn make_annotation(&self, end: Point) -> Option<Annotation> {
         let start = self.start?;
+        let dx = end.x - start.x;
+        let dy = end.y - start.y;
+        if dx * dx + dy * dy < 4.0 {
+            return None; // too small — likely a click, not a drag
+        }
         Some(Annotation::Arrow {
             start,
             end,

@@ -53,7 +53,7 @@ Built with Rust, winit, and tiny-skia.
 - **File save** — `Ctrl+S` to save with a file picker dialog.
 - **Quick crop** — Press `Enter` to crop and export immediately.
 - **Pin to screen** — Float captures as always-on-top windows for reference. Right-click to reveal in Explorer, middle-click to copy, draggable.
-- **Imgur upload** — Upload screenshots directly via the toolbar Upload button with confirmation click.
+- **Imgur upload** — Upload screenshots directly via the toolbar Upload button with confirmation click. Requires `HYDROSHOT_IMGUR_CLIENT_ID` environment variable.
 - **OCR text extraction** — Extract text from a selected region using Windows OCR.
 - **Recent captures history** — Access previous captures from the tray History menu with thumbnails; click to re-copy.
 - **In-overlay toast notifications** — Visual feedback shown directly on the overlay.
@@ -168,7 +168,7 @@ All tool shortcuts can be customized in Settings > Shortcuts.
 
 ### CLI Usage
 
-HydroShot includes a command-line interface for scripting and automation.
+HydroShot includes a command-line interface for scripting and automation. Running `hydroshot` with no subcommand launches the tray application.
 
 ```bash
 # Capture and copy to clipboard
@@ -203,14 +203,20 @@ save_directory = ""
 capture = "Ctrl+Shift+S"
 
 [shortcuts]
+select = "v"
 arrow = "a"
 rectangle = "r"
 circle = "c"
+rounded_rectangle = "o"
 line = "l"
 pencil = "p"
 highlight = "h"
+spotlight = "f"
 text = "t"
 pixelate = "b"
+step_marker = "n"
+eyedropper = "i"
+measurement = "m"
 
 [toolbar]
 arrow = true

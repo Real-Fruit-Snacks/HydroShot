@@ -1,6 +1,9 @@
 use super::{Annotation, AnnotationTool};
 use crate::geometry::{Color, Point};
 
+/// Minimum squared distance between consecutive points to reduce memory usage.
+const MIN_POINT_DISTANCE_SQ: f32 = 4.0; // 2px
+
 pub struct PencilTool {
     color: Color,
     thickness: f32,
@@ -36,6 +39,13 @@ impl AnnotationTool for PencilTool {
 
     fn on_mouse_move(&mut self, pos: Point) {
         if self.drawing {
+            if let Some(last) = self.points.last() {
+                let dx = pos.x - last.x;
+                let dy = pos.y - last.y;
+                if dx * dx + dy * dy < MIN_POINT_DISTANCE_SQ {
+                    return;
+                }
+            }
             self.points.push(pos);
         }
     }
@@ -47,11 +57,10 @@ impl AnnotationTool for PencilTool {
         self.points.push(pos);
         self.drawing = false;
         let annotation = Annotation::Pencil {
-            points: self.points.clone(),
+            points: std::mem::take(&mut self.points),
             color: self.color,
             thickness: self.thickness,
         };
-        self.points.clear();
         Some(annotation)
     }
 

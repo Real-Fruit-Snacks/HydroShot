@@ -105,13 +105,16 @@ impl IconCache {
         size: u32,
         color: &str,
     ) -> Option<&tiny_skia::Pixmap> {
+        use std::collections::hash_map::Entry;
         let key = (format!("{}_{}", name, color), size);
-        if !self.icons.contains_key(&key) {
-            let svg_data = get_svg(name)?;
-            let pixmap = render_icon_svg(&svg_data, size, color)?;
-            self.icons.insert(key.clone(), pixmap);
+        match self.icons.entry(key) {
+            Entry::Occupied(e) => Some(e.into_mut()),
+            Entry::Vacant(e) => {
+                let svg_data = get_svg(name)?;
+                let pixmap = render_icon_svg(&svg_data, size, color)?;
+                Some(e.insert(pixmap))
+            }
         }
-        self.icons.get(&key)
     }
 }
 

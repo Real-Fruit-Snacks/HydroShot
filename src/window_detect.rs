@@ -14,6 +14,9 @@ pub fn enumerate_window_rects() -> Vec<WinRect> {
     use windows::Win32::UI::WindowsAndMessaging::*;
 
     unsafe extern "system" fn enum_callback(hwnd: HWND, lparam: LPARAM) -> BOOL {
+        // SAFETY: EnumWindows invokes this callback synchronously on the calling
+        // thread, so the mutable reference is unique for the duration of the call.
+        // The pointer originates from a live `&mut Vec<WinRect>` in `enumerate_window_rects`.
         let rects = &mut *(lparam.0 as *mut Vec<WinRect>);
 
         unsafe {

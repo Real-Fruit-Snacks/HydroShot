@@ -298,7 +298,13 @@ impl Config {
         let contents =
             toml::to_string(self).map_err(|e| format!("Failed to serialize config: {e}"))?;
 
-        std::fs::write(&path, contents).map_err(|e| format!("Failed to write config file: {e}"))?;
+        // Atomic write: write to a temp file then rename, so a crash mid-write
+        // won't corrupt the config.
+        let tmp_path = path.with_extension("toml.tmp");
+        std::fs::write(&tmp_path, &contents)
+            .map_err(|e| format!("Failed to write temp config file: {e}"))?;
+        std::fs::rename(&tmp_path, &path)
+            .map_err(|e| format!("Failed to rename config file: {e}"))?;
 
         Ok(())
     }

@@ -10,11 +10,27 @@
 #[cfg(target_os = "windows")]
 pub fn extract_text(pixels: &[u8], width: u32, height: u32) -> Result<String, String> {
     let temp_dir = std::env::temp_dir();
-    let temp_path = temp_dir.join("hydroshot_ocr_temp.png");
+    let unique_name = format!(
+        "hydroshot_ocr_{}.png",
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_nanos()
+    );
+    let temp_path = temp_dir.join(unique_name);
 
     let img =
         image::RgbaImage::from_raw(width, height, pixels.to_vec()).ok_or("Invalid image data")?;
     img.save(&temp_path).map_err(|e| e.to_string())?;
+
+    // Guard ensures temp file is cleaned up even on panic
+    struct TempFileGuard(std::path::PathBuf);
+    impl Drop for TempFileGuard {
+        fn drop(&mut self) {
+            let _ = std::fs::remove_file(&self.0);
+        }
+    }
+    let _guard = TempFileGuard(temp_path.clone());
 
     let abs_path = temp_path
         .canonicalize()
@@ -28,11 +44,7 @@ pub fn extract_text(pixels: &[u8], width: u32, height: u32) -> Result<String, St
         .unwrap_or(&abs_path)
         .to_string();
 
-    let result = extract_text_powershell(&abs_path);
-
-    let _ = std::fs::remove_file(&temp_path);
-
-    result
+    extract_text_powershell(&abs_path)
 }
 
 #[cfg(target_os = "windows")]
@@ -70,7 +82,7 @@ Write-Output $result.Text
 
     let output = std::process::Command::new("powershell")
         .env("HYDROSHOT_OCR_PATH", image_path)
-        .args(["-NoProfile", "-NonInteractive", "-Command", script])
+        .args(["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-Command", script])
         .output()
         .map_err(|e| format!("Failed to run PowerShell: {e}"))?;
 

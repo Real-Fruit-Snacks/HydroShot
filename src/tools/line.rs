@@ -30,6 +30,11 @@ impl LineTool {
 
     fn make_annotation(&self, end: Point) -> Option<Annotation> {
         let start = self.start?;
+        let dx = end.x - start.x;
+        let dy = end.y - start.y;
+        if dx * dx + dy * dy < 4.0 {
+            return None;
+        }
         Some(Annotation::Line {
             start,
             end,

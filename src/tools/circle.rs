@@ -37,6 +37,9 @@ impl CircleTool {
         let center = Point::new((min_x + max_x) / 2.0, (min_y + max_y) / 2.0);
         let radius_x = (max_x - min_x) / 2.0;
         let radius_y = (max_y - min_y) / 2.0;
+        if radius_x < 1.0 && radius_y < 1.0 {
+            return None; // too small — likely a click, not a drag
+        }
         Some(Annotation::Ellipse {
             center,
             radius_x,

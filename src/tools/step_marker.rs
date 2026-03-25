@@ -52,7 +52,7 @@ impl AnnotationTool for StepMarkerTool {
             color: self.color,
             size: self.size,
         };
-        self.next_number += 1;
+        self.next_number = self.next_number.saturating_add(1);
         Some(ann)
     }
 

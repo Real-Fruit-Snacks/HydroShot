@@ -65,6 +65,8 @@ pub struct SettingsWindow {
     pub editing_shortcut: Option<usize>,
     /// Active tab index: 0=General, 1=Shortcuts, 2=Toolbar.
     pub active_tab: usize,
+    /// Index of the currently hovered hit rect (for redraw optimization).
+    hovered: Option<usize>,
 }
 
 impl SettingsWindow {
@@ -82,6 +84,7 @@ impl SettingsWindow {
             hit_rects: Vec::new(),
             cursor_pos: (0.0, 0.0),
             editing_shortcut: None,
+            hovered: None,
             active_tab: 0,
         }
     }
@@ -474,10 +477,13 @@ impl SettingsWindow {
 
     /// Update cursor position and return whether a redraw is needed.
     pub fn on_cursor_moved(&mut self, x: f32, y: f32) -> bool {
-        let old = self.cursor_pos;
         self.cursor_pos = (x, y);
-        // Check if hover state changed for any hit rect
-        old != self.cursor_pos
+        // Only redraw when the hovered element actually changes
+        let old_hovered = self.hovered;
+        self.hovered = self.hit_rects.iter().position(|hr| {
+            x >= hr.x && x <= hr.x + hr.w && y >= hr.y && y <= hr.y + hr.h
+        });
+        old_hovered != self.hovered
     }
 
     /// Hit-test a click and return the action, if any.

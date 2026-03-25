@@ -357,21 +357,22 @@ impl App {
     fn do_copy(&mut self) {
         if let AppState::Capturing(ref overlay) = self.state {
             if let Some(ref sel) = overlay.selection {
+                let r = sel.clamped(overlay.screenshot.width, overlay.screenshot.height);
                 let pixels = export::crop_and_flatten(
                     &overlay.screenshot.pixels,
                     overlay.screenshot.width,
-                    sel.x as u32,
-                    sel.y as u32,
-                    sel.width as u32,
-                    sel.height as u32,
+                    r.x,
+                    r.y,
+                    r.w,
+                    r.h,
                     &overlay.annotations,
                 );
-                match export::copy_to_clipboard(&pixels, sel.width as u32, sel.height as u32) {
+                match export::copy_to_clipboard(&pixels, r.w, r.h) {
                     Ok(()) => {
                         let _ = hydroshot::history::save_to_history(
                             &pixels,
-                            sel.width as u32,
-                            sel.height as u32,
+                            r.w,
+                            r.h,
                         );
                         tracing::info!("Copied to clipboard");
                         let _ = Notification::new()
@@ -390,26 +391,27 @@ impl App {
     fn do_save(&mut self) {
         if let AppState::Capturing(ref overlay) = self.state {
             if let Some(ref sel) = overlay.selection {
+                let r = sel.clamped(overlay.screenshot.width, overlay.screenshot.height);
                 let pixels = export::crop_and_flatten(
                     &overlay.screenshot.pixels,
                     overlay.screenshot.width,
-                    sel.x as u32,
-                    sel.y as u32,
-                    sel.width as u32,
-                    sel.height as u32,
+                    r.x,
+                    r.y,
+                    r.w,
+                    r.h,
                     &overlay.annotations,
                 );
                 match export::save_to_file(
                     &pixels,
-                    sel.width as u32,
-                    sel.height as u32,
+                    r.w,
+                    r.h,
                     self.config.save_directory().as_deref(),
                 ) {
                     Ok(Some(path)) => {
                         let _ = hydroshot::history::save_to_history(
                             &pixels,
-                            sel.width as u32,
-                            sel.height as u32,
+                            r.w,
+                            r.h,
                         );
                         tracing::info!("Saved to {path}");
                         let _ = Notification::new()
@@ -452,19 +454,18 @@ impl App {
         let upload_data = if let AppState::Capturing(ref mut o) = self.state {
             o.upload_confirmed = false; // reset
             if let Some(ref sel) = o.selection {
+                let r = sel.clamped(o.screenshot.width, o.screenshot.height);
                 let pixels = export::crop_and_flatten(
                     &o.screenshot.pixels,
                     o.screenshot.width,
-                    sel.x as u32,
-                    sel.y as u32,
-                    sel.width as u32,
-                    sel.height as u32,
+                    r.x,
+                    r.y,
+                    r.w,
+                    r.h,
                     &o.annotations,
                 );
-                let w = sel.width as u32;
-                let h = sel.height as u32;
-                let _ = hydroshot::history::save_to_history(&pixels, w, h);
-                Some((pixels, w, h))
+                let _ = hydroshot::history::save_to_history(&pixels, r.w, r.h);
+                Some((pixels, r.w, r.h))
             } else {
                 None
             }
@@ -533,29 +534,26 @@ impl App {
         // Extract cropped pixels (immutable borrow of state)
         let ocr_data = if let AppState::Capturing(ref overlay) = self.state {
             if let Some(ref sel) = overlay.selection {
-                let w = sel.width as u32;
-                let h = sel.height as u32;
-                if w == 0 || h == 0 {
+                let r = sel.clamped(overlay.screenshot.width, overlay.screenshot.height);
+                if r.w == 0 || r.h == 0 {
                     None
                 } else {
-                    let mut cropped = vec![0u8; (w * h * 4) as usize];
+                    let mut cropped = vec![0u8; (r.w as usize) * (r.h as usize) * 4];
                     let src_w = overlay.screenshot.width;
-                    let sel_x = sel.x as u32;
-                    let sel_y = sel.y as u32;
-                    for row in 0..h {
-                        let src_row = sel_y + row;
+                    for row in 0..r.h {
+                        let src_row = r.y + row;
                         if src_row >= overlay.screenshot.height {
                             break;
                         }
-                        let src_offset = ((src_row * src_w + sel_x) * 4) as usize;
-                        let dst_offset = (row * w * 4) as usize;
-                        let copy_w = w.min(src_w.saturating_sub(sel_x)) as usize * 4;
+                        let src_offset = ((src_row * src_w + r.x) * 4) as usize;
+                        let dst_offset = (row * r.w * 4) as usize;
+                        let copy_w = r.w.min(src_w.saturating_sub(r.x)) as usize * 4;
                         let src_end = (src_offset + copy_w).min(overlay.screenshot.pixels.len());
                         let actual = src_end - src_offset;
                         cropped[dst_offset..dst_offset + actual]
                             .copy_from_slice(&overlay.screenshot.pixels[src_offset..src_end]);
                     }
-                    Some((cropped, w, h))
+                    Some((cropped, r.w, r.h))
                 }
             } else {
                 None
@@ -598,27 +596,28 @@ impl App {
     fn do_pin(&mut self, event_loop: &ActiveEventLoop) {
         if let AppState::Capturing(ref overlay) = self.state {
             if let Some(ref sel) = overlay.selection {
-                let pin_w = sel.width as u32;
-                let pin_h = sel.height as u32;
-                if pin_w == 0 || pin_h == 0 {
+                let cr = sel.clamped(overlay.screenshot.width, overlay.screenshot.height);
+                if cr.w == 0 || cr.h == 0 {
                     return;
                 }
 
                 let pixels = export::crop_and_flatten(
                     &overlay.screenshot.pixels,
                     overlay.screenshot.width,
-                    sel.x as u32,
-                    sel.y as u32,
-                    pin_w,
-                    pin_h,
+                    cr.x,
+                    cr.y,
+                    cr.w,
+                    cr.h,
                     &overlay.annotations,
                 );
 
-                let _ = hydroshot::history::save_to_history(&pixels, pin_w, pin_h);
+                let _ = hydroshot::history::save_to_history(&pixels, cr.w, cr.h);
 
                 // Add a Catppuccin-themed border + shadow around the image
                 let border = PIN_BORDER;
                 let shadow = PIN_SHADOW;
+                let pin_w = cr.w;
+                let pin_h = cr.h;
                 let total_w = pin_w + border * 2 + shadow;
                 let total_h = pin_h + border * 2 + shadow;
 
@@ -1635,23 +1634,20 @@ impl ApplicationHandler for App {
                     Key::Named(NamedKey::Enter) => {
                         if let Some(ref sel) = overlay.selection {
                             // Quick crop: copy raw screenshot pixels (no annotations) to clipboard
-                            let sx = sel.x as u32;
-                            let sy = sel.y as u32;
-                            let sw = sel.width as u32;
-                            let sh = sel.height as u32;
-                            let mut cropped = vec![0u8; (sw * sh * 4) as usize];
-                            for row in 0..sh {
+                            let cr = sel.clamped(overlay.screenshot.width, overlay.screenshot.height);
+                            let mut cropped = vec![0u8; (cr.w as usize) * (cr.h as usize) * 4];
+                            for row in 0..cr.h {
                                 let src_offset =
-                                    ((sy + row) * overlay.screenshot.width + sx) as usize * 4;
-                                let dst_offset = (row * sw) as usize * 4;
-                                let len = (sw * 4) as usize;
+                                    ((cr.y + row) * overlay.screenshot.width + cr.x) as usize * 4;
+                                let dst_offset = (row * cr.w) as usize * 4;
+                                let len = (cr.w * 4) as usize;
                                 if src_offset + len <= overlay.screenshot.pixels.len() {
                                     cropped[dst_offset..dst_offset + len].copy_from_slice(
                                         &overlay.screenshot.pixels[src_offset..src_offset + len],
                                     );
                                 }
                             }
-                            if let Err(e) = hydroshot::export::copy_to_clipboard(&cropped, sw, sh) {
+                            if let Err(e) = hydroshot::export::copy_to_clipboard(&cropped, cr.w, cr.h) {
                                 tracing::error!("Quick crop clipboard error: {}", e);
                             } else {
                                 let _ = Notification::new()
@@ -2604,7 +2600,7 @@ fn main() {
         use windows::core::w;
         use windows::Win32::UI::Shell::SetCurrentProcessExplicitAppUserModelID;
         unsafe {
-            let _ = SetCurrentProcessExplicitAppUserModelID(w!("HydroShot.HydroShot.0.5.2"));
+            let _ = SetCurrentProcessExplicitAppUserModelID(w!("HydroShot.HydroShot.0.5.3"));
         }
     }
 

@@ -5,9 +5,9 @@ pub fn pick_color(initial: &crate::geometry::Color) -> Option<crate::geometry::C
     use windows::Win32::Foundation::*;
     use windows::Win32::UI::Controls::Dialogs::*;
 
-    let initial_rgb = ((initial.r * 255.0) as u32)
-        | (((initial.g * 255.0) as u32) << 8)
-        | (((initial.b * 255.0) as u32) << 16);
+    let initial_rgb = ((initial.r * 255.0 + 0.5) as u32)
+        | (((initial.g * 255.0 + 0.5) as u32) << 8)
+        | (((initial.b * 255.0 + 0.5) as u32) << 16);
 
     let mut custom_colors = [COLORREF(0); 16];
 

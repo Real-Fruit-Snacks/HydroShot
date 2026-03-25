@@ -208,8 +208,11 @@ pub fn render_overlay(state: &mut OverlayState, pixmap: &mut tiny_skia::Pixmap) 
     }
     // Text cursor (vertical white line after text)
     if state.text_input_active {
+        let font = &*crate::font::FONT;
         let cursor_x = state.text_input_position.x
-            + state.text_input_buffer.chars().count() as f32 * state.text_input_font_size * 0.6;
+            + state.text_input_buffer.chars().map(|ch| {
+                font.rasterize(ch, state.text_input_font_size).0.advance_width
+            }).sum::<f32>();
         let cursor_y = state.text_input_position.y;
         let cursor_h = state.text_input_font_size;
         let mut pb = PathBuilder::new();

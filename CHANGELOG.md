@@ -2,11 +2,51 @@
 
 All notable changes to HydroShot will be documented in this file.
 
+## [0.5.3] - 2026-03-25
+
+### Security
+- Removed hardcoded Imgur client ID from source code — now requires `HYDROSHOT_IMGUR_CLIENT_ID` environment variable
+- Replaced hand-rolled JSON parser with `serde_json` to eliminate panic on malformed Imgur responses
+- Fixed OCR temp file race condition with unique filenames and Drop-guard cleanup
+- Added `-ExecutionPolicy Bypass` to PowerShell OCR invocation for restricted systems
+- Pinned all GitHub Actions to SHA hashes to prevent supply chain attacks
+- Added `permissions: contents: read` to CI workflow (principle of least privilege)
+
+### Fixed
+- Fixed negative selection coordinates wrapping to huge values when cast to u32 — added `Selection::clamped()` helper
+- Fixed silent undo/redo action loss when indices become stale — actions are now validated before popping
+- Fixed text cursor positioning using hardcoded 0.6 char width — now measures actual font advance widths
+- Fixed 1px glyph jitter from float-to-int truncation — now uses rounding
+- Fixed color precision loss in float-to-u8 conversion — now rounds instead of truncating
+- Fixed settings UI triggering redraws on every sub-pixel mouse move — now only redraws when hovered element changes
+- Fixed undo stack `remove(0)` O(n) performance — replaced with `drain()`
+- Made `Config::save()` atomic via temp file + rename to prevent corruption on crash
+- Fixed `StepMarkerTool` u32 overflow panic at `MAX` — uses `saturating_add`
+- Fixed `Color::new()` accepting out-of-range values — now clamps to `[0.0, 1.0]`
+- Fixed `Color::presets()` allocating a new Vec every frame — now returns `&'static [Color]`
+- Fixed `IconCache::get_or_render` double HashMap lookup — uses entry API
+- Fixed state.rs silently skipping pixel copy on truncated buffers — now logs warnings
+- Fixed state.rs potential integer overflow in pixel buffer sizing on 32-bit — uses `checked_mul`
+- Added minimum size checks to 7 annotation tools to prevent invisible zero-size annotations on click
+- Fixed hotkey `letter_to_code` silently mapping unknown characters to KeyA — now returns an error
+- Added warning when registering global hotkey without modifier keys
+- Added F7-F12 support to hotkey parser
+- Added 30-second HTTP timeout to Imgur upload requests
+
+### Changed
+- MSRV aligned to 1.80 across Cargo.toml, CONTRIBUTING.md, and CHANGELOG
+- Added clippy and format checks to Linux CI job
+- Generated proper UUID for WiX installer UpgradeCode (was a placeholder)
+- Fixed `cd hydroshot` to `cd HydroShot` in webpage build instructions (case-sensitive Linux)
+- Fixed footer copyright to match LICENSE
+- Fixed querySelector("#") console error on brand logo click
+- Updated Cargo.toml description to be platform-neutral
+
 ## [0.5.2] - 2026-03-25
 
 ### Fixed
 - Fixed command injection vulnerability in OCR PowerShell integration
-- Externalized Imgur client ID to environment variable
+- Imgur client ID now required via `HYDROSHOT_IMGUR_CLIENT_ID` environment variable (removed hardcoded default)
 - Fixed integer overflow in screen capture buffer sizing on multi-monitor setups
 - Replaced panicking unwrap/expect calls with graceful error handling
 - Moved Imgur upload to background thread to prevent UI freezing
@@ -20,7 +60,7 @@ All notable changes to HydroShot will be documented in this file.
 - Fixed README: correct tool count (14, not 16), accurate project structure, matching config example, correct Linux build deps
 - Fixed webpage: correct tool count, removed non-tool from tools grid, clarified Linux Wayland support
 - Fixed installer help URL pointing to wrong GitHub repository
-- Added `rust-version` to Cargo.toml to enforce MSRV 1.75
+- Added `rust-version` to Cargo.toml to enforce MSRV 1.80
 
 ## [0.5.0] - 2026-03-24
 
