@@ -186,6 +186,19 @@ fn offset_annotation(annotation: &Annotation, dx: f32, dy: f32) -> Annotation {
             color: *color,
             size: *size,
         },
+        Annotation::RoundedRect {
+            top_left,
+            size,
+            color,
+            thickness,
+            radius,
+        } => Annotation::RoundedRect {
+            top_left: Point::new(top_left.x - dx, top_left.y - dy),
+            size: Size::new(size.width, size.height),
+            color: *color,
+            thickness: *thickness,
+            radius: *radius,
+        },
     }
 }
 

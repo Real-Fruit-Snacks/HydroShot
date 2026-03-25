@@ -1000,6 +1000,7 @@ fn hitzone_to_cursor(zone: HitZone, overlay: &OverlayState) -> CursorIcon {
                 ToolKind::Eyedropper => CursorIcon::Crosshair,
                 ToolKind::Arrow | ToolKind::Line | ToolKind::Pencil => CursorIcon::Crosshair,
                 ToolKind::Rectangle
+                | ToolKind::RoundedRect
                 | ToolKind::Circle
                 | ToolKind::Highlight
                 | ToolKind::Pixelate => CursorIcon::Crosshair,
@@ -1557,6 +1558,14 @@ impl ApplicationHandler for App {
                                 overlay.active_tool = ToolKind::Eyedropper;
                                 self.needs_redraw = true;
                             }
+                            "o" if !ctrl => {
+                                let overlay = match &mut self.state {
+                                    AppState::Capturing(o) => o,
+                                    _ => return,
+                                };
+                                overlay.active_tool = ToolKind::RoundedRect;
+                                self.needs_redraw = true;
+                            }
                             _ => {}
                         }
                     }
@@ -1650,6 +1659,12 @@ impl ApplicationHandler for App {
                         ToolKind::Rectangle => {
                             if overlay.rectangle_tool.is_drawing() {
                                 overlay.rectangle_tool.on_mouse_move(pos);
+                                self.needs_redraw = true;
+                            }
+                        }
+                        ToolKind::RoundedRect => {
+                            if overlay.rounded_rect_tool.is_drawing() {
+                                overlay.rounded_rect_tool.on_mouse_move(pos);
                                 self.needs_redraw = true;
                             }
                         }
@@ -1761,43 +1776,48 @@ impl ApplicationHandler for App {
                                 self.needs_redraw = true;
                             }
                             4 => {
-                                overlay.active_tool = ToolKind::Line;
+                                overlay.active_tool = ToolKind::RoundedRect;
                                 overlay.selected_index = None;
                                 self.needs_redraw = true;
                             }
                             5 => {
-                                overlay.active_tool = ToolKind::Pencil;
+                                overlay.active_tool = ToolKind::Line;
                                 overlay.selected_index = None;
                                 self.needs_redraw = true;
                             }
                             6 => {
-                                overlay.active_tool = ToolKind::Highlight;
+                                overlay.active_tool = ToolKind::Pencil;
                                 overlay.selected_index = None;
                                 self.needs_redraw = true;
                             }
                             7 => {
-                                overlay.active_tool = ToolKind::Text;
+                                overlay.active_tool = ToolKind::Highlight;
                                 overlay.selected_index = None;
                                 self.needs_redraw = true;
                             }
                             8 => {
-                                overlay.active_tool = ToolKind::Pixelate;
+                                overlay.active_tool = ToolKind::Text;
                                 overlay.selected_index = None;
                                 self.needs_redraw = true;
                             }
                             9 => {
-                                overlay.active_tool = ToolKind::StepMarker;
+                                overlay.active_tool = ToolKind::Pixelate;
                                 overlay.selected_index = None;
                                 self.needs_redraw = true;
                             }
                             10 => {
+                                overlay.active_tool = ToolKind::StepMarker;
+                                overlay.selected_index = None;
+                                self.needs_redraw = true;
+                            }
+                            11 => {
                                 overlay.active_tool = ToolKind::Eyedropper;
                                 overlay.selected_index = None;
                                 self.needs_redraw = true;
                             }
-                            11..=15 => {
+                            12..=16 => {
                                 let presets = Color::presets();
-                                let idx = btn - 11;
+                                let idx = btn - 12;
                                 if idx < presets.len() {
                                     // If an annotation is selected, recolor it
                                     if let Some(sel_idx) = overlay.selected_index {
@@ -1810,6 +1830,7 @@ impl ApplicationHandler for App {
                                         overlay.current_color = presets[idx];
                                         overlay.arrow_tool.set_color(presets[idx]);
                                         overlay.rectangle_tool.set_color(presets[idx]);
+                                        overlay.rounded_rect_tool.set_color(presets[idx]);
                                         overlay.circle_tool.set_color(presets[idx]);
                                         overlay.line_tool.set_color(presets[idx]);
                                         overlay.pencil_tool.set_color(presets[idx]);
@@ -1820,22 +1841,22 @@ impl ApplicationHandler for App {
                                     self.needs_redraw = true;
                                 }
                             }
-                            16 => {
+                            17 => {
                                 // Upload button
                                 self.do_upload();
                                 return;
                             }
-                            17 => {
+                            18 => {
                                 // Pin button
                                 self.do_pin(_event_loop);
                                 return;
                             }
-                            18 => {
+                            19 => {
                                 // Copy button
                                 self.do_copy();
                                 return;
                             }
-                            19 => {
+                            20 => {
                                 // Save button
                                 self.do_save();
                                 return;
@@ -1937,6 +1958,7 @@ impl ApplicationHandler for App {
                                 }
                                 ToolKind::Arrow => overlay.arrow_tool.on_mouse_down(pos),
                                 ToolKind::Rectangle => overlay.rectangle_tool.on_mouse_down(pos),
+                                ToolKind::RoundedRect => overlay.rounded_rect_tool.on_mouse_down(pos),
                                 ToolKind::Circle => overlay.circle_tool.on_mouse_down(pos),
                                 ToolKind::Line => overlay.line_tool.on_mouse_down(pos),
                                 ToolKind::Pencil => overlay.pencil_tool.on_mouse_down(pos),
@@ -1958,6 +1980,7 @@ impl ApplicationHandler for App {
                                         overlay.current_color = color;
                                         overlay.arrow_tool.set_color(color);
                                         overlay.rectangle_tool.set_color(color);
+                                        overlay.rounded_rect_tool.set_color(color);
                                         overlay.circle_tool.set_color(color);
                                         overlay.line_tool.set_color(color);
                                         overlay.pencil_tool.set_color(color);
@@ -2020,6 +2043,7 @@ impl ApplicationHandler for App {
                         }
                         ToolKind::Arrow => overlay.arrow_tool.on_mouse_up(pos),
                         ToolKind::Rectangle => overlay.rectangle_tool.on_mouse_up(pos),
+                        ToolKind::RoundedRect => overlay.rounded_rect_tool.on_mouse_up(pos),
                         ToolKind::Circle => overlay.circle_tool.on_mouse_up(pos),
                         ToolKind::Line => overlay.line_tool.on_mouse_up(pos),
                         ToolKind::Pencil => overlay.pencil_tool.on_mouse_up(pos),
@@ -2048,8 +2072,8 @@ impl ApplicationHandler for App {
                         let toolbar = Toolbar::position_for(sel, overlay.screenshot.height as f32);
                         let pos = overlay.last_mouse_pos;
                         if let Some(btn) = toolbar.hit_test(pos) {
-                            if (11..=15).contains(&btn) {
-                                let swatch_idx = btn - 11;
+                            if (12..=16).contains(&btn) {
+                                let swatch_idx = btn - 12;
                                 let current = Color::presets()[swatch_idx];
                                 if let Some(new_color) =
                                     hydroshot::color_picker::pick_color(&current)
@@ -2057,6 +2081,7 @@ impl ApplicationHandler for App {
                                     overlay.current_color = new_color;
                                     overlay.arrow_tool.set_color(new_color);
                                     overlay.rectangle_tool.set_color(new_color);
+                                    overlay.rounded_rect_tool.set_color(new_color);
                                     overlay.circle_tool.set_color(new_color);
                                     overlay.line_tool.set_color(new_color);
                                     overlay.pencil_tool.set_color(new_color);
@@ -2093,11 +2118,15 @@ impl ApplicationHandler for App {
                 } else if overlay.active_tool == ToolKind::StepMarker {
                     let new_size = overlay.step_marker_tool.size() + scroll * 2.0;
                     overlay.step_marker_tool.set_size(new_size);
+                } else if overlay.active_tool == ToolKind::RoundedRect {
+                    let new_radius = overlay.rounded_rect_tool.radius() + scroll * 2.0;
+                    overlay.rounded_rect_tool.set_radius(new_radius);
                 } else {
                     let new_thickness = (overlay.current_thickness + scroll).clamp(1.0, 20.0);
                     overlay.current_thickness = new_thickness;
                     overlay.arrow_tool.set_thickness(new_thickness);
                     overlay.rectangle_tool.set_thickness(new_thickness);
+                    overlay.rounded_rect_tool.set_thickness(new_thickness);
                     overlay.circle_tool.set_thickness(new_thickness);
                     overlay.line_tool.set_thickness(new_thickness);
                     overlay.pencil_tool.set_thickness(new_thickness);

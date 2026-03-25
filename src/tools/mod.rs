@@ -5,6 +5,7 @@ pub mod line;
 pub mod pencil;
 pub mod pixelate;
 pub mod rectangle;
+pub mod rounded_rect;
 pub mod step_marker;
 pub mod text;
 
@@ -160,6 +161,13 @@ pub enum Annotation {
         color: Color,
         size: f32,
     },
+    RoundedRect {
+        top_left: Point,
+        size: Size,
+        color: Color,
+        thickness: f32,
+        radius: f32,
+    },
 }
 
 pub trait AnnotationTool {
@@ -183,6 +191,7 @@ pub enum ToolKind {
     Pixelate,
     StepMarker,
     Eyedropper,
+    RoundedRect,
 }
 
 /// Compute the three vertices of an arrowhead triangle.
@@ -216,6 +225,23 @@ pub fn arrowhead_points(start: Point, end: Point, thickness: f32) -> Vec<Point> 
     let p2 = Point::new(base_x - px * perp_offset, base_y - py * perp_offset);
 
     vec![end, p1, p2]
+}
+
+/// Build a rounded rectangle path with the given corner radius.
+fn rounded_rect_path(x: f32, y: f32, w: f32, h: f32, r: f32) -> Option<tiny_skia::Path> {
+    let r = r.min(w / 2.0).min(h / 2.0);
+    let mut pb = PathBuilder::new();
+    pb.move_to(x + r, y);
+    pb.line_to(x + w - r, y);
+    pb.quad_to(x + w, y, x + w, y + r);
+    pb.line_to(x + w, y + h - r);
+    pb.quad_to(x + w, y + h, x + w - r, y + h);
+    pb.line_to(x + r, y + h);
+    pb.quad_to(x, y + h, x, y + h - r);
+    pb.line_to(x, y + r);
+    pb.quad_to(x, y, x + r, y);
+    pb.close();
+    pb.finish()
 }
 
 /// Render any Annotation variant onto a tiny_skia::Pixmap.
@@ -594,6 +620,26 @@ pub fn render_annotation(
                 by += bs;
             }
         }
+        Annotation::RoundedRect {
+            top_left,
+            size,
+            color,
+            thickness,
+            radius,
+        } => {
+            if let Some(path) =
+                rounded_rect_path(top_left.x, top_left.y, size.width, size.height, *radius)
+            {
+                let mut paint = Paint::default();
+                paint.set_color((*color).into());
+                paint.anti_alias = true;
+                let stroke = Stroke {
+                    width: *thickness,
+                    ..Stroke::default()
+                };
+                pixmap.stroke_path(&path, &paint, &stroke, Transform::identity(), None);
+            }
+        }
     }
 }
 
@@ -723,6 +769,12 @@ pub fn hit_test_annotation(annotation: &Annotation, point: &Point, threshold: f3
             size,
             thickness: _,
             ..
+        }
+        | Annotation::RoundedRect {
+            top_left,
+            size,
+            thickness: _,
+            ..
         } => {
             let r = tiny_skia::Rect::from_xywh(top_left.x, top_left.y, size.width, size.height);
             if let Some(r) = r {
@@ -803,6 +855,7 @@ pub fn move_annotation(annotation: &mut Annotation, dx: f32, dy: f32) {
             end.y += dy;
         }
         Annotation::Rectangle { top_left, .. }
+        | Annotation::RoundedRect { top_left, .. }
         | Annotation::Highlight { top_left, .. }
         | Annotation::Pixelate { top_left, .. } => {
             top_left.x += dx;
@@ -830,6 +883,7 @@ pub fn recolor_annotation(annotation: &mut Annotation, new_color: Color) {
     match annotation {
         Annotation::Arrow { color, .. }
         | Annotation::Rectangle { color, .. }
+        | Annotation::RoundedRect { color, .. }
         | Annotation::Ellipse { color, .. }
         | Annotation::Line { color, .. }
         | Annotation::Pencil { color, .. }
@@ -895,6 +949,7 @@ pub fn resize_annotation(annotation: &mut Annotation, handle: ResizeHandle, new_
                 end.y = new_y + (end.y - by) * sy;
             }
             Annotation::Rectangle { top_left, size, .. }
+            | Annotation::RoundedRect { top_left, size, .. }
             | Annotation::Highlight { top_left, size, .. }
             | Annotation::Pixelate { top_left, size, .. } => {
                 top_left.x = new_x;
@@ -956,7 +1011,8 @@ pub fn annotation_bounding_box(annotation: &Annotation) -> Option<(f32, f32, f32
             let max_y = start.y.max(end.y) + thickness / 2.0;
             Some((min_x, min_y, max_x - min_x, max_y - min_y))
         }
-        Annotation::Rectangle { top_left, size, .. } => {
+        Annotation::Rectangle { top_left, size, .. }
+        | Annotation::RoundedRect { top_left, size, .. } => {
             Some((top_left.x, top_left.y, size.width, size.height))
         }
         Annotation::Ellipse {

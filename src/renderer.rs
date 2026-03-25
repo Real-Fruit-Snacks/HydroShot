@@ -81,6 +81,7 @@ pub fn render_overlay(state: &mut OverlayState, pixmap: &mut tiny_skia::Pixmap) 
         ToolKind::Pixelate => state.pixelate_tool.in_progress_annotation(),
         ToolKind::StepMarker => state.step_marker_tool.in_progress_annotation(),
         ToolKind::Eyedropper => None,
+        ToolKind::RoundedRect => state.rounded_rect_tool.in_progress_annotation(),
     };
     if let Some(ref ann) = in_progress {
         render_annotation(ann, pixmap, ss_pixels, ss_width);
@@ -343,7 +344,7 @@ fn render_toolbar(state: &mut OverlayState, selection: &Selection, pixmap: &mut 
 
     // --- Separators between button groups (tools | colors | actions) ---
     let sep_color = tiny_skia::Color::from_rgba(0.804, 0.839, 0.957, 0.15).unwrap();
-    for &after_btn in &[10usize, 15] {
+    for &after_btn in &[11usize, 16] {
         let (bx, _, bw, _) = toolbar.button_rect(after_btn);
         let sep_x = bx + bw + TOOLBAR_PADDING / 2.0;
         let sep_y1 = toolbar.y + 8.0;
@@ -364,7 +365,7 @@ fn render_toolbar(state: &mut OverlayState, selection: &Selection, pixmap: &mut 
     }
 
     // --- Render each button ---
-    for i in 0..20usize {
+    for i in 0..21usize {
         let (bx, by, bw, bh) = toolbar.button_rect(i);
 
         let is_active = match i {
@@ -372,15 +373,16 @@ fn render_toolbar(state: &mut OverlayState, selection: &Selection, pixmap: &mut 
             1 => state.active_tool == ToolKind::Arrow,
             2 => state.active_tool == ToolKind::Rectangle,
             3 => state.active_tool == ToolKind::Circle,
-            4 => state.active_tool == ToolKind::Line,
-            5 => state.active_tool == ToolKind::Pencil,
-            6 => state.active_tool == ToolKind::Highlight,
-            7 => state.active_tool == ToolKind::Text,
-            8 => state.active_tool == ToolKind::Pixelate,
-            9 => state.active_tool == ToolKind::StepMarker,
-            10 => state.active_tool == ToolKind::Eyedropper,
-            11..=15 => {
-                let idx = i - 11;
+            4 => state.active_tool == ToolKind::RoundedRect,
+            5 => state.active_tool == ToolKind::Line,
+            6 => state.active_tool == ToolKind::Pencil,
+            7 => state.active_tool == ToolKind::Highlight,
+            8 => state.active_tool == ToolKind::Text,
+            9 => state.active_tool == ToolKind::Pixelate,
+            10 => state.active_tool == ToolKind::StepMarker,
+            11 => state.active_tool == ToolKind::Eyedropper,
+            12..=16 => {
+                let idx = i - 12;
                 idx < presets.len() && state.current_color == presets[idx]
             }
             _ => false,
@@ -431,17 +433,18 @@ fn render_toolbar(state: &mut OverlayState, selection: &Selection, pixmap: &mut 
             1 => Some("arrow"),
             2 => Some("rectangle"),
             3 => Some("circle"),
-            4 => Some("line"),
-            5 => Some("pencil"),
-            6 => Some("highlight"),
-            7 => Some("text"),
-            8 => Some("pixelate"),
-            9 => Some("step-marker"),
-            10 => Some("eyedropper"),
-            16 => Some("upload"),
-            17 => Some("pin"),
-            18 => Some("copy"),
-            19 => Some("save"),
+            4 => Some("rounded-rect"),
+            5 => Some("line"),
+            6 => Some("pencil"),
+            7 => Some("highlight"),
+            8 => Some("text"),
+            9 => Some("pixelate"),
+            10 => Some("step-marker"),
+            11 => Some("eyedropper"),
+            17 => Some("upload"),
+            18 => Some("pin"),
+            19 => Some("copy"),
+            20 => Some("save"),
             _ => None,
         };
 
@@ -455,10 +458,10 @@ fn render_toolbar(state: &mut OverlayState, selection: &Selection, pixmap: &mut 
             }
         }
 
-        if let 11..=15 = i {
+        if let 12..=16 = i {
             {
                 // Color swatch: rounded filled rect with border
-                let idx = i - 11;
+                let idx = i - 12;
                 if idx < SWATCH_COLORS.len() {
                     let (r, g, b) = SWATCH_COLORS[idx];
                     let inset = 6.0;
@@ -512,22 +515,23 @@ fn render_toolbar(state: &mut OverlayState, selection: &Selection, pixmap: &mut 
             1 => "Arrow (A)",
             2 => "Rectangle (R)",
             3 => "Circle (C)",
-            4 => "Line (L)",
-            5 => "Pencil (P)",
-            6 => "Highlight (H)",
-            7 => "Text (T)",
-            8 => "Pixelate (B)",
-            9 => "Step Marker (N)",
-            10 => "Eyedropper (I)",
-            11 => "Red (right-click: pick)",
-            12 => "Blue (right-click: pick)",
-            13 => "Green (right-click: pick)",
-            14 => "Yellow (right-click: pick)",
-            15 => "Mauve (right-click: pick)",
-            16 => "Upload (Imgur)",
-            17 => "Pin",
-            18 => "Copy (Ctrl+C)",
-            19 => "Save (Ctrl+S)",
+            4 => "Rounded Rect (O)",
+            5 => "Line (L)",
+            6 => "Pencil (P)",
+            7 => "Highlight (H)",
+            8 => "Text (T)",
+            9 => "Pixelate (B)",
+            10 => "Step Marker (N)",
+            11 => "Eyedropper (I)",
+            12 => "Red (right-click: pick)",
+            13 => "Blue (right-click: pick)",
+            14 => "Green (right-click: pick)",
+            15 => "Yellow (right-click: pick)",
+            16 => "Mauve (right-click: pick)",
+            17 => "Upload (Imgur)",
+            18 => "Pin",
+            19 => "Copy (Ctrl+C)",
+            20 => "Save (Ctrl+S)",
             _ => "",
         };
 

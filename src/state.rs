@@ -9,6 +9,7 @@ use crate::tools::line::LineTool;
 use crate::tools::pencil::PencilTool;
 use crate::tools::pixelate::PixelateTool;
 use crate::tools::rectangle::RectangleTool;
+use crate::tools::rounded_rect::RoundedRectTool;
 use crate::tools::step_marker::StepMarkerTool;
 use crate::tools::text::TextTool;
 use crate::tools::{Annotation, ResizeHandle, ToolKind, UndoAction};
@@ -33,6 +34,7 @@ pub struct OverlayState {
     pub active_tool: ToolKind,
     pub arrow_tool: ArrowTool,
     pub rectangle_tool: RectangleTool,
+    pub rounded_rect_tool: RoundedRectTool,
     pub circle_tool: CircleTool,
     pub line_tool: LineTool,
     pub pencil_tool: PencilTool,
@@ -99,6 +101,7 @@ impl OverlayState {
             active_tool: ToolKind::Arrow,
             arrow_tool: ArrowTool::new(color, thickness),
             rectangle_tool: RectangleTool::new(color, thickness),
+            rounded_rect_tool: RoundedRectTool::new(color, thickness),
             circle_tool: CircleTool::new(color, thickness),
             line_tool: LineTool::new(color, thickness),
             pencil_tool: PencilTool::new(color, thickness),
