@@ -25,14 +25,23 @@ use hydroshot::overlay::toolbar::Toolbar;
 use hydroshot::renderer::render_overlay;
 use hydroshot::state::{AppState, OverlayState};
 use hydroshot::tools::{hit_test_annotation, move_annotation, recolor_annotation, Annotation, AnnotationTool, ToolKind};
+use hydroshot::settings_ui::SettingsWindow;
 use hydroshot::tray::{self, TrayState};
+use hydroshot::window_detect;
+
+/// Border thickness for pinned windows (Catppuccin themed frame)
+const PIN_BORDER: u32 = 3;
+/// Shadow offset for pinned windows
+const PIN_SHADOW: u32 = 2;
 
 struct PinnedWindow {
     window: Arc<Window>,
     surface: softbuffer::Surface<Arc<Window>, Arc<Window>>,
-    pixels: Vec<u8>,  // RGBA pixels of the pinned image
+    pixels: Vec<u8>,  // RGBA pixels of the pinned image (includes border)
     width: u32,
     height: u32,
+    dragging: bool,
+    drag_start: Option<winit::dpi::PhysicalPosition<f64>>,
 }
 
 struct App {
@@ -55,6 +64,9 @@ struct App {
     countdown_surface: Option<softbuffer::Surface<Arc<Window>, Arc<Window>>>,
     countdown_remaining: u32,
     countdown_next_tick: Option<Instant>,
+    window_capture_mode: bool,
+    window_rects: Vec<window_detect::WinRect>,
+    settings_window: Option<SettingsWindow>,
 }
 
 const FRAME_INTERVAL: Duration = Duration::from_millis(16); // ~60fps cap
@@ -81,6 +93,9 @@ impl App {
             countdown_surface: None,
             countdown_remaining: 0,
             countdown_next_tick: None,
+            window_capture_mode: false,
+            window_rects: Vec::new(),
+            settings_window: None,
         }
     }
 
@@ -180,12 +195,69 @@ impl App {
         }
     }
 
+    fn open_settings(&mut self, event_loop: &ActiveEventLoop) {
+        if self.settings_window.is_some() {
+            tracing::info!("Settings window already open");
+            return;
+        }
+
+        let config = Config::load();
+
+        let attrs = WindowAttributes::default()
+            .with_title("HydroShot Settings")
+            .with_inner_size(winit::dpi::PhysicalSize::new(
+                hydroshot::settings_ui::WIN_W,
+                hydroshot::settings_ui::WIN_H,
+            ))
+            .with_resizable(false)
+            .with_decorations(true);
+
+        let window = match event_loop.create_window(attrs) {
+            Ok(w) => Arc::new(w),
+            Err(e) => {
+                tracing::error!("Failed to create settings window: {e}");
+                return;
+            }
+        };
+
+        let context = match softbuffer::Context::new(Arc::clone(&window)) {
+            Ok(c) => c,
+            Err(e) => {
+                tracing::error!("Failed to create settings context: {e}");
+                return;
+            }
+        };
+
+        let surface = match softbuffer::Surface::new(&context, Arc::clone(&window)) {
+            Ok(s) => s,
+            Err(e) => {
+                tracing::error!("Failed to create settings surface: {e}");
+                return;
+            }
+        };
+
+        let mut sw = SettingsWindow::new(window, surface, config);
+        sw.render();
+        tracing::info!("Settings window opened");
+        self.settings_window = Some(sw);
+    }
+
+    fn close_settings(&mut self, apply: bool) {
+        if apply {
+            self.config = Config::load(); // reload saved config
+        }
+        self.settings_window = None;
+        tracing::info!("Settings window closed");
+    }
+
     fn close_overlay(&mut self) {
         self.surface = None;
         self.pixmap = None;
         self.overlay_window = None;
         self.state = AppState::Idle;
         self.modifiers = ModifiersState::empty();
+        self.window_capture_mode = false;
+        self.window_rects.clear();
         tracing::info!("Overlay closed");
     }
 
@@ -273,16 +345,69 @@ impl App {
                     &overlay.annotations,
                 );
 
+                // Add a Catppuccin-themed border + shadow around the image
+                let border = PIN_BORDER;
+                let shadow = PIN_SHADOW;
+                let total_w = pin_w + border * 2 + shadow;
+                let total_h = pin_h + border * 2 + shadow;
+
+                // Build the framed pixel buffer
+                let mut framed = vec![0u8; (total_w * total_h * 4) as usize];
+
+                // Shadow fill (dark, offset bottom-right)
+                for y in shadow..total_h {
+                    for x in shadow..total_w {
+                        let i = ((y * total_w + x) * 4) as usize;
+                        if i + 3 < framed.len() {
+                            framed[i] = 17;    // Crust R
+                            framed[i + 1] = 17;
+                            framed[i + 2] = 27;
+                            framed[i + 3] = 100; // semi-transparent
+                        }
+                    }
+                }
+
+                // Border fill (Lavender #b4befe)
+                for y in 0..total_h - shadow {
+                    for x in 0..total_w - shadow {
+                        let i = ((y * total_w + x) * 4) as usize;
+                        if i + 3 < framed.len() {
+                            framed[i] = 180;   // Lavender R
+                            framed[i + 1] = 190;
+                            framed[i + 2] = 254;
+                            framed[i + 3] = 255;
+                        }
+                    }
+                }
+
+                // Copy the actual image inside the border
+                for y in 0..pin_h {
+                    for x in 0..pin_w {
+                        let src = ((y * pin_w + x) * 4) as usize;
+                        let dst = (((y + border) * total_w + x + border) * 4) as usize;
+                        if src + 3 < pixels.len() && dst + 3 < framed.len() {
+                            framed[dst] = pixels[src];
+                            framed[dst + 1] = pixels[src + 1];
+                            framed[dst + 2] = pixels[src + 2];
+                            framed[dst + 3] = pixels[src + 3];
+                        }
+                    }
+                }
+
+                let pixels = framed;
+                let pin_w = total_w;
+                let pin_h = total_h;
+
                 // Position the pin window near the selection's screen position
-                let pin_x = sel.x as i32;
-                let pin_y = sel.y as i32;
+                let pin_x = sel.x as i32 - border as i32;
+                let pin_y = sel.y as i32 - border as i32;
 
                 let attrs = WindowAttributes::default()
                     .with_title("HydroShot Pin")
                     .with_inner_size(winit::dpi::PhysicalSize::new(pin_w, pin_h))
                     .with_position(winit::dpi::PhysicalPosition::new(pin_x, pin_y))
                     .with_window_level(WindowLevel::AlwaysOnTop)
-                    .with_decorations(true);
+                    .with_decorations(false);
 
                 let window = match event_loop.create_window(attrs) {
                     Ok(w) => Arc::new(w),
@@ -332,8 +457,14 @@ impl App {
                     pixels,
                     width: pin_w,
                     height: pin_h,
+                    dragging: false,
+                    drag_start: None,
                 });
 
+                // Set grab cursor to indicate the pin is draggable
+                if let Some(pin) = self.pinned_windows.last() {
+                    pin.window.set_cursor(CursorIcon::Grab);
+                }
                 tracing::info!("Pinned {}x{} capture to screen", pin_w, pin_h);
             }
         }
@@ -473,6 +604,12 @@ impl App {
     }
 
     fn close_countdown(&mut self) {
+        // Hide the window immediately before dropping — set_visible(false) is
+        // processed synchronously by the OS, guaranteeing the window is gone
+        // from the screen before the next screenshot is taken.
+        if let Some(ref window) = self.countdown_window {
+            window.set_visible(false);
+        }
         self.countdown_window = None;
         self.countdown_surface = None;
         self.countdown_remaining = 0;
@@ -497,17 +634,21 @@ impl App {
                 if event.id == tray.capture_id {
                     tracing::info!("Capture menu item clicked");
                     self.trigger_capture(event_loop);
+                } else if event.id == tray.window_capture_id {
+                    tracing::info!("Window capture menu item clicked");
+                    self.window_capture_mode = true;
+                    self.window_rects = window_detect::enumerate_window_rects();
+                    tracing::info!("Enumerated {} windows", self.window_rects.len());
+                    self.trigger_capture(event_loop);
                 } else if event.id == tray.delay_3_id {
                     tracing::info!("Capturing in 3 seconds...");
-                    self.capture_at = Some(Instant::now() + Duration::from_secs(3));
+                    // Don't set capture_at — countdown reaching 0 triggers the capture
                     self.start_countdown(event_loop, 3);
                 } else if event.id == tray.delay_5_id {
                     tracing::info!("Capturing in 5 seconds...");
-                    self.capture_at = Some(Instant::now() + Duration::from_secs(5));
                     self.start_countdown(event_loop, 5);
                 } else if event.id == tray.delay_10_id {
                     tracing::info!("Capturing in 10 seconds...");
-                    self.capture_at = Some(Instant::now() + Duration::from_secs(10));
                     self.start_countdown(event_loop, 10);
                 } else if event.id == tray.autostart_id {
                     let new_state = !hydroshot::autostart::is_enabled();
@@ -519,6 +660,9 @@ impl App {
                 } else if event.id == tray.quit_id {
                     tracing::info!("Quit requested");
                     event_loop.exit();
+                } else if event.id == tray.settings_id {
+                    tracing::info!("Settings menu item clicked");
+                    self.open_settings(event_loop);
                 } else if event.id == tray.about_id {
                     tracing::info!(
                         "HydroShot v{} — a screenshot annotation tool",
@@ -534,7 +678,7 @@ impl App {
             return;
         }
 
-        let overlay = match &self.state {
+        let overlay = match &mut self.state {
             AppState::Capturing(o) => o,
             AppState::Idle => return,
         };
@@ -739,9 +883,107 @@ impl ApplicationHandler for App {
                         }
                     }
                 }
+                WindowEvent::MouseInput { state: btn_state, button: WinitMouseButton::Left, .. } => {
+                    let pin = &mut self.pinned_windows[pin_idx];
+                    match btn_state {
+                        ElementState::Pressed => {
+                            pin.dragging = true;
+                            pin.drag_start = None;
+                            pin.window.set_cursor(CursorIcon::Grabbing);
+                        }
+                        ElementState::Released => {
+                            pin.dragging = false;
+                            pin.drag_start = None;
+                            pin.window.set_cursor(CursorIcon::Grab);
+                        }
+                    }
+                }
+                WindowEvent::CursorMoved { position, .. } => {
+                    let pin = &mut self.pinned_windows[pin_idx];
+                    if pin.dragging {
+                        if let Some(start) = pin.drag_start {
+                            let dx = position.x - start.x;
+                            let dy = position.y - start.y;
+                            if let Ok(current_pos) = pin.window.outer_position() {
+                                let new_x = current_pos.x + dx as i32;
+                                let new_y = current_pos.y + dy as i32;
+                                pin.window.set_outer_position(winit::dpi::PhysicalPosition::new(new_x, new_y));
+                            }
+                            // Don't update drag_start — cursor position is relative to window
+                        } else {
+                            pin.drag_start = Some(position);
+                        }
+                    }
+                }
                 _ => {}
             }
             return;
+        }
+
+        // Check if event is for the settings window
+        if let Some(ref sw) = self.settings_window {
+            if sw.window.id() == _window_id {
+                match event {
+                    WindowEvent::CloseRequested => {
+                        self.close_settings(false);
+                        return;
+                    }
+                    WindowEvent::RedrawRequested => {
+                        if let Some(ref mut sw) = self.settings_window {
+                            sw.render();
+                        }
+                        return;
+                    }
+                    WindowEvent::CursorMoved { position, .. } => {
+                        if let Some(ref mut sw) = self.settings_window {
+                            if sw.on_cursor_moved(position.x as f32, position.y as f32) {
+                                sw.needs_redraw = true;
+                                sw.window.request_redraw();
+                            }
+                        }
+                        return;
+                    }
+                    WindowEvent::MouseInput {
+                        state: ElementState::Pressed,
+                        button: WinitMouseButton::Left,
+                        ..
+                    } => {
+                        let (cx, cy) = if let Some(ref sw) = self.settings_window {
+                            (sw.cursor_pos.0, sw.cursor_pos.1)
+                        } else {
+                            return;
+                        };
+                        let action = if let Some(ref sw) = self.settings_window {
+                            sw.on_click(cx, cy)
+                        } else {
+                            None
+                        };
+                        if let Some(action) = action {
+                            let should_close = if let Some(ref mut sw) = self.settings_window {
+                                sw.handle_action(action)
+                            } else {
+                                false
+                            };
+                            if should_close {
+                                self.close_settings(true);
+                            } else if let Some(ref sw) = self.settings_window {
+                                sw.window.request_redraw();
+                            }
+                        }
+                        return;
+                    }
+                    WindowEvent::KeyboardInput { ref event, .. } => {
+                        if event.state == ElementState::Pressed {
+                            if let Key::Named(NamedKey::Escape) = &event.logical_key {
+                                self.close_settings(false);
+                                return;
+                            }
+                        }
+                    }
+                    _ => {}
+                }
+                return;
+            }
         }
 
         // Check if event is for the countdown window
@@ -950,6 +1192,20 @@ impl ApplicationHandler for App {
                                     self.needs_redraw = true;
                                 }
                             }
+                            "a" if ctrl => {
+                                // Ctrl+A: select entire screen
+                                let overlay = match &mut self.state {
+                                    AppState::Capturing(o) => o,
+                                    _ => return,
+                                };
+                                overlay.selection = Some(Selection {
+                                    x: 0.0,
+                                    y: 0.0,
+                                    width: overlay.screenshot.width as f32,
+                                    height: overlay.screenshot.height as f32,
+                                });
+                                self.needs_redraw = true;
+                            }
                             // Tool keyboard shortcuts (no Ctrl)
                             "a" if !ctrl => {
                                 let overlay = match &mut self.state {
@@ -1044,6 +1300,36 @@ impl ApplicationHandler for App {
                 overlay.last_mouse_pos = pos;
                 let dx = pos.x - prev.x;
                 let dy = pos.y - prev.y;
+
+                // Window capture mode: highlight the window under the cursor
+                if self.window_capture_mode {
+                    let x_off = overlay.screenshot.x_offset;
+                    let y_off = overlay.screenshot.y_offset;
+                    let screen_x = pos.x as i32 + x_off;
+                    let screen_y = pos.y as i32 + y_off;
+
+                    if let Some((wx, wy, ww, wh)) =
+                        window_detect::window_at_point(&self.window_rects, screen_x, screen_y)
+                    {
+                        let sel_x = (wx - x_off) as f32;
+                        let sel_y = (wy - y_off) as f32;
+                        overlay.selection = Some(Selection {
+                            x: sel_x,
+                            y: sel_y,
+                            width: ww as f32,
+                            height: wh as f32,
+                        });
+                    } else {
+                        overlay.selection = None;
+                    }
+                    self.needs_redraw = true;
+
+                    // Update cursor
+                    if let Some(ref window) = self.overlay_window {
+                        window.set_cursor(CursorIcon::Crosshair);
+                    }
+                    return;
+                }
 
                 if overlay.is_selecting {
                     // Update selection while dragging
@@ -1143,6 +1429,16 @@ impl ApplicationHandler for App {
                 button: WinitMouseButton::Left,
                 ..
             } => {
+                // Window capture mode: click confirms the highlighted window
+                if self.window_capture_mode {
+                    // Selection is already set to the window under cursor
+                    self.window_capture_mode = false;
+                    self.window_rects.clear();
+                    self.needs_redraw = true;
+                    tracing::info!("Window captured");
+                    return;
+                }
+
                 let pos = overlay.last_mouse_pos;
 
                 // 1. Check toolbar hit first (only if selection exists)
@@ -1266,6 +1562,21 @@ impl ApplicationHandler for App {
                                         }
                                     }
                                     if let Some(idx) = found {
+                                        // If clicking an already-selected Text annotation, re-enter edit mode
+                                        if overlay.selected_index == Some(idx) {
+                                            if let Some(Annotation::Text { position, text, color, font_size }) = overlay.annotations.get(idx).cloned() {
+                                                // Remove the annotation and enter text edit mode with its content
+                                                overlay.annotations.remove(idx);
+                                                overlay.selected_index = None;
+                                                overlay.text_input_active = true;
+                                                overlay.text_input_position = position;
+                                                overlay.text_input_buffer = text;
+                                                overlay.text_input_font_size = font_size;
+                                                overlay.current_color = color;
+                                                self.needs_redraw = true;
+                                                return;
+                                            }
+                                        }
                                         overlay.selected_index = Some(idx);
                                         overlay.select_drag_start = Some(pos);
                                     } else {
@@ -1352,6 +1663,46 @@ impl ApplicationHandler for App {
                 }
             }
 
+            // Right-click: color picker on swatch, otherwise close overlay
+            WindowEvent::MouseInput {
+                state: ElementState::Pressed,
+                button: WinitMouseButton::Right,
+                ..
+            } => {
+                if let AppState::Capturing(ref mut overlay) = self.state {
+                    if let Some(ref sel) = overlay.selection {
+                        let toolbar = Toolbar::position_for(sel, overlay.screenshot.height as f32);
+                        let pos = overlay.last_mouse_pos;
+                        if let Some(btn) = toolbar.hit_test(pos) {
+                            if (10..=14).contains(&btn) {
+                                let swatch_idx = btn - 10;
+                                let current = Color::presets()[swatch_idx];
+                                if let Some(new_color) = hydroshot::color_picker::pick_color(&current) {
+                                    overlay.current_color = new_color;
+                                    overlay.arrow_tool.set_color(new_color);
+                                    overlay.rectangle_tool.set_color(new_color);
+                                    overlay.circle_tool.set_color(new_color);
+                                    overlay.line_tool.set_color(new_color);
+                                    overlay.pencil_tool.set_color(new_color);
+                                    overlay.highlight_tool.set_color(new_color);
+                                    overlay.text_tool.set_color(new_color);
+                                    overlay.step_marker_tool.set_color(new_color);
+                                    if let Some(idx) = overlay.selected_index {
+                                        if let Some(ann) = overlay.annotations.get_mut(idx) {
+                                            recolor_annotation(ann, new_color);
+                                        }
+                                    }
+                                    self.needs_redraw = true;
+                                }
+                                return;
+                            }
+                        }
+                    }
+                }
+                self.close_overlay();
+                return;
+            }
+
             WindowEvent::MouseWheel { delta, .. } => {
                 let scroll = match delta {
                     MouseScrollDelta::LineDelta(_, y) => y,
@@ -1405,6 +1756,9 @@ impl ApplicationHandler for App {
                     self.countdown_next_tick = Some(Instant::now() + Duration::from_secs(1));
                 } else {
                     self.close_countdown();
+                    // Schedule capture 300ms from now — gives the OS time to
+                    // fully remove the countdown window from the screen
+                    self.capture_at = Some(Instant::now() + Duration::from_millis(300));
                 }
             }
             if let Some(next) = self.countdown_next_tick {

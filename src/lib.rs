@@ -1,4 +1,8 @@
+pub mod autostart;
+pub mod cli;
 pub mod capture;
+pub mod color_picker;
+pub mod icons;
 pub mod config;
 pub mod export;
 pub mod geometry;
@@ -6,5 +10,7 @@ pub mod hotkey;
 pub mod overlay;
 pub mod renderer;
 pub mod state;
+pub mod settings_ui;
 pub mod tools;
 pub mod tray;
+pub mod window_detect;
