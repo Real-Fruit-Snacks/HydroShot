@@ -55,6 +55,9 @@ fn get_svg(name: &str) -> Option<String> {
             r#"<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/>"#
         }
         "rounded-rect" => r#"<rect x="3" y="3" width="18" height="18" rx="5"/>"#,
+        "ocr" => {
+            r#"<path d="M4 7V4h3"/><path d="M17 4h3v3"/><path d="M4 17v3h3"/><path d="M17 20h3v-3"/><path d="M7 8h10"/><path d="M7 12h10"/><path d="M7 16h10"/>"#
+        }
         _ => return None,
     };
     Some(wrap_svg(inner))

@@ -365,7 +365,7 @@ fn render_toolbar(state: &mut OverlayState, selection: &Selection, pixmap: &mut 
     }
 
     // --- Render each button ---
-    for i in 0..21usize {
+    for i in 0..22usize {
         let (bx, by, bw, bh) = toolbar.button_rect(i);
 
         let is_active = match i {
@@ -441,10 +441,11 @@ fn render_toolbar(state: &mut OverlayState, selection: &Selection, pixmap: &mut 
             9 => Some("pixelate"),
             10 => Some("step-marker"),
             11 => Some("eyedropper"),
-            17 => Some("upload"),
-            18 => Some("pin"),
-            19 => Some("copy"),
-            20 => Some("save"),
+            17 => Some("ocr"),
+            18 => Some("upload"),
+            19 => Some("pin"),
+            20 => Some("copy"),
+            21 => Some("save"),
             _ => None,
         };
 
@@ -528,10 +529,11 @@ fn render_toolbar(state: &mut OverlayState, selection: &Selection, pixmap: &mut 
             14 => "Green (right-click: pick)",
             15 => "Yellow (right-click: pick)",
             16 => "Mauve (right-click: pick)",
-            17 => "Upload (Imgur)",
-            18 => "Pin",
-            19 => "Copy (Ctrl+C)",
-            20 => "Save (Ctrl+S)",
+            17 => "OCR (Extract Text)",
+            18 => "Upload (Imgur)",
+            19 => "Pin",
+            20 => "Copy (Ctrl+C)",
+            21 => "Save (Ctrl+S)",
             _ => "",
         };
 
