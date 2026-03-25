@@ -2,6 +2,47 @@
 
 All notable changes to HydroShot will be documented in this file.
 
+## [0.5.0] - 2026-03-25
+
+### Added
+
+#### New Annotation Tools
+- Rounded Rectangle tool (O key) — rectangle with adjustable corner radius
+- Spotlight tool (F key) — draw rectangles that dim everything outside them
+- Measurement tool (M key) — click two points to show pixel distance
+- Color Eyedropper (I key) — pick any color from the screenshot
+
+#### Annotation Improvements
+- Annotation resize — drag corner handles on selected annotations to resize
+- Command-pattern undo/redo — covers all operations (add, delete, move, resize, recolor)
+
+#### Export & Sharing
+- Imgur upload — toolbar Upload button with confirmation click
+- OCR text extraction — extract text from selected region using Windows OCR
+- Recent captures history — tray History menu shows thumbnails, click to re-copy
+
+#### Configuration
+- Customizable keyboard shortcuts — rebind all tool shortcuts in Settings UI
+- Configurable toolbar — hide/show individual tools in Settings Toolbar tab
+- Tabbed Settings UI — General, Shortcuts, and Toolbar tabs
+
+#### Interface & UX
+- In-overlay toast notifications — feedback shown directly on the overlay
+- Pin window improvements — right-click to reveal in Explorer, middle-click to copy, draggable
+
+#### Build & Distribution
+- Windows MSI installer via CI
+- GitHub Actions CI — automated builds, tests, and releases
+- Embedded exe icon — HydroShot icon in Windows Explorer and taskbar
+
+#### Performance
+- Cached font rendering
+- Cached pixmaps for annotation tools
+- 60fps frame rate cap
+- Professional Lucide SVG icons via resvg
+
+## [0.2.0] - [0.4.0] — Internal development releases
+
 ## [0.1.0] - 2026-03-25
 
 ### Added

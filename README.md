@@ -30,32 +30,39 @@ Built with Rust, winit, and tiny-skia.
 - **Multi-monitor support** — Captures the entire virtual desktop across all connected monitors.
 - **Fullscreen overlay** — Semi-transparent overlay dims inactive areas for precise region selection.
 
-### Annotation Tools
+### Annotation Tools (16 tools)
 
-- **Select/Move** — Reposition and resize annotations after placement.
-- **Arrow** — Draw directional arrows to highlight points of interest.
-- **Rectangle** — Draw outlined or filled rectangles for emphasis.
-- **Circle** — Draw outlined or filled circles and ellipses.
-- **Line** — Draw straight lines between two points.
-- **Pencil** — Freehand drawing for quick marks and sketches.
-- **Highlight** — Semi-transparent marker for emphasizing text or regions.
-- **Text** — Add text labels with configurable size.
-- **Pixelate** — Blur sensitive information with a pixelation effect.
-- **Step Markers** — Numbered markers for sequential instructions.
+- **Select/Move** (V) — Reposition and resize annotations after placement. Drag corner handles to resize.
+- **Arrow** (A) — Draw directional arrows to highlight points of interest.
+- **Rectangle** (R) — Draw outlined or filled rectangles for emphasis.
+- **Circle** (C) — Draw outlined or filled circles and ellipses.
+- **Rounded Rectangle** (O) — Rectangle with adjustable corner radius.
+- **Line** (L) — Draw straight lines between two points.
+- **Pencil** (P) — Freehand drawing for quick marks and sketches.
+- **Highlight** (H) — Semi-transparent marker for emphasizing text or regions.
+- **Spotlight** (F) — Draw rectangles that dim everything outside them, focusing attention on what matters.
+- **Text** (T) — Add text labels with configurable size.
+- **Pixelate** (B) — Blur sensitive information with a pixelation effect.
+- **Step Markers** (N) — Numbered markers for sequential instructions.
+- **Eyedropper** (I) — Pick any color from the screenshot.
+- **Measurement** (M) — Click two points to measure pixel distance.
 
 ### Export & Sharing
 
 - **Clipboard copy** — `Ctrl+C` to copy directly to clipboard for instant pasting.
 - **File save** — `Ctrl+S` to save with a file picker dialog.
 - **Quick crop** — Press `Enter` to crop and export immediately.
-- **Pin to screen** — Float captures as always-on-top windows for reference.
-- **Post-action notifications** — Visual feedback confirming successful exports.
+- **Pin to screen** — Float captures as always-on-top windows for reference. Right-click to reveal in Explorer, middle-click to copy, draggable.
+- **Imgur upload** — Upload screenshots directly via the toolbar Upload button with confirmation click.
+- **OCR text extraction** — Extract text from a selected region using Windows OCR.
+- **Recent captures history** — Access previous captures from the tray History menu with thumbnails; click to re-copy.
+- **In-overlay toast notifications** — Visual feedback shown directly on the overlay.
 
 ### Window Management
 
 - **System tray** — Lives in your system tray; left-click to start a capture.
 - **Global hotkey** — `Ctrl+Shift+S` triggers capture from anywhere.
-- **Pin windows** — Pin captures as floating always-on-top windows.
+- **Pin windows** — Pin captures as floating always-on-top windows. Right-click to reveal in Explorer, middle-click to copy.
 - **Auto-start** — Optionally launch HydroShot on login.
 
 ### Interface
@@ -63,17 +70,29 @@ Built with Rust, winit, and tiny-skia.
 - **Catppuccin Mocha theme** — Beautiful dark theme with consistent styling throughout.
 - **5 color presets** — Catppuccin Mocha palette colors, plus right-click for a native color picker.
 - **Scroll wheel sizing** — Adjust tool thickness and size with the scroll wheel.
-- **Undo/Redo** — Full undo and redo support for annotations.
+- **Command-pattern undo/redo** — Full undo and redo covering all operations: add, delete, move, resize, and recolor.
+- **Annotation resize** — Drag corner handles on selected annotations to resize them.
 - **Lucide SVG icons** — Professional vector icons rendered via resvg.
 - **Tooltips** — Contextual tooltips for all toolbar actions.
 - **Selection size overlay** — Live dimensions shown while selecting a region.
 - **Cursor feedback** — Context-appropriate cursor changes.
+- **In-overlay toast notifications** — Feedback messages displayed directly on the capture overlay.
 
 ### Configuration
 
-- **Settings UI** — In-app settings window for easy configuration.
+- **Tabbed Settings UI** — In-app settings window with General, Shortcuts, and Toolbar tabs.
+- **Customizable keyboard shortcuts** — Rebind all tool shortcuts in the Settings Shortcuts tab.
+- **Configurable toolbar** — Hide or show individual tools in Settings Toolbar tab.
 - **TOML config** — Human-readable settings file with sensible defaults.
 - **Persistent preferences** — Colors, thickness, save paths, and more are remembered between sessions.
+
+### Performance & Build
+
+- **Cached font and pixmaps** — Optimized rendering with cached resources.
+- **60fps cap** — Smooth rendering with controlled frame rate.
+- **Embedded exe icon** — HydroShot icon displayed in Windows Explorer and taskbar.
+- **Windows MSI installer** — Proper installer available via CI.
+- **GitHub Actions CI** — Automated builds, tests, and releases.
 
 ## Installation
 
@@ -81,7 +100,8 @@ Built with Rust, winit, and tiny-skia.
 
 | Platform | Download |
 |----------|----------|
-| Windows  | [`hydroshot.exe`](https://github.com/Real-Fruit-Snacks/HydroShot/releases/latest) |
+| Windows (exe)  | [`hydroshot.exe`](https://github.com/Real-Fruit-Snacks/HydroShot/releases/latest) |
+| Windows (MSI)  | [`HydroShot.msi`](https://github.com/Real-Fruit-Snacks/HydroShot/releases/latest) |
 | Linux    | [`hydroshot-linux`](https://github.com/Real-Fruit-Snacks/HydroShot/releases/latest) |
 
 Download the latest release from the [Releases](https://github.com/Real-Fruit-Snacks/HydroShot/releases) page.
@@ -111,6 +131,27 @@ cargo build --release
 
 ### Keyboard Shortcuts
 
+#### Tool Shortcuts
+
+| Shortcut | Tool |
+|----------|------|
+| `V` | Select / Move |
+| `A` | Arrow |
+| `R` | Rectangle |
+| `C` | Circle |
+| `O` | Rounded Rectangle |
+| `L` | Line |
+| `P` | Pencil |
+| `H` | Highlight |
+| `F` | Spotlight |
+| `T` | Text |
+| `B` | Pixelate |
+| `N` | Step Marker |
+| `I` | Eyedropper |
+| `M` | Measurement |
+
+#### Action Shortcuts
+
 | Shortcut | Action |
 |----------|--------|
 | `Ctrl+Shift+S` | Start capture (global) |
@@ -122,6 +163,8 @@ cargo build --release
 | `Escape` | Cancel capture |
 | `Scroll Wheel` | Adjust tool size |
 | `Right-click color` | Open native color picker |
+
+All tool shortcuts can be customized in Settings > Shortcuts.
 
 ### CLI Usage
 
@@ -165,7 +208,7 @@ auto_start = false
 global_hotkey = "Ctrl+Shift+S"
 ```
 
-Settings can also be changed through the in-app settings UI accessible from the tray menu.
+Settings can also be changed through the in-app Settings UI (General, Shortcuts, and Toolbar tabs) accessible from the tray menu.
 
 ## Development
 
@@ -206,7 +249,7 @@ hydroshot/
 │   ├── geometry.rs          # Geometry utilities
 │   ├── export.rs            # Clipboard and file export
 │   ├── color_picker.rs      # Color selection UI
-│   ├── settings_ui.rs       # Settings window
+│   ├── settings_ui.rs       # Settings window (tabbed)
 │   ├── autostart.rs         # Auto-start on login
 │   ├── window_detect.rs     # Window detection for capture
 │   ├── capture/
@@ -222,11 +265,15 @@ hydroshot/
 │       ├── mod.rs           # Tool trait and registry
 │       ├── arrow.rs         # Arrow tool
 │       ├── circle.rs        # Circle/ellipse tool
+│       ├── eyedropper.rs    # Color eyedropper tool
 │       ├── highlight.rs     # Highlight marker tool
 │       ├── line.rs          # Line tool
+│       ├── measurement.rs   # Measurement tool
 │       ├── pencil.rs        # Freehand pencil tool
 │       ├── pixelate.rs      # Pixelation tool
 │       ├── rectangle.rs     # Rectangle tool
+│       ├── rounded_rect.rs  # Rounded rectangle tool
+│       ├── spotlight.rs     # Spotlight tool
 │       ├── step_marker.rs   # Numbered step markers
 │       └── text.rs          # Text annotation tool
 ├── assets/                  # Static assets

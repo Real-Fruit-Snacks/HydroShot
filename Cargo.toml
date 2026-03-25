@@ -1,6 +1,6 @@
 [package]
 name = "hydroshot"
-version = "0.4.0"
+version = "0.5.0"
 description = "Screenshot capture and annotation tool for Windows"
 license = "MIT"
 edition = "2021"
