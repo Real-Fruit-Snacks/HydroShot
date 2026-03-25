@@ -21,17 +21,35 @@ fn generate_icon(size: u32, path: &str) {
         let mut paint = tiny_skia::Paint::default();
         paint.set_color(tiny_skia::Color::from_rgba(0.047, 0.071, 0.133, 1.0).unwrap()); // #0c1222
         paint.anti_alias = true;
-        pixmap.fill_path(&bg_path, &paint, tiny_skia::FillRule::Winding, tiny_skia::Transform::identity(), None);
+        pixmap.fill_path(
+            &bg_path,
+            &paint,
+            tiny_skia::FillRule::Winding,
+            tiny_skia::Transform::identity(),
+            None,
+        );
     }
 
     // ─── 2. Subtle inner glow / vignette ───
     // A slightly lighter rectangle inset to give depth
     let inset = 3.0 * s;
-    if let Some(inner_path) = rounded_rect(inset, inset, size as f32 - inset * 2.0, size as f32 - inset * 2.0, corner_r - inset) {
+    if let Some(inner_path) = rounded_rect(
+        inset,
+        inset,
+        size as f32 - inset * 2.0,
+        size as f32 - inset * 2.0,
+        corner_r - inset,
+    ) {
         let mut paint = tiny_skia::Paint::default();
         paint.set_color(tiny_skia::Color::from_rgba(0.06, 0.09, 0.16, 1.0).unwrap()); // slightly lighter
         paint.anti_alias = true;
-        pixmap.fill_path(&inner_path, &paint, tiny_skia::FillRule::Winding, tiny_skia::Transform::identity(), None);
+        pixmap.fill_path(
+            &inner_path,
+            &paint,
+            tiny_skia::FillRule::Winding,
+            tiny_skia::Transform::identity(),
+            None,
+        );
     }
 
     // ─── 3. Selection brackets (corners) ───
@@ -83,7 +101,13 @@ fn generate_icon(size: u32, path: &str) {
         let mut base = tiny_skia::Paint::default();
         base.set_color(tiny_skia::Color::from_rgba(0.01, 0.41, 0.64, 1.0).unwrap()); // #0369a1
         base.anti_alias = true;
-        pixmap.fill_path(dp, &base, tiny_skia::FillRule::Winding, tiny_skia::Transform::identity(), None);
+        pixmap.fill_path(
+            dp,
+            &base,
+            tiny_skia::FillRule::Winding,
+            tiny_skia::Transform::identity(),
+            None,
+        );
 
         // Upper gradient overlay: lighter cyan on top portion
         let upper = build_droplet_upper(cx, drop_top, drop_radius, drop_wide_y, cy - 2.0 * s, s);
@@ -91,16 +115,35 @@ fn generate_icon(size: u32, path: &str) {
             let mut light = tiny_skia::Paint::default();
             light.set_color(tiny_skia::Color::from_rgba(0.13, 0.83, 0.93, 0.8).unwrap()); // #22d3ee
             light.anti_alias = true;
-            pixmap.fill_path(up, &light, tiny_skia::FillRule::Winding, tiny_skia::Transform::identity(), None);
+            pixmap.fill_path(
+                up,
+                &light,
+                tiny_skia::FillRule::Winding,
+                tiny_skia::Transform::identity(),
+                None,
+            );
         }
 
         // Tip highlight: brightest at the very top
-        let tip = build_droplet_upper(cx, drop_top, drop_radius * 0.5, drop_wide_y, cy - 14.0 * s, s);
+        let tip = build_droplet_upper(
+            cx,
+            drop_top,
+            drop_radius * 0.5,
+            drop_wide_y,
+            cy - 14.0 * s,
+            s,
+        );
         if let Some(ref tp) = tip {
             let mut bright = tiny_skia::Paint::default();
             bright.set_color(tiny_skia::Color::from_rgba(0.4, 0.92, 0.98, 0.5).unwrap()); // bright cyan
             bright.anti_alias = true;
-            pixmap.fill_path(tp, &bright, tiny_skia::FillRule::Winding, tiny_skia::Transform::identity(), None);
+            pixmap.fill_path(
+                tp,
+                &bright,
+                tiny_skia::FillRule::Winding,
+                tiny_skia::Transform::identity(),
+                None,
+            );
         }
 
         // Glass shine: elliptical highlight
@@ -113,7 +156,13 @@ fn generate_icon(size: u32, path: &str) {
                 let mut sp = tiny_skia::Paint::default();
                 sp.set_color(tiny_skia::Color::from_rgba(1.0, 1.0, 1.0, 0.28).unwrap());
                 sp.anti_alias = true;
-                pixmap.fill_path(&shine, &sp, tiny_skia::FillRule::Winding, tiny_skia::Transform::identity(), None);
+                pixmap.fill_path(
+                    &shine,
+                    &sp,
+                    tiny_skia::FillRule::Winding,
+                    tiny_skia::Transform::identity(),
+                    None,
+                );
             }
         }
 
@@ -126,7 +175,13 @@ fn generate_icon(size: u32, path: &str) {
                 let mut bp2 = tiny_skia::Paint::default();
                 bp2.set_color(tiny_skia::Color::from_rgba(1.0, 1.0, 1.0, 0.2).unwrap());
                 bp2.anti_alias = true;
-                pixmap.fill_path(&bub, &bp2, tiny_skia::FillRule::Winding, tiny_skia::Transform::identity(), None);
+                pixmap.fill_path(
+                    &bub,
+                    &bp2,
+                    tiny_skia::FillRule::Winding,
+                    tiny_skia::Transform::identity(),
+                    None,
+                );
             }
         }
 
@@ -144,7 +199,9 @@ fn generate_icon(size: u32, path: &str) {
 
     // ─── 5. Outer badge border (very subtle) ───
     if size >= 48 {
-        if let Some(badge_path) = rounded_rect(0.5, 0.5, size as f32 - 1.0, size as f32 - 1.0, corner_r) {
+        if let Some(badge_path) =
+            rounded_rect(0.5, 0.5, size as f32 - 1.0, size as f32 - 1.0, corner_r)
+        {
             let mut border = tiny_skia::Paint::default();
             border.set_color(tiny_skia::Color::from_rgba(0.22, 0.74, 0.97, 0.15).unwrap());
             border.anti_alias = true;
@@ -152,7 +209,13 @@ fn generate_icon(size: u32, path: &str) {
                 width: 1.0 * s,
                 ..tiny_skia::Stroke::default()
             };
-            pixmap.stroke_path(&badge_path, &border, &bord_stroke, tiny_skia::Transform::identity(), None);
+            pixmap.stroke_path(
+                &badge_path,
+                &border,
+                &bord_stroke,
+                tiny_skia::Transform::identity(),
+                None,
+            );
         }
     }
 
@@ -179,9 +242,13 @@ fn rounded_rect(x: f32, y: f32, w: f32, h: f32, r: f32) -> Option<tiny_skia::Pat
 // ─── Helper: L-shaped bracket ───
 fn draw_bracket(
     pixmap: &mut tiny_skia::Pixmap,
-    x: f32, y: f32, len: f32,
-    left: bool, top: bool,
-    paint: &tiny_skia::Paint, stroke: &tiny_skia::Stroke,
+    x: f32,
+    y: f32,
+    len: f32,
+    left: bool,
+    top: bool,
+    paint: &tiny_skia::Paint,
+    stroke: &tiny_skia::Stroke,
 ) {
     let dx = if left { len } else { -len };
     let dy = if top { len } else { -len };
@@ -195,53 +262,85 @@ fn draw_bracket(
 }
 
 // ─── Helper: full droplet path ───
-fn build_droplet(cx: f32, top: f32, bottom: f32, radius: f32, wide_y: f32, s: f32) -> Option<tiny_skia::Path> {
+fn build_droplet(
+    cx: f32,
+    top: f32,
+    bottom: f32,
+    radius: f32,
+    wide_y: f32,
+    s: f32,
+) -> Option<tiny_skia::Path> {
     let mut pb = tiny_skia::PathBuilder::new();
     pb.move_to(cx, top);
     // Right side: tip down to widest
     pb.cubic_to(
-        cx + 7.0 * s, top + 16.0 * s,
-        cx + radius, wide_y - 10.0 * s,
-        cx + radius, wide_y,
+        cx + 7.0 * s,
+        top + 16.0 * s,
+        cx + radius,
+        wide_y - 10.0 * s,
+        cx + radius,
+        wide_y,
     );
     // Right side: widest to bottom
     let k = 0.5522848;
     let ry = bottom - wide_y;
     pb.cubic_to(
-        cx + radius, wide_y + ry * k,
-        cx + radius * k, bottom,
-        cx, bottom,
+        cx + radius,
+        wide_y + ry * k,
+        cx + radius * k,
+        bottom,
+        cx,
+        bottom,
     );
     // Left side: bottom to widest
     pb.cubic_to(
-        cx - radius * k, bottom,
-        cx - radius, wide_y + ry * k,
-        cx - radius, wide_y,
+        cx - radius * k,
+        bottom,
+        cx - radius,
+        wide_y + ry * k,
+        cx - radius,
+        wide_y,
     );
     // Left side: widest up to tip
     pb.cubic_to(
-        cx - radius, wide_y - 10.0 * s,
-        cx - 7.0 * s, top + 16.0 * s,
-        cx, top,
+        cx - radius,
+        wide_y - 10.0 * s,
+        cx - 7.0 * s,
+        top + 16.0 * s,
+        cx,
+        top,
     );
     pb.close();
     pb.finish()
 }
 
 // ─── Helper: upper portion of droplet (for gradient simulation) ───
-fn build_droplet_upper(cx: f32, top: f32, radius: f32, wide_y: f32, cut_y: f32, s: f32) -> Option<tiny_skia::Path> {
+fn build_droplet_upper(
+    cx: f32,
+    top: f32,
+    radius: f32,
+    wide_y: f32,
+    cut_y: f32,
+    s: f32,
+) -> Option<tiny_skia::Path> {
     let mut pb = tiny_skia::PathBuilder::new();
     pb.move_to(cx, top);
     pb.cubic_to(
-        cx + 7.0 * s, top + 16.0 * s,
-        cx + radius, wide_y - 10.0 * s,
-        cx + radius, cut_y,
+        cx + 7.0 * s,
+        top + 16.0 * s,
+        cx + radius,
+        wide_y - 10.0 * s,
+        cx + radius,
+        cut_y,
     );
     pb.line_to(cx - radius, cut_y);
     pb.cubic_to(
-        cx - radius, wide_y - 10.0 * s,
-        cx - 7.0 * s, top + 16.0 * s,
-        cx, top,
+        cx - radius,
+        wide_y - 10.0 * s,
+        cx - 7.0 * s,
+        top + 16.0 * s,
+        cx,
+        top,
     );
     pb.close();
     pb.finish()

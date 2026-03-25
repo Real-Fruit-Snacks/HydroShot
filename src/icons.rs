@@ -20,18 +20,10 @@ fn get_svg(name: &str) -> Option<String> {
         "select" => {
             r#"<path d="M18 11V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2"/><path d="M14 10V4a2 2 0 0 0-2-2a2 2 0 0 0-2 2v2"/><path d="M10 10.5V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2v8"/><path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8H12a8 8 0 0 1-8-8V8a2 2 0 1 1 4 0"/>"#
         }
-        "arrow" => {
-            r#"<path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>"#
-        }
-        "rectangle" => {
-            r#"<rect width="18" height="18" x="3" y="3" rx="2"/>"#
-        }
-        "circle" => {
-            r#"<circle cx="12" cy="12" r="10"/>"#
-        }
-        "line" => {
-            r#"<path d="M4 20 L20 4"/>"#
-        }
+        "arrow" => r#"<path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>"#,
+        "rectangle" => r#"<rect width="18" height="18" x="3" y="3" rx="2"/>"#,
+        "circle" => r#"<circle cx="12" cy="12" r="10"/>"#,
+        "line" => r#"<path d="M4 20 L20 4"/>"#,
         "pencil" => {
             r#"<path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/><path d="m15 5 4 4"/>"#
         }
@@ -97,7 +89,12 @@ impl IconCache {
     }
 
     /// Get a cached icon or render it on first access.
-    pub fn get_or_render(&mut self, name: &str, size: u32, color: &str) -> Option<&tiny_skia::Pixmap> {
+    pub fn get_or_render(
+        &mut self,
+        name: &str,
+        size: u32,
+        color: &str,
+    ) -> Option<&tiny_skia::Pixmap> {
         let key = (format!("{}_{}", name, color), size);
         if !self.icons.contains_key(&key) {
             let svg_data = get_svg(name)?;
@@ -109,7 +106,12 @@ impl IconCache {
 }
 
 /// Alpha-blend `src` pixmap onto `dst` pixmap at the given offset.
-pub fn blend_pixmap(dst: &mut tiny_skia::Pixmap, src: &tiny_skia::Pixmap, offset_x: i32, offset_y: i32) {
+pub fn blend_pixmap(
+    dst: &mut tiny_skia::Pixmap,
+    src: &tiny_skia::Pixmap,
+    offset_x: i32,
+    offset_y: i32,
+) {
     let dst_w = dst.width() as i32;
     let dst_h = dst.height() as i32;
     let src_w = src.width() as i32;

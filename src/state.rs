@@ -62,8 +62,8 @@ impl OverlayState {
         // Pre-convert screenshot to tiny-skia pixmap format (done once, not per frame)
         let w = screenshot.width;
         let h = screenshot.height;
-        let mut screenshot_pixmap = tiny_skia::Pixmap::new(w, h)
-            .expect("Failed to create screenshot pixmap");
+        let mut screenshot_pixmap =
+            tiny_skia::Pixmap::new(w, h).expect("Failed to create screenshot pixmap");
         {
             let pixels = screenshot_pixmap.data_mut();
             let src = &screenshot.pixels;

@@ -30,7 +30,8 @@ pub fn create_tray() -> Result<TrayState, String> {
     let delay_3_item = MenuItem::new("Capture in 3s", true, None);
     let delay_5_item = MenuItem::new("Capture in 5s", true, None);
     let delay_10_item = MenuItem::new("Capture in 10s", true, None);
-    let autostart_item = CheckMenuItem::new("Start on login", true, crate::autostart::is_enabled(), None);
+    let autostart_item =
+        CheckMenuItem::new("Start on login", true, crate::autostart::is_enabled(), None);
     let settings_item = MenuItem::new("Settings", true, None);
     let about_item = MenuItem::new("About", true, None);
     let quit_item = MenuItem::new("Quit", true, None);
@@ -44,7 +45,8 @@ pub fn create_tray() -> Result<TrayState, String> {
     let about_id = about_item.id().clone();
     let quit_id = quit_item.id().clone();
     menu.append(&capture_item).map_err(|e| e.to_string())?;
-    menu.append(&window_capture_item).map_err(|e| e.to_string())?;
+    menu.append(&window_capture_item)
+        .map_err(|e| e.to_string())?;
     menu.append(&delay_3_item).map_err(|e| e.to_string())?;
     menu.append(&delay_5_item).map_err(|e| e.to_string())?;
     menu.append(&delay_10_item).map_err(|e| e.to_string())?;

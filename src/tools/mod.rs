@@ -314,10 +314,38 @@ pub fn render_annotation(
             let kr = radius * k;
             let mut pb = PathBuilder::new();
             pb.move_to(position.x + radius, position.y);
-            pb.cubic_to(position.x + radius, position.y + kr, position.x + kr, position.y + radius, position.x, position.y + radius);
-            pb.cubic_to(position.x - kr, position.y + radius, position.x - radius, position.y + kr, position.x - radius, position.y);
-            pb.cubic_to(position.x - radius, position.y - kr, position.x - kr, position.y - radius, position.x, position.y - radius);
-            pb.cubic_to(position.x + kr, position.y - radius, position.x + radius, position.y - kr, position.x + radius, position.y);
+            pb.cubic_to(
+                position.x + radius,
+                position.y + kr,
+                position.x + kr,
+                position.y + radius,
+                position.x,
+                position.y + radius,
+            );
+            pb.cubic_to(
+                position.x - kr,
+                position.y + radius,
+                position.x - radius,
+                position.y + kr,
+                position.x - radius,
+                position.y,
+            );
+            pb.cubic_to(
+                position.x - radius,
+                position.y - kr,
+                position.x - kr,
+                position.y - radius,
+                position.x,
+                position.y - radius,
+            );
+            pb.cubic_to(
+                position.x + kr,
+                position.y - radius,
+                position.x + radius,
+                position.y - kr,
+                position.x + radius,
+                position.y,
+            );
             pb.close();
 
             if let Some(path) = pb.finish() {
@@ -325,13 +353,22 @@ pub fn render_annotation(
                 let mut paint = Paint::default();
                 paint.set_color((*color).into());
                 paint.anti_alias = true;
-                pixmap.fill_path(&path, &paint, tiny_skia::FillRule::Winding, Transform::identity(), None);
+                pixmap.fill_path(
+                    &path,
+                    &paint,
+                    tiny_skia::FillRule::Winding,
+                    Transform::identity(),
+                    None,
+                );
 
                 // White border
                 let mut border = Paint::default();
                 border.set_color(tiny_skia::Color::WHITE);
                 border.anti_alias = true;
-                let stroke = Stroke { width: 2.0, ..Stroke::default() };
+                let stroke = Stroke {
+                    width: 2.0,
+                    ..Stroke::default()
+                };
                 pixmap.stroke_path(&path, &border, &stroke, Transform::identity(), None);
             }
 
@@ -346,7 +383,8 @@ pub fn render_annotation(
                 .expect("failed to load font");
 
             // Measure total advance width
-            let total_width: f32 = num_str.chars()
+            let total_width: f32 = num_str
+                .chars()
                 .map(|ch| {
                     let (metrics, _) = font.rasterize(ch, fs);
                     metrics.advance_width
@@ -363,7 +401,13 @@ pub fn render_annotation(
             // render_text_annotation treats position as the TOP of the text
             let text_x = position.x - total_width * 0.5;
             let text_y = position.y - text_height * 0.5;
-            render_text_annotation(pixmap, &Point::new(text_x, text_y), &num_str, &text_color, fs);
+            render_text_annotation(
+                pixmap,
+                &Point::new(text_x, text_y),
+                &num_str,
+                &text_color,
+                fs,
+            );
         }
         Annotation::Pixelate {
             top_left,
@@ -567,11 +611,24 @@ fn point_to_segment_distance(point: &Point, a: &Point, b: &Point) -> f32 {
 /// Returns true if the point is within `threshold` pixels of the annotation.
 pub fn hit_test_annotation(annotation: &Annotation, point: &Point, threshold: f32) -> bool {
     match annotation {
-        Annotation::Arrow { start, end, thickness, .. }
-        | Annotation::Line { start, end, thickness, .. } => {
-            point_to_segment_distance(point, start, end) < threshold + thickness / 2.0
+        Annotation::Arrow {
+            start,
+            end,
+            thickness,
+            ..
         }
-        Annotation::Rectangle { top_left, size, thickness: _, .. } => {
+        | Annotation::Line {
+            start,
+            end,
+            thickness,
+            ..
+        } => point_to_segment_distance(point, start, end) < threshold + thickness / 2.0,
+        Annotation::Rectangle {
+            top_left,
+            size,
+            thickness: _,
+            ..
+        } => {
             let r = tiny_skia::Rect::from_xywh(top_left.x, top_left.y, size.width, size.height);
             if let Some(r) = r {
                 let near_left = (point.x - r.left()).abs() < threshold
@@ -591,7 +648,13 @@ pub fn hit_test_annotation(annotation: &Annotation, point: &Point, threshold: f3
                 false
             }
         }
-        Annotation::Ellipse { center, radius_x, radius_y, thickness, .. } => {
+        Annotation::Ellipse {
+            center,
+            radius_x,
+            radius_y,
+            thickness,
+            ..
+        } => {
             if *radius_x < 0.001 || *radius_y < 0.001 {
                 return false;
             }
@@ -599,8 +662,7 @@ pub fn hit_test_annotation(annotation: &Annotation, point: &Point, threshold: f3
             let ny = (point.y - center.y) / radius_y;
             let dist = (nx * nx + ny * ny).sqrt();
             (dist - 1.0).abs()
-                < threshold / radius_x.min(*radius_y)
-                    + thickness / (2.0 * radius_x.min(*radius_y))
+                < threshold / radius_x.min(*radius_y) + thickness / (2.0 * radius_x.min(*radius_y))
         }
         Annotation::Highlight { top_left, size, .. }
         | Annotation::Pixelate { top_left, size, .. } => {
@@ -609,10 +671,17 @@ pub fn hit_test_annotation(annotation: &Annotation, point: &Point, threshold: f3
                 && point.y >= top_left.y
                 && point.y <= top_left.y + size.height
         }
-        Annotation::Pencil { points, thickness, .. } => points.windows(2).any(|seg| {
+        Annotation::Pencil {
+            points, thickness, ..
+        } => points.windows(2).any(|seg| {
             point_to_segment_distance(point, &seg[0], &seg[1]) < threshold + thickness / 2.0
         }),
-        Annotation::Text { position, font_size, text, .. } => {
+        Annotation::Text {
+            position,
+            font_size,
+            text,
+            ..
+        } => {
             let char_width = font_size * 0.6;
             let text_width = char_width * text.len() as f32;
             let text_height = *font_size;
@@ -763,9 +832,7 @@ pub fn resize_annotation(annotation: &mut Annotation, handle: ResizeHandle, new_
                 position.y = new_y;
                 *font_size *= sy; // scale font size vertically
             }
-            Annotation::StepMarker {
-                position, size, ..
-            } => {
+            Annotation::StepMarker { position, size, .. } => {
                 *position = Point::new(new_x + new_w / 2.0, new_y + new_h / 2.0);
                 *size = new_w.min(new_h);
             }
@@ -776,8 +843,18 @@ pub fn resize_annotation(annotation: &mut Annotation, handle: ResizeHandle, new_
 /// Compute the bounding box of an annotation as (x, y, w, h).
 pub fn annotation_bounding_box(annotation: &Annotation) -> Option<(f32, f32, f32, f32)> {
     match annotation {
-        Annotation::Arrow { start, end, thickness, .. }
-        | Annotation::Line { start, end, thickness, .. } => {
+        Annotation::Arrow {
+            start,
+            end,
+            thickness,
+            ..
+        }
+        | Annotation::Line {
+            start,
+            end,
+            thickness,
+            ..
+        } => {
             let min_x = start.x.min(end.x) - thickness / 2.0;
             let min_y = start.y.min(end.y) - thickness / 2.0;
             let max_x = start.x.max(end.x) + thickness / 2.0;
@@ -787,14 +864,24 @@ pub fn annotation_bounding_box(annotation: &Annotation) -> Option<(f32, f32, f32
         Annotation::Rectangle { top_left, size, .. } => {
             Some((top_left.x, top_left.y, size.width, size.height))
         }
-        Annotation::Ellipse { center, radius_x, radius_y, .. } => {
-            Some((center.x - radius_x, center.y - radius_y, radius_x * 2.0, radius_y * 2.0))
-        }
+        Annotation::Ellipse {
+            center,
+            radius_x,
+            radius_y,
+            ..
+        } => Some((
+            center.x - radius_x,
+            center.y - radius_y,
+            radius_x * 2.0,
+            radius_y * 2.0,
+        )),
         Annotation::Highlight { top_left, size, .. }
         | Annotation::Pixelate { top_left, size, .. } => {
             Some((top_left.x, top_left.y, size.width, size.height))
         }
-        Annotation::Pencil { points, thickness, .. } => {
+        Annotation::Pencil {
+            points, thickness, ..
+        } => {
             if points.is_empty() {
                 return None;
             }
@@ -809,9 +896,19 @@ pub fn annotation_bounding_box(annotation: &Annotation) -> Option<(f32, f32, f32
                 max_y = max_y.max(p.y);
             }
             let half = thickness / 2.0;
-            Some((min_x - half, min_y - half, max_x - min_x + *thickness, max_y - min_y + *thickness))
+            Some((
+                min_x - half,
+                min_y - half,
+                max_x - min_x + *thickness,
+                max_y - min_y + *thickness,
+            ))
         }
-        Annotation::Text { position, font_size, text, .. } => {
+        Annotation::Text {
+            position,
+            font_size,
+            text,
+            ..
+        } => {
             let char_width = font_size * 0.6;
             let text_width = char_width * text.len() as f32;
             Some((position.x, position.y, text_width, *font_size))

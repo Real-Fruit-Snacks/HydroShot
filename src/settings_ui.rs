@@ -97,7 +97,14 @@ impl SettingsWindow {
         y += 30.0;
 
         // Separator
-        fill_rect_rgb(&mut pixmap, left, y, WIN_W as f32 - left * 2.0, 1.0, SURFACE0);
+        fill_rect_rgb(
+            &mut pixmap,
+            left,
+            y,
+            WIN_W as f32 - left * 2.0,
+            1.0,
+            SURFACE0,
+        );
         y += 16.0;
 
         // ── Default Color ──
@@ -149,7 +156,14 @@ impl SettingsWindow {
         // ── Default Thickness ──
         draw_label(&mut pixmap, left, y, "Default Thickness", 14.0, SUBTEXT0);
         let thickness_label = format!("{:.1}", self.config.general.default_thickness);
-        draw_label(&mut pixmap, left + 160.0, y, &thickness_label, 14.0, TEXT_RGB);
+        draw_label(
+            &mut pixmap,
+            left + 160.0,
+            y,
+            &thickness_label,
+            14.0,
+            TEXT_RGB,
+        );
         y += 26.0;
 
         let btn_w: f32 = 36.0;
@@ -250,7 +264,14 @@ impl SettingsWindow {
         if hovered {
             fill_rect_rgb(&mut pixmap, toggle_x, y - 2.0, toggle_w, toggle_h, SURFACE1);
         }
-        fill_rect_rgb(&mut pixmap, toggle_x + 1.0, y - 1.0, toggle_w - 2.0, toggle_h - 2.0, toggle_bg);
+        fill_rect_rgb(
+            &mut pixmap,
+            toggle_x + 1.0,
+            y - 1.0,
+            toggle_w - 2.0,
+            toggle_h - 2.0,
+            toggle_bg,
+        );
 
         let toggle_label = if autostart_on { "ON" } else { "OFF" };
         let tl_x = toggle_x + if autostart_on { 18.0 } else { 14.0 };
@@ -349,8 +370,7 @@ impl SettingsWindow {
             }
             Action::BrowseDir => {
                 if let Some(path) = rfd::FileDialog::new().pick_folder() {
-                    self.config.general.save_directory =
-                        path.to_string_lossy().to_string();
+                    self.config.general.save_directory = path.to_string_lossy().to_string();
                     self.needs_redraw = true;
                 }
                 false
@@ -391,7 +411,14 @@ fn fill_rect_rgb(pixmap: &mut Pixmap, x: f32, y: f32, w: f32, h: f32, (r, g, b):
     pixmap.fill_rect(rect, &paint, Transform::identity(), None);
 }
 
-fn draw_label(pixmap: &mut Pixmap, x: f32, y: f32, text: &str, font_size: f32, (r, g, b): (u8, u8, u8)) {
+fn draw_label(
+    pixmap: &mut Pixmap,
+    x: f32,
+    y: f32,
+    text: &str,
+    font_size: f32,
+    (r, g, b): (u8, u8, u8),
+) {
     let color = Color::new(r as f32 / 255.0, g as f32 / 255.0, b as f32 / 255.0, 1.0);
     let pos = Point::new(x, y);
     render_text_annotation(pixmap, &pos, text, &color, font_size);

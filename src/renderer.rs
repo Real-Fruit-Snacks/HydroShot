@@ -3,7 +3,9 @@ use crate::icons::blend_pixmap;
 use crate::overlay::selection::Selection;
 use crate::overlay::toolbar::Toolbar;
 use crate::state::OverlayState;
-use crate::tools::{annotation_bounding_box, render_annotation, Annotation, AnnotationTool, ToolKind};
+use crate::tools::{
+    annotation_bounding_box, render_annotation, Annotation, AnnotationTool, ToolKind,
+};
 use tiny_skia::{Paint, PathBuilder, Stroke, Transform};
 
 /// Render the full overlay frame: screenshot background, dim, selection highlight,
@@ -140,7 +142,9 @@ pub fn render_overlay(state: &mut OverlayState, pixmap: &mut tiny_skia::Pixmap) 
             let swatch_x = mx + 16.0;
             let swatch_y = my + 16.0;
 
-            if let Some(rect) = tiny_skia::Rect::from_xywh(swatch_x, swatch_y, swatch_size, swatch_size) {
+            if let Some(rect) =
+                tiny_skia::Rect::from_xywh(swatch_x, swatch_y, swatch_size, swatch_size)
+            {
                 let mut paint = Paint::default();
                 if let Some(c) = tiny_skia::Color::from_rgba(color.r, color.g, color.b, 1.0) {
                     paint.set_color(c);
@@ -153,7 +157,10 @@ pub fn render_overlay(state: &mut OverlayState, pixmap: &mut tiny_skia::Pixmap) 
                 let mut border = Paint::default();
                 border.set_color(tiny_skia::Color::WHITE);
                 border.anti_alias = true;
-                let stroke = Stroke { width: 1.5, ..Stroke::default() };
+                let stroke = Stroke {
+                    width: 1.5,
+                    ..Stroke::default()
+                };
                 pixmap.stroke_path(&path, &border, &stroke, Transform::identity(), None);
             }
 
@@ -167,7 +174,8 @@ pub fn render_overlay(state: &mut OverlayState, pixmap: &mut tiny_skia::Pixmap) 
             static FONT_DATA: &[u8] = include_bytes!("../assets/font.ttf");
             let font = fontdue::Font::from_bytes(FONT_DATA, fontdue::FontSettings::default())
                 .expect("font");
-            let text_width: f32 = hex.chars()
+            let text_width: f32 = hex
+                .chars()
                 .map(|ch| font.rasterize(ch, font_size).0.advance_width)
                 .sum();
 
@@ -182,7 +190,13 @@ pub fn render_overlay(state: &mut OverlayState, pixmap: &mut tiny_skia::Pixmap) 
                 let mut bg_paint = Paint::default();
                 bg_paint.set_color(tiny_skia::Color::from_rgba(0.067, 0.067, 0.094, 0.9).unwrap());
                 bg_paint.anti_alias = true;
-                pixmap.fill_path(&bg, &bg_paint, tiny_skia::FillRule::Winding, Transform::identity(), None);
+                pixmap.fill_path(
+                    &bg,
+                    &bg_paint,
+                    tiny_skia::FillRule::Winding,
+                    Transform::identity(),
+                    None,
+                );
             }
 
             use crate::tools::render_text_annotation;
@@ -248,12 +262,7 @@ fn render_selection_highlight(pixmap: &mut tiny_skia::Pixmap, x: f32, y: f32, w:
     }
 
     // Draw resize handles at the four corners
-    let handles = [
-        (x, y),
-        (x + w, y),
-        (x, y + h),
-        (x + w, y + h),
-    ];
+    let handles = [(x, y), (x + w, y), (x, y + h), (x + w, y + h)];
     for (hx, hy) in &handles {
         let hs = 4.0; // half-size
         if let Some(rect) = tiny_skia::Rect::from_xywh(hx - hs, hy - hs, hs * 2.0, hs * 2.0) {
@@ -527,11 +536,11 @@ fn render_toolbar(state: &mut OverlayState, selection: &Selection, pixmap: &mut 
 
             // Measure text width
             static FONT_DATA: &[u8] = include_bytes!("../assets/font.ttf");
-            let font = fontdue::Font::from_bytes(
-                FONT_DATA, fontdue::FontSettings::default()
-            ).expect("font");
+            let font = fontdue::Font::from_bytes(FONT_DATA, fontdue::FontSettings::default())
+                .expect("font");
             let font_size = 12.0;
-            let text_width: f32 = label.chars()
+            let text_width: f32 = label
+                .chars()
                 .map(|ch| font.rasterize(ch, font_size).0.advance_width)
                 .sum();
 
@@ -551,14 +560,30 @@ fn render_toolbar(state: &mut OverlayState, selection: &Selection, pixmap: &mut 
                 let mut bg_paint = Paint::default();
                 bg_paint.set_color(tiny_skia::Color::from_rgba(0.067, 0.067, 0.094, 0.95).unwrap());
                 bg_paint.anti_alias = true;
-                pixmap.fill_path(&bg, &bg_paint, tiny_skia::FillRule::Winding, Transform::identity(), None);
+                pixmap.fill_path(
+                    &bg,
+                    &bg_paint,
+                    tiny_skia::FillRule::Winding,
+                    Transform::identity(),
+                    None,
+                );
 
                 // Border
                 let mut border_paint = Paint::default();
-                border_paint.set_color(tiny_skia::Color::from_rgba(0.804, 0.839, 0.957, 0.2).unwrap());
+                border_paint
+                    .set_color(tiny_skia::Color::from_rgba(0.804, 0.839, 0.957, 0.2).unwrap());
                 border_paint.anti_alias = true;
-                let border_stroke = Stroke { width: 0.5, ..Stroke::default() };
-                pixmap.stroke_path(&bg, &border_paint, &border_stroke, Transform::identity(), None);
+                let border_stroke = Stroke {
+                    width: 0.5,
+                    ..Stroke::default()
+                };
+                pixmap.stroke_path(
+                    &bg,
+                    &border_paint,
+                    &border_stroke,
+                    Transform::identity(),
+                    None,
+                );
             }
 
             // Text

@@ -255,10 +255,7 @@ fn line_render_smoke_test() {
     render_annotation(&ann, &mut pixmap, None, None);
     // Check pixel along the line
     let pixel = pixmap.pixel(100, 100).unwrap();
-    assert!(
-        pixel.alpha() > 0,
-        "Expected non-transparent pixel on line"
-    );
+    assert!(pixel.alpha() > 0, "Expected non-transparent pixel on line");
 }
 
 // ---- Highlight tool tests ----

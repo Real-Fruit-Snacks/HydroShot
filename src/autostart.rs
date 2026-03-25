@@ -33,8 +33,8 @@ pub fn set_enabled(enabled: bool) -> Result<(), String> {
 
 #[cfg(target_os = "windows")]
 fn is_enabled_windows() -> bool {
-    use windows::Win32::System::Registry::*;
     use windows::core::*;
+    use windows::Win32::System::Registry::*;
 
     unsafe {
         let mut key = HKEY::default();
@@ -52,8 +52,8 @@ fn is_enabled_windows() -> bool {
 
 #[cfg(target_os = "windows")]
 fn set_enabled_windows(enabled: bool) -> Result<(), String> {
-    use windows::Win32::System::Registry::*;
     use windows::core::*;
+    use windows::Win32::System::Registry::*;
 
     unsafe {
         let mut key = HKEY::default();

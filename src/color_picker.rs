@@ -2,8 +2,8 @@
 
 #[cfg(target_os = "windows")]
 pub fn pick_color(initial: &crate::geometry::Color) -> Option<crate::geometry::Color> {
-    use windows::Win32::UI::Controls::Dialogs::*;
     use windows::Win32::Foundation::*;
+    use windows::Win32::UI::Controls::Dialogs::*;
 
     let initial_rgb = ((initial.r * 255.0) as u32)
         | (((initial.g * 255.0) as u32) << 8)

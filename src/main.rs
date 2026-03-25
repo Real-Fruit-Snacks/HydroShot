@@ -5,10 +5,10 @@ use std::time::{Duration, Instant};
 use clap::Parser;
 use tray_icon::menu::MenuEvent;
 use tray_icon::{MouseButton, MouseButtonState, TrayIconEvent};
+use winit::dpi::PhysicalPosition;
 use winit::event::{ElementState, MouseButton as WinitMouseButton, MouseScrollDelta, WindowEvent};
 use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop};
 use winit::keyboard::{Key, ModifiersState, NamedKey};
-use winit::dpi::PhysicalPosition;
 use winit::window::{CursorIcon, Window, WindowAttributes, WindowId, WindowLevel};
 
 use winit::application::ApplicationHandler;
@@ -23,9 +23,12 @@ use hydroshot::geometry::{Color, Point};
 use hydroshot::overlay::selection::{HitZone, Selection};
 use hydroshot::overlay::toolbar::Toolbar;
 use hydroshot::renderer::render_overlay;
-use hydroshot::state::{AppState, OverlayState};
-use hydroshot::tools::{annotation_bounding_box, hit_test_annotation, move_annotation, recolor_annotation, resize_annotation, Annotation, AnnotationTool, ResizeHandle, ToolKind};
 use hydroshot::settings_ui::SettingsWindow;
+use hydroshot::state::{AppState, OverlayState};
+use hydroshot::tools::{
+    annotation_bounding_box, hit_test_annotation, move_annotation, recolor_annotation,
+    resize_annotation, Annotation, AnnotationTool, ResizeHandle, ToolKind,
+};
 use hydroshot::tray::{self, TrayState};
 use hydroshot::window_detect;
 
@@ -37,7 +40,7 @@ const PIN_SHADOW: u32 = 2;
 struct PinnedWindow {
     window: Arc<Window>,
     surface: softbuffer::Surface<Arc<Window>, Arc<Window>>,
-    pixels: Vec<u8>,  // RGBA pixels of the pinned image (includes border)
+    pixels: Vec<u8>, // RGBA pixels of the pinned image (includes border)
     width: u32,
     height: u32,
     dragging: bool,
@@ -206,7 +209,9 @@ impl App {
         // Load window icon from embedded PNG
         let win_icon = {
             let icon_bytes = include_bytes!("../assets/icon.png");
-            let img = image::load_from_memory(icon_bytes).ok().map(|i| i.to_rgba8());
+            let img = image::load_from_memory(icon_bytes)
+                .ok()
+                .map(|i| i.to_rgba8());
             img.and_then(|i| {
                 let (w, h) = i.dimensions();
                 winit::window::Icon::from_rgba(i.into_raw(), w, h).ok()
@@ -424,7 +429,7 @@ impl App {
                     for x in shadow..total_w {
                         let i = ((y * total_w + x) * 4) as usize;
                         if i + 3 < framed.len() {
-                            framed[i] = 17;    // Crust R
+                            framed[i] = 17; // Crust R
                             framed[i + 1] = 17;
                             framed[i + 2] = 27;
                             framed[i + 3] = 100; // semi-transparent
@@ -437,7 +442,7 @@ impl App {
                     for x in 0..total_w - shadow {
                         let i = ((y * total_w + x) * 4) as usize;
                         if i + 3 < framed.len() {
-                            framed[i] = 180;   // Lavender R
+                            framed[i] = 180; // Lavender R
                             framed[i + 1] = 190;
                             framed[i + 2] = 254;
                             framed[i + 3] = 255;
@@ -509,7 +514,9 @@ impl App {
                 if let Ok(mut buffer) = surface.buffer_mut() {
                     let pixel_count = (pin_w * pin_h) as usize;
                     for (i, chunk) in pixels.chunks_exact(4).take(pixel_count).enumerate() {
-                        buffer[i] = ((chunk[0] as u32) << 16) | ((chunk[1] as u32) << 8) | (chunk[2] as u32);
+                        buffer[i] = ((chunk[0] as u32) << 16)
+                            | ((chunk[1] as u32) << 8)
+                            | (chunk[2] as u32);
                     }
                     let _ = buffer.present();
                 }
@@ -644,9 +651,7 @@ impl App {
         );
 
         // Copy pixmap to softbuffer surface
-        if let (Some(nz_w), Some(nz_h)) =
-            (NonZeroU32::new(CD_SIZE), NonZeroU32::new(CD_SIZE))
-        {
+        if let (Some(nz_w), Some(nz_h)) = (NonZeroU32::new(CD_SIZE), NonZeroU32::new(CD_SIZE)) {
             if let Err(e) = surface.resize(nz_w, nz_h) {
                 tracing::error!("Countdown surface resize failed: {e}");
                 return;
@@ -720,7 +725,10 @@ impl App {
                     if let Err(e) = hydroshot::autostart::set_enabled(new_state) {
                         tracing::error!("Auto-start toggle failed: {}", e);
                     } else {
-                        tracing::info!("Auto-start {}", if new_state { "enabled" } else { "disabled" });
+                        tracing::info!(
+                            "Auto-start {}",
+                            if new_state { "enabled" } else { "disabled" }
+                        );
                     }
                 } else if event.id == tray.quit_id {
                     tracing::info!("Quit requested");
@@ -854,8 +862,12 @@ fn determine_cursor(overlay: &OverlayState, pos: Point) -> CursorIcon {
                     for (hp, handle) in &handles {
                         if (pos.x - hp.x).abs() < 8.0 && (pos.y - hp.y).abs() < 8.0 {
                             return match handle {
-                                ResizeHandle::TopLeft | ResizeHandle::BottomRight => CursorIcon::NwseResize,
-                                ResizeHandle::TopRight | ResizeHandle::BottomLeft => CursorIcon::NeswResize,
+                                ResizeHandle::TopLeft | ResizeHandle::BottomRight => {
+                                    CursorIcon::NwseResize
+                                }
+                                ResizeHandle::TopRight | ResizeHandle::BottomLeft => {
+                                    CursorIcon::NeswResize
+                                }
                             };
                         }
                     }
@@ -900,7 +912,10 @@ fn hitzone_to_cursor(zone: HitZone, overlay: &OverlayState) -> CursorIcon {
                 ToolKind::StepMarker => CursorIcon::Cell,
                 ToolKind::Eyedropper => CursorIcon::Crosshair,
                 ToolKind::Arrow | ToolKind::Line | ToolKind::Pencil => CursorIcon::Crosshair,
-                ToolKind::Rectangle | ToolKind::Circle | ToolKind::Highlight | ToolKind::Pixelate => CursorIcon::Crosshair,
+                ToolKind::Rectangle
+                | ToolKind::Circle
+                | ToolKind::Highlight
+                | ToolKind::Pixelate => CursorIcon::Crosshair,
             }
         }
     }
@@ -949,7 +964,11 @@ impl ApplicationHandler for App {
         event: WindowEvent,
     ) {
         // Check if event is for a pinned window
-        if let Some(pin_idx) = self.pinned_windows.iter().position(|p| p.window.id() == _window_id) {
+        if let Some(pin_idx) = self
+            .pinned_windows
+            .iter()
+            .position(|p| p.window.id() == _window_id)
+        {
             match event {
                 WindowEvent::CloseRequested => {
                     self.pinned_windows.remove(pin_idx);
@@ -964,8 +983,12 @@ impl ApplicationHandler for App {
                         let _ = pin.surface.resize(nz_w, nz_h);
                         if let Ok(mut buffer) = pin.surface.buffer_mut() {
                             let pixel_count = (w * h) as usize;
-                            for (i, chunk) in pin.pixels.chunks_exact(4).take(pixel_count).enumerate() {
-                                buffer[i] = ((chunk[0] as u32) << 16) | ((chunk[1] as u32) << 8) | (chunk[2] as u32);
+                            for (i, chunk) in
+                                pin.pixels.chunks_exact(4).take(pixel_count).enumerate()
+                            {
+                                buffer[i] = ((chunk[0] as u32) << 16)
+                                    | ((chunk[1] as u32) << 8)
+                                    | (chunk[2] as u32);
                             }
                             let _ = buffer.present();
                         }
@@ -981,7 +1004,11 @@ impl ApplicationHandler for App {
                         }
                     }
                 }
-                WindowEvent::MouseInput { state: btn_state, button: WinitMouseButton::Left, .. } => {
+                WindowEvent::MouseInput {
+                    state: btn_state,
+                    button: WinitMouseButton::Left,
+                    ..
+                } => {
                     let pin = &mut self.pinned_windows[pin_idx];
                     match btn_state {
                         ElementState::Pressed => {
@@ -1005,7 +1032,10 @@ impl ApplicationHandler for App {
                             if let Ok(current_pos) = pin.window.outer_position() {
                                 let new_x = current_pos.x + dx as i32;
                                 let new_y = current_pos.y + dy as i32;
-                                pin.window.set_outer_position(winit::dpi::PhysicalPosition::new(new_x, new_y));
+                                pin.window
+                                    .set_outer_position(winit::dpi::PhysicalPosition::new(
+                                        new_x, new_y,
+                                    ));
                             }
                             // Don't update drag_start — cursor position is relative to window
                         } else {
@@ -1230,9 +1260,7 @@ impl ApplicationHandler for App {
                                     );
                                 }
                             }
-                            if let Err(e) =
-                                hydroshot::export::copy_to_clipboard(&cropped, sw, sh)
-                            {
+                            if let Err(e) = hydroshot::export::copy_to_clipboard(&cropped, sw, sh) {
                                 tracing::error!("Quick crop clipboard error: {}", e);
                             } else {
                                 let _ = Notification::new()
@@ -1458,12 +1486,16 @@ impl ApplicationHandler for App {
                     match overlay.active_tool {
                         ToolKind::Select => {
                             // Resize drag takes priority
-                            if let (Some(idx), Some(handle)) = (overlay.selected_index, overlay.resize_handle) {
+                            if let (Some(idx), Some(handle)) =
+                                (overlay.selected_index, overlay.resize_handle)
+                            {
                                 if let Some(ann) = overlay.annotations.get_mut(idx) {
                                     resize_annotation(ann, handle, pos);
                                 }
                                 self.needs_redraw = true;
-                            } else if let (Some(idx), Some(drag_start)) = (overlay.selected_index, overlay.select_drag_start) {
+                            } else if let (Some(idx), Some(drag_start)) =
+                                (overlay.selected_index, overlay.select_drag_start)
+                            {
                                 let dx = pos.x - drag_start.x;
                                 let dy = pos.y - drag_start.y;
                                 if let Some(ann) = overlay.annotations.get_mut(idx) {
@@ -1693,15 +1725,28 @@ impl ApplicationHandler for App {
                                     // Check resize handles first (if an annotation is selected)
                                     if let Some(idx) = overlay.selected_index {
                                         if let Some(ann) = overlay.annotations.get(idx) {
-                                            if let Some((bx, by, bw, bh)) = annotation_bounding_box(ann) {
+                                            if let Some((bx, by, bw, bh)) =
+                                                annotation_bounding_box(ann)
+                                            {
                                                 let handles = [
                                                     (Point::new(bx, by), ResizeHandle::TopLeft),
-                                                    (Point::new(bx + bw, by), ResizeHandle::TopRight),
-                                                    (Point::new(bx, by + bh), ResizeHandle::BottomLeft),
-                                                    (Point::new(bx + bw, by + bh), ResizeHandle::BottomRight),
+                                                    (
+                                                        Point::new(bx + bw, by),
+                                                        ResizeHandle::TopRight,
+                                                    ),
+                                                    (
+                                                        Point::new(bx, by + bh),
+                                                        ResizeHandle::BottomLeft,
+                                                    ),
+                                                    (
+                                                        Point::new(bx + bw, by + bh),
+                                                        ResizeHandle::BottomRight,
+                                                    ),
                                                 ];
                                                 for (hp, handle) in &handles {
-                                                    if (pos.x - hp.x).abs() < 8.0 && (pos.y - hp.y).abs() < 8.0 {
+                                                    if (pos.x - hp.x).abs() < 8.0
+                                                        && (pos.y - hp.y).abs() < 8.0
+                                                    {
                                                         overlay.resize_handle = Some(*handle);
                                                         self.needs_redraw = true;
                                                         return;
@@ -1722,7 +1767,13 @@ impl ApplicationHandler for App {
                                     if let Some(idx) = found {
                                         // If clicking an already-selected Text annotation, re-enter edit mode
                                         if overlay.selected_index == Some(idx) {
-                                            if let Some(Annotation::Text { position, text, color, font_size }) = overlay.annotations.get(idx).cloned() {
+                                            if let Some(Annotation::Text {
+                                                position,
+                                                text,
+                                                color,
+                                                font_size,
+                                            }) = overlay.annotations.get(idx).cloned()
+                                            {
                                                 // Remove the annotation and enter text edit mode with its content
                                                 overlay.annotations.remove(idx);
                                                 overlay.selected_index = None;
@@ -1851,7 +1902,9 @@ impl ApplicationHandler for App {
                             if (11..=15).contains(&btn) {
                                 let swatch_idx = btn - 11;
                                 let current = Color::presets()[swatch_idx];
-                                if let Some(new_color) = hydroshot::color_picker::pick_color(&current) {
+                                if let Some(new_color) =
+                                    hydroshot::color_picker::pick_color(&current)
+                                {
                                     overlay.current_color = new_color;
                                     overlay.arrow_tool.set_color(new_color);
                                     overlay.rectangle_tool.set_color(new_color);
@@ -2022,7 +2075,10 @@ fn run_cli_capture(clipboard: bool, save: Option<String>, delay: u64) {
     if clipboard {
         match export::copy_to_clipboard(&screen.pixels, screen.width, screen.height) {
             Ok(_) => {
-                println!("Copied {}x{} screenshot to clipboard", screen.width, screen.height);
+                println!(
+                    "Copied {}x{} screenshot to clipboard",
+                    screen.width, screen.height
+                );
             }
             Err(e) => {
                 eprintln!("Clipboard error: {}", e);
@@ -2060,7 +2116,11 @@ fn main() {
             );
             run_tray_app(config);
         }
-        Some(Commands::Capture { clipboard, save, delay }) => {
+        Some(Commands::Capture {
+            clipboard,
+            save,
+            delay,
+        }) => {
             run_cli_capture(clipboard, save, delay);
         }
     }
