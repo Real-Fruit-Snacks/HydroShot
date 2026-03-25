@@ -67,6 +67,7 @@ struct App {
     pinned_windows: Vec<PinnedWindow>,
     immediate_capture: bool,
     cli_only: bool,
+    startup_notified: bool,
     countdown_window: Option<Arc<Window>>,
     countdown_surface: Option<softbuffer::Surface<Arc<Window>, Arc<Window>>>,
     countdown_remaining: u32,
@@ -97,6 +98,7 @@ impl App {
             pinned_windows: Vec::new(),
             immediate_capture: false,
             cli_only: false,
+            startup_notified: false,
             countdown_window: None,
             countdown_surface: None,
             countdown_remaining: 0,
@@ -1179,6 +1181,17 @@ impl ApplicationHandler for App {
                     Err(e) => tracing::warn!("Failed to register hotkey: {}", e),
                 }
             }
+        }
+
+        // Show startup notification (only once, not in CLI mode)
+        if !self.cli_only && self.tray.is_some() && !self.immediate_capture && !self.startup_notified {
+            self.startup_notified = true;
+            let hotkey = &self.config.hotkey.capture;
+            let _ = Notification::new()
+                .summary("HydroShot")
+                .body(&format!("Ready — {} to capture", hotkey))
+                .timeout(3000)
+                .show();
         }
 
         if self.immediate_capture {
