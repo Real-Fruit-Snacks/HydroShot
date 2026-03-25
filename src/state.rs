@@ -64,6 +64,8 @@ pub struct OverlayState {
     /// In-overlay toast notification (visible on top of the overlay)
     pub toast_message: Option<String>,
     pub toast_until: Option<std::time::Instant>,
+    /// Upload confirmation — true means "user confirmed, proceed"
+    pub upload_confirmed: bool,
 }
 
 impl OverlayState {
@@ -135,6 +137,7 @@ impl OverlayState {
             eyedropper_preview: None,
             toast_message: None,
             toast_until: None,
+            upload_confirmed: false,
         }
     }
 

@@ -428,55 +428,86 @@ impl App {
     }
 
     fn do_upload(&mut self) {
-        if let AppState::Capturing(ref overlay) = self.state {
-            if let Some(ref sel) = overlay.selection {
+        // First click: show confirmation toast
+        // Second click: actually upload
+        let confirmed = if let AppState::Capturing(ref overlay) = self.state {
+            overlay.upload_confirmed
+        } else {
+            false
+        };
+
+        if !confirmed {
+            // First click — ask for confirmation
+            if let AppState::Capturing(ref mut o) = self.state {
+                o.upload_confirmed = true;
+                o.show_toast("Click Upload again to share to Imgur (public)".into(), 4000);
+            }
+            self.needs_redraw = true;
+            return;
+        }
+
+        // Second click — confirmed, proceed with upload
+        let upload_data = if let AppState::Capturing(ref mut o) = self.state {
+            o.upload_confirmed = false; // reset
+            if let Some(ref sel) = o.selection {
                 let pixels = export::crop_and_flatten(
-                    &overlay.screenshot.pixels,
-                    overlay.screenshot.width,
+                    &o.screenshot.pixels,
+                    o.screenshot.width,
                     sel.x as u32,
                     sel.y as u32,
                     sel.width as u32,
                     sel.height as u32,
-                    &overlay.annotations,
+                    &o.annotations,
                 );
                 let w = sel.width as u32;
                 let h = sel.height as u32;
-
                 let _ = hydroshot::history::save_to_history(&pixels, w, h);
-
-                // Encode to PNG bytes
-                let img = image::RgbaImage::from_raw(w, h, pixels).expect("Invalid image");
-                let mut png_bytes = Vec::new();
-                img.write_to(
-                    &mut std::io::Cursor::new(&mut png_bytes),
-                    image::ImageFormat::Png,
-                )
-                .expect("PNG encode failed");
-
-                // Upload (blocking)
-                match hydroshot::upload::upload_to_imgur(&png_bytes) {
-                    Ok(url) => {
-                        if let Ok(mut clipboard) = arboard::Clipboard::new() {
-                            let _ = clipboard.set_text(&url);
-                        }
-                        let _ = Notification::new()
-                            .summary("HydroShot")
-                            .body(&format!("Uploaded! URL copied: {}", url))
-                            .timeout(3000)
-                            .show();
-                        tracing::info!("Uploaded to Imgur: {}", url);
-                    }
-                    Err(e) => {
-                        let _ = Notification::new()
-                            .summary("HydroShot")
-                            .body(&format!("Upload failed: {}", e))
-                            .timeout(3000)
-                            .show();
-                        tracing::error!("Imgur upload failed: {}", e);
-                    }
-                }
-                self.close_overlay();
+                Some((pixels, w, h))
+            } else {
+                None
             }
+        } else {
+            None
+        };
+
+        if let Some((pixels, w, h)) = upload_data {
+            // Show uploading toast
+            if let AppState::Capturing(ref mut o) = self.state {
+                o.show_toast("Uploading to Imgur...".into(), 10000);
+            }
+            self.needs_redraw = true;
+
+            // Encode to PNG bytes
+            let img = image::RgbaImage::from_raw(w, h, pixels).expect("Invalid image");
+            let mut png_bytes = Vec::new();
+            img.write_to(
+                &mut std::io::Cursor::new(&mut png_bytes),
+                image::ImageFormat::Png,
+            )
+            .expect("PNG encode failed");
+
+            // Upload (blocking)
+            let toast_msg = match hydroshot::upload::upload_to_imgur(&png_bytes) {
+                Ok(url) => {
+                    if let Ok(mut clipboard) = arboard::Clipboard::new() {
+                        let _ = clipboard.set_text(&url);
+                    }
+                    tracing::info!("Uploaded to Imgur: {}", url);
+                    format!("Uploaded! URL copied: {}", url)
+                }
+                Err(e) => {
+                    tracing::error!("Imgur upload failed: {}", e);
+                    format!("Upload failed: {}", e)
+                }
+            };
+
+            // Show result as in-overlay toast, then close
+            let _ = Notification::new()
+                .summary("HydroShot")
+                .body(&toast_msg)
+                .timeout(3000)
+                .show();
+            self.close_overlay();
         }
     }
 
@@ -1882,6 +1913,10 @@ impl ApplicationHandler for App {
                 if let Some(ref sel) = overlay.selection {
                     let toolbar = Toolbar::position_for(sel, overlay.screenshot.height as f32);
                     if let Some(btn) = toolbar.hit_test(pos) {
+                        // Reset upload confirmation if clicking anything other than Upload
+                        if btn != 19 {
+                            overlay.upload_confirmed = false;
+                        }
                         match btn {
                             0 => {
                                 overlay.active_tool = ToolKind::Select;
