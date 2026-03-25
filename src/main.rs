@@ -958,7 +958,11 @@ impl App {
                     #[cfg(target_os = "windows")]
                     {
                         let _ = std::process::Command::new("cmd")
-                            .args(["/C", "start", "https://github.com/Real-Fruit-Snacks/HydroShot"])
+                            .args([
+                                "/C",
+                                "start",
+                                "https://github.com/Real-Fruit-Snacks/HydroShot",
+                            ])
                             .spawn();
                     }
                     #[cfg(target_os = "linux")]
@@ -1184,7 +1188,11 @@ impl ApplicationHandler for App {
         }
 
         // Show startup notification (only once, not in CLI mode)
-        if !self.cli_only && self.tray.is_some() && !self.immediate_capture && !self.startup_notified {
+        if !self.cli_only
+            && self.tray.is_some()
+            && !self.immediate_capture
+            && !self.startup_notified
+        {
             self.startup_notified = true;
             let hotkey = &self.config.hotkey.capture;
             let _ = Notification::new()
