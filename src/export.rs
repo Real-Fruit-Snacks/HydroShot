@@ -228,10 +228,11 @@ pub fn copy_to_clipboard(pixels: &[u8], width: u32, height: u32) -> Result<(), S
         .map_err(|e| format!("Failed to copy image to clipboard: {e}"))
 }
 
-/// Save pixel data as PNG.
+/// Save pixel data to an image file.
 ///
 /// When `default_dir` is `Some`, auto-saves to that directory with a
-/// timestamped filename (no dialog). When `None`, opens a native save dialog.
+/// timestamped PNG filename (no dialog). When `None`, opens a native save
+/// dialog offering PNG, JPEG, and WebP formats.
 ///
 /// Returns `Ok(Some(path))` on success, `Ok(None)` if the user cancelled,
 /// or `Err` on failure.
@@ -244,27 +245,56 @@ pub fn save_to_file(
     let now = chrono::Local::now();
     let default_name = now.format("hydroshot_%Y-%m-%d_%H%M%S.png").to_string();
 
-    let path = if let Some(dir) = default_dir {
+    if let Some(dir) = default_dir {
+        // Auto-save (no dialog) — always PNG
         std::fs::create_dir_all(dir)
             .map_err(|e| format!("Failed to create save directory: {e}"))?;
-        dir.join(&default_name)
-    } else {
-        let chosen = rfd::FileDialog::new()
-            .set_file_name(&default_name)
-            .add_filter("PNG Image", &["png"])
-            .save_file();
+        let path = dir.join(&default_name);
+        let img = image::RgbaImage::from_raw(width, height, pixels.to_vec())
+            .ok_or_else(|| "Failed to create image from pixel data".to_string())?;
+        img.save(&path)
+            .map_err(|e| format!("Failed to save image: {e}"))?;
+        return Ok(Some(path.to_string_lossy().into_owned()));
+    }
 
-        match chosen {
-            Some(p) => p,
-            None => return Ok(None),
+    // Show dialog with format options
+    let path = rfd::FileDialog::new()
+        .set_file_name(&default_name)
+        .add_filter("PNG Image", &["png"])
+        .add_filter("JPEG Image", &["jpg", "jpeg"])
+        .add_filter("WebP Image", &["webp"])
+        .save_file();
+
+    match path {
+        Some(p) => {
+            let img = image::RgbaImage::from_raw(width, height, pixels.to_vec())
+                .ok_or_else(|| "Failed to create image from pixel data".to_string())?;
+
+            // Detect format from extension
+            let ext = p
+                .extension()
+                .and_then(|e| e.to_str())
+                .unwrap_or("png")
+                .to_lowercase();
+
+            match ext.as_str() {
+                "jpg" | "jpeg" => {
+                    // Convert RGBA to RGB for JPEG (JPEG doesn't support alpha)
+                    let rgb_img = image::DynamicImage::ImageRgba8(img).to_rgb8();
+                    rgb_img
+                        .save(&p)
+                        .map_err(|e| format!("Failed to save image: {e}"))?;
+                }
+                _ => {
+                    // PNG, WebP, and any other extension — image crate infers
+                    // the format from the extension automatically.
+                    img.save(&p)
+                        .map_err(|e| format!("Failed to save image: {e}"))?;
+                }
+            }
+
+            Ok(Some(p.to_string_lossy().into_owned()))
         }
-    };
-
-    let img = image::RgbaImage::from_raw(width, height, pixels.to_vec())
-        .ok_or_else(|| "Failed to create image from pixel data".to_string())?;
-
-    img.save(&path)
-        .map_err(|e| format!("Failed to save image: {e}"))?;
-
-    Ok(Some(path.to_string_lossy().into_owned()))
+        None => Ok(None),
+    }
 }
