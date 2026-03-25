@@ -1359,6 +1359,28 @@ impl ApplicationHandler for App {
                     }
                     WindowEvent::KeyboardInput { ref event, .. } => {
                         if event.state == ElementState::Pressed {
+                            // If editing a shortcut, capture the key
+                            if let Some(ref mut sw) = self.settings_window {
+                                if sw.editing_shortcut.is_some() {
+                                    let key_str = match &event.logical_key {
+                                        Key::Character(ch) => Some(ch.as_str().to_string()),
+                                        Key::Named(NamedKey::Escape) => {
+                                            // Cancel editing
+                                            sw.editing_shortcut = None;
+                                            sw.needs_redraw = true;
+                                            sw.window.request_redraw();
+                                            None
+                                        }
+                                        _ => None,
+                                    };
+                                    if let Some(key) = key_str {
+                                        sw.on_key_press(&key);
+                                        sw.window.request_redraw();
+                                    }
+                                    return;
+                                }
+                            }
+
                             if let Key::Named(NamedKey::Escape) = &event.logical_key {
                                 self.close_settings(false);
                                 return;
@@ -1610,118 +1632,50 @@ impl ApplicationHandler for App {
                                 });
                                 self.needs_redraw = true;
                             }
-                            // Tool keyboard shortcuts (no Ctrl)
-                            "a" if !ctrl => {
-                                let overlay = match &mut self.state {
-                                    AppState::Capturing(o) => o,
-                                    _ => return,
+                            // Tool keyboard shortcuts (no Ctrl) — config-driven
+                            key_str if !ctrl => {
+                                let shortcuts = &self.config.shortcuts;
+                                let new_tool = if key_str == shortcuts.select {
+                                    Some(ToolKind::Select)
+                                } else if key_str == shortcuts.arrow {
+                                    Some(ToolKind::Arrow)
+                                } else if key_str == shortcuts.rectangle {
+                                    Some(ToolKind::Rectangle)
+                                } else if key_str == shortcuts.circle {
+                                    Some(ToolKind::Circle)
+                                } else if key_str == shortcuts.rounded_rect {
+                                    Some(ToolKind::RoundedRect)
+                                } else if key_str == shortcuts.line {
+                                    Some(ToolKind::Line)
+                                } else if key_str == shortcuts.pencil {
+                                    Some(ToolKind::Pencil)
+                                } else if key_str == shortcuts.highlight {
+                                    Some(ToolKind::Highlight)
+                                } else if key_str == shortcuts.spotlight {
+                                    Some(ToolKind::Spotlight)
+                                } else if key_str == shortcuts.text {
+                                    Some(ToolKind::Text)
+                                } else if key_str == shortcuts.pixelate {
+                                    Some(ToolKind::Pixelate)
+                                } else if key_str == shortcuts.step_marker {
+                                    Some(ToolKind::StepMarker)
+                                } else if key_str == shortcuts.eyedropper {
+                                    Some(ToolKind::Eyedropper)
+                                } else if key_str == shortcuts.measurement {
+                                    Some(ToolKind::Measurement)
+                                } else {
+                                    None
                                 };
-                                overlay.active_tool = ToolKind::Arrow;
-                                self.needs_redraw = true;
-                            }
-                            "r" if !ctrl => {
-                                let overlay = match &mut self.state {
-                                    AppState::Capturing(o) => o,
-                                    _ => return,
-                                };
-                                overlay.active_tool = ToolKind::Rectangle;
-                                self.needs_redraw = true;
-                            }
-                            "c" if !ctrl => {
-                                let overlay = match &mut self.state {
-                                    AppState::Capturing(o) => o,
-                                    _ => return,
-                                };
-                                overlay.active_tool = ToolKind::Circle;
-                                self.needs_redraw = true;
-                            }
-                            "l" if !ctrl => {
-                                let overlay = match &mut self.state {
-                                    AppState::Capturing(o) => o,
-                                    _ => return,
-                                };
-                                overlay.active_tool = ToolKind::Line;
-                                self.needs_redraw = true;
-                            }
-                            "p" if !ctrl => {
-                                let overlay = match &mut self.state {
-                                    AppState::Capturing(o) => o,
-                                    _ => return,
-                                };
-                                overlay.active_tool = ToolKind::Pencil;
-                                self.needs_redraw = true;
-                            }
-                            "h" if !ctrl => {
-                                let overlay = match &mut self.state {
-                                    AppState::Capturing(o) => o,
-                                    _ => return,
-                                };
-                                overlay.active_tool = ToolKind::Highlight;
-                                self.needs_redraw = true;
-                            }
-                            "f" if !ctrl => {
-                                let overlay = match &mut self.state {
-                                    AppState::Capturing(o) => o,
-                                    _ => return,
-                                };
-                                overlay.active_tool = ToolKind::Spotlight;
-                                self.needs_redraw = true;
-                            }
-                            "t" if !ctrl => {
-                                let overlay = match &mut self.state {
-                                    AppState::Capturing(o) => o,
-                                    _ => return,
-                                };
-                                overlay.active_tool = ToolKind::Text;
-                                self.needs_redraw = true;
-                            }
-                            "b" if !ctrl => {
-                                let overlay = match &mut self.state {
-                                    AppState::Capturing(o) => o,
-                                    _ => return,
-                                };
-                                overlay.active_tool = ToolKind::Pixelate;
-                                self.needs_redraw = true;
-                            }
-                            "n" if !ctrl => {
-                                let overlay = match &mut self.state {
-                                    AppState::Capturing(o) => o,
-                                    _ => return,
-                                };
-                                overlay.active_tool = ToolKind::StepMarker;
-                                self.needs_redraw = true;
-                            }
-                            "v" if !ctrl => {
-                                let overlay = match &mut self.state {
-                                    AppState::Capturing(o) => o,
-                                    _ => return,
-                                };
-                                overlay.active_tool = ToolKind::Select;
-                                self.needs_redraw = true;
-                            }
-                            "i" if !ctrl => {
-                                let overlay = match &mut self.state {
-                                    AppState::Capturing(o) => o,
-                                    _ => return,
-                                };
-                                overlay.active_tool = ToolKind::Eyedropper;
-                                self.needs_redraw = true;
-                            }
-                            "o" if !ctrl => {
-                                let overlay = match &mut self.state {
-                                    AppState::Capturing(o) => o,
-                                    _ => return,
-                                };
-                                overlay.active_tool = ToolKind::RoundedRect;
-                                self.needs_redraw = true;
-                            }
-                            "m" if !ctrl => {
-                                let overlay = match &mut self.state {
-                                    AppState::Capturing(o) => o,
-                                    _ => return,
-                                };
-                                overlay.active_tool = ToolKind::Measurement;
-                                self.needs_redraw = true;
+
+                                if let Some(tool) = new_tool {
+                                    let overlay = match &mut self.state {
+                                        AppState::Capturing(o) => o,
+                                        _ => return,
+                                    };
+                                    overlay.active_tool = tool;
+                                    overlay.selected_index = None;
+                                    self.needs_redraw = true;
+                                }
                             }
                             _ => {}
                         }

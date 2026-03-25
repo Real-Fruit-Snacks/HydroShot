@@ -15,10 +15,94 @@ pub struct HotkeyConfig {
     pub capture: String,
 }
 
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct ShortcutsConfig {
+    pub select: String,
+    pub arrow: String,
+    pub rectangle: String,
+    pub circle: String,
+    pub rounded_rect: String,
+    pub line: String,
+    pub pencil: String,
+    pub highlight: String,
+    pub spotlight: String,
+    pub text: String,
+    pub pixelate: String,
+    pub step_marker: String,
+    pub eyedropper: String,
+    pub measurement: String,
+}
+
+impl Default for ShortcutsConfig {
+    fn default() -> Self {
+        Self {
+            select: "v".into(),
+            arrow: "a".into(),
+            rectangle: "r".into(),
+            circle: "c".into(),
+            rounded_rect: "o".into(),
+            line: "l".into(),
+            pencil: "p".into(),
+            highlight: "h".into(),
+            spotlight: "f".into(),
+            text: "t".into(),
+            pixelate: "b".into(),
+            step_marker: "n".into(),
+            eyedropper: "i".into(),
+            measurement: "m".into(),
+        }
+    }
+}
+
+impl ShortcutsConfig {
+    /// Ordered list of (label, current key) for UI display.
+    pub fn entries(&self) -> Vec<(&'static str, &str)> {
+        vec![
+            ("Select", &self.select),
+            ("Arrow", &self.arrow),
+            ("Rectangle", &self.rectangle),
+            ("Circle", &self.circle),
+            ("Rounded Rect", &self.rounded_rect),
+            ("Line", &self.line),
+            ("Pencil", &self.pencil),
+            ("Highlight", &self.highlight),
+            ("Spotlight", &self.spotlight),
+            ("Text", &self.text),
+            ("Pixelate", &self.pixelate),
+            ("Step Marker", &self.step_marker),
+            ("Eyedropper", &self.eyedropper),
+            ("Measurement", &self.measurement),
+        ]
+    }
+
+    /// Set shortcut by index (0-13).
+    pub fn set_by_index(&mut self, index: usize, key: String) {
+        match index {
+            0 => self.select = key,
+            1 => self.arrow = key,
+            2 => self.rectangle = key,
+            3 => self.circle = key,
+            4 => self.rounded_rect = key,
+            5 => self.line = key,
+            6 => self.pencil = key,
+            7 => self.highlight = key,
+            8 => self.spotlight = key,
+            9 => self.text = key,
+            10 => self.pixelate = key,
+            11 => self.step_marker = key,
+            12 => self.eyedropper = key,
+            13 => self.measurement = key,
+            _ => {}
+        }
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Config {
     pub general: GeneralConfig,
     pub hotkey: HotkeyConfig,
+    #[serde(default)]
+    pub shortcuts: ShortcutsConfig,
 }
 
 impl Default for Config {
@@ -32,6 +116,7 @@ impl Default for Config {
             hotkey: HotkeyConfig {
                 capture: "Ctrl+Shift+S".to_string(),
             },
+            shortcuts: ShortcutsConfig::default(),
         }
     }
 }

@@ -10,7 +10,7 @@ use crate::tools::render_text_annotation;
 
 /// Width / height of the settings window in physical pixels.
 pub const WIN_W: u32 = 400;
-pub const WIN_H: u32 = 440;
+pub const WIN_H: u32 = 700;
 
 // Catppuccin Mocha palette
 const BASE: (u8, u8, u8) = (0x1e, 0x1e, 0x2e);
@@ -38,6 +38,7 @@ pub enum Action {
     ThicknessUp,
     BrowseDir,
     ToggleAutostart,
+    ClickShortcut(usize),
     SaveClose,
 }
 
@@ -58,6 +59,8 @@ pub struct SettingsWindow {
     pub needs_redraw: bool,
     hit_rects: Vec<HitRect>,
     pub cursor_pos: (f32, f32),
+    /// Index of the shortcut currently being edited (0-13), or None.
+    pub editing_shortcut: Option<usize>,
 }
 
 impl SettingsWindow {
@@ -74,6 +77,7 @@ impl SettingsWindow {
             needs_redraw: true,
             hit_rects: Vec::new(),
             cursor_pos: (0.0, 0.0),
+            editing_shortcut: None,
         }
     }
 
@@ -284,7 +288,70 @@ impl SettingsWindow {
             h: toggle_h,
             action: Action::ToggleAutostart,
         });
-        y += toggle_h + 28.0;
+        y += toggle_h + 20.0;
+
+        // ── Shortcuts ──
+        draw_label(&mut pixmap, left, y, "Shortcuts", 14.0, SUBTEXT0);
+        y += 4.0;
+        fill_rect_rgb(
+            &mut pixmap,
+            left,
+            y + 14.0,
+            WIN_W as f32 - left * 2.0,
+            1.0,
+            SURFACE0,
+        );
+        y += 22.0;
+
+        let row_h: f32 = 22.0;
+        let key_btn_w: f32 = 50.0;
+        let key_btn_h: f32 = 20.0;
+        let key_btn_x = WIN_W as f32 - left - key_btn_w;
+
+        let entries = self.config.shortcuts.entries();
+        for (i, (label, key_val)) in entries.iter().enumerate() {
+            let ry = y + i as f32 * row_h;
+
+            // Highlight row if editing
+            if self.editing_shortcut == Some(i) {
+                fill_rect_rgb(
+                    &mut pixmap,
+                    left - 4.0,
+                    ry - 2.0,
+                    WIN_W as f32 - (left - 4.0) * 2.0,
+                    row_h,
+                    SURFACE0,
+                );
+            }
+
+            draw_label(&mut pixmap, left, ry, label, 12.0, TEXT_RGB);
+
+            // Key button
+            let display = if self.editing_shortcut == Some(i) {
+                "..."
+            } else {
+                key_val
+            };
+            let btn_hovered = self.is_hovered(key_btn_x, ry - 1.0, key_btn_w, key_btn_h);
+            draw_button(
+                &mut pixmap,
+                key_btn_x,
+                ry - 1.0,
+                key_btn_w,
+                key_btn_h,
+                &display.to_uppercase(),
+                btn_hovered,
+            );
+
+            self.hit_rects.push(HitRect {
+                x: key_btn_x,
+                y: ry - 1.0,
+                w: key_btn_w,
+                h: key_btn_h,
+                action: Action::ClickShortcut(i),
+            });
+        }
+        y += entries.len() as f32 * row_h + 16.0;
 
         // ── Save & Close button ──
         let sc_w: f32 = 140.0;
@@ -383,12 +450,32 @@ impl SettingsWindow {
                 self.needs_redraw = true;
                 false
             }
+            Action::ClickShortcut(idx) => {
+                self.editing_shortcut = Some(idx);
+                self.needs_redraw = true;
+                false
+            }
             Action::SaveClose => {
                 if let Err(e) = self.config.save() {
                     tracing::error!("Failed to save config: {e}");
                 }
                 true
             }
+        }
+    }
+
+    /// Handle a key press while a shortcut is being edited.
+    /// Returns `true` if the key was consumed (a shortcut was being edited).
+    pub fn on_key_press(&mut self, key: &str) -> bool {
+        if let Some(idx) = self.editing_shortcut {
+            if !key.is_empty() {
+                self.config.shortcuts.set_by_index(idx, key.to_string());
+            }
+            self.editing_shortcut = None;
+            self.needs_redraw = true;
+            true
+        } else {
+            false
         }
     }
 
