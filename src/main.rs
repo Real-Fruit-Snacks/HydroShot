@@ -944,10 +944,27 @@ impl App {
                     tracing::info!("Settings menu item clicked");
                     self.open_settings(event_loop);
                 } else if event.id == tray.about_id {
-                    tracing::info!(
-                        "HydroShot v{} — a screenshot annotation tool",
-                        env!("CARGO_PKG_VERSION")
-                    );
+                    let version = env!("CARGO_PKG_VERSION");
+                    let _ = Notification::new()
+                        .summary("HydroShot")
+                        .body(&format!(
+                            "HydroShot v{}\nScreenshot capture & annotation tool\ngithub.com/Real-Fruit-Snacks/HydroShot",
+                            version
+                        ))
+                        .timeout(5000)
+                        .show();
+                    #[cfg(target_os = "windows")]
+                    {
+                        let _ = std::process::Command::new("cmd")
+                            .args(["/C", "start", "https://github.com/Real-Fruit-Snacks/HydroShot"])
+                            .spawn();
+                    }
+                    #[cfg(target_os = "linux")]
+                    {
+                        let _ = std::process::Command::new("xdg-open")
+                            .arg("https://github.com/Real-Fruit-Snacks/HydroShot")
+                            .spawn();
+                    }
                 }
             }
         }
