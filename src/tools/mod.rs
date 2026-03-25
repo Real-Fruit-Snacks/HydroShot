@@ -678,6 +678,101 @@ pub fn recolor_annotation(annotation: &mut Annotation, new_color: Color) {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum ResizeHandle {
+    TopLeft,
+    TopRight,
+    BottomLeft,
+    BottomRight,
+}
+
+/// Resize an annotation by dragging a corner handle to a new position.
+pub fn resize_annotation(annotation: &mut Annotation, handle: ResizeHandle, new_pos: Point) {
+    if let Some((bx, by, bw, bh)) = annotation_bounding_box(annotation) {
+        // Compute the new bounding box based on which corner was dragged
+        let (new_x, new_y, new_w, new_h) = match handle {
+            ResizeHandle::TopLeft => {
+                let new_w = (bx + bw) - new_pos.x;
+                let new_h = (by + bh) - new_pos.y;
+                (new_pos.x, new_pos.y, new_w, new_h)
+            }
+            ResizeHandle::TopRight => {
+                let new_w = new_pos.x - bx;
+                let new_h = (by + bh) - new_pos.y;
+                (bx, new_pos.y, new_w, new_h)
+            }
+            ResizeHandle::BottomLeft => {
+                let new_w = (bx + bw) - new_pos.x;
+                let new_h = new_pos.y - by;
+                (new_pos.x, by, new_w, new_h)
+            }
+            ResizeHandle::BottomRight => {
+                let new_w = new_pos.x - bx;
+                let new_h = new_pos.y - by;
+                (bx, by, new_w, new_h)
+            }
+        };
+
+        // Don't allow negative/zero size
+        if new_w < 4.0 || new_h < 4.0 {
+            return;
+        }
+
+        // Scale the annotation to fit the new bounding box
+        let sx = new_w / bw;
+        let sy = new_h / bh;
+
+        // Apply transform based on annotation type
+        match annotation {
+            Annotation::Arrow { start, end, .. } | Annotation::Line { start, end, .. } => {
+                start.x = new_x + (start.x - bx) * sx;
+                start.y = new_y + (start.y - by) * sy;
+                end.x = new_x + (end.x - bx) * sx;
+                end.y = new_y + (end.y - by) * sy;
+            }
+            Annotation::Rectangle { top_left, size, .. }
+            | Annotation::Highlight { top_left, size, .. }
+            | Annotation::Pixelate { top_left, size, .. } => {
+                top_left.x = new_x;
+                top_left.y = new_y;
+                size.width = new_w;
+                size.height = new_h;
+            }
+            Annotation::Ellipse {
+                center,
+                radius_x,
+                radius_y,
+                ..
+            } => {
+                *center = Point::new(new_x + new_w / 2.0, new_y + new_h / 2.0);
+                *radius_x = new_w / 2.0;
+                *radius_y = new_h / 2.0;
+            }
+            Annotation::Pencil { points, .. } => {
+                for p in points.iter_mut() {
+                    p.x = new_x + (p.x - bx) * sx;
+                    p.y = new_y + (p.y - by) * sy;
+                }
+            }
+            Annotation::Text {
+                position,
+                font_size,
+                ..
+            } => {
+                position.x = new_x;
+                position.y = new_y;
+                *font_size *= sy; // scale font size vertically
+            }
+            Annotation::StepMarker {
+                position, size, ..
+            } => {
+                *position = Point::new(new_x + new_w / 2.0, new_y + new_h / 2.0);
+                *size = new_w.min(new_h);
+            }
+        }
+    }
+}
+
 /// Compute the bounding box of an annotation as (x, y, w, h).
 pub fn annotation_bounding_box(annotation: &Annotation) -> Option<(f32, f32, f32, f32)> {
     match annotation {

@@ -24,7 +24,7 @@ use hydroshot::overlay::selection::{HitZone, Selection};
 use hydroshot::overlay::toolbar::Toolbar;
 use hydroshot::renderer::render_overlay;
 use hydroshot::state::{AppState, OverlayState};
-use hydroshot::tools::{hit_test_annotation, move_annotation, recolor_annotation, Annotation, AnnotationTool, ToolKind};
+use hydroshot::tools::{annotation_bounding_box, hit_test_annotation, move_annotation, recolor_annotation, resize_annotation, Annotation, AnnotationTool, ResizeHandle, ToolKind};
 use hydroshot::settings_ui::SettingsWindow;
 use hydroshot::tray::{self, TrayState};
 use hydroshot::window_detect;
@@ -832,6 +832,38 @@ fn determine_cursor(overlay: &OverlayState, pos: Point) -> CursorIcon {
         }
     }
 
+    // Currently dragging a resize handle on an annotation
+    if let Some(handle) = overlay.resize_handle {
+        return match handle {
+            ResizeHandle::TopLeft | ResizeHandle::BottomRight => CursorIcon::NwseResize,
+            ResizeHandle::TopRight | ResizeHandle::BottomLeft => CursorIcon::NeswResize,
+        };
+    }
+
+    // Hovering over a resize handle on a selected annotation
+    if overlay.active_tool == ToolKind::Select {
+        if let Some(idx) = overlay.selected_index {
+            if let Some(ann) = overlay.annotations.get(idx) {
+                if let Some((bx, by, bw, bh)) = annotation_bounding_box(ann) {
+                    let handles = [
+                        (Point::new(bx, by), ResizeHandle::TopLeft),
+                        (Point::new(bx + bw, by), ResizeHandle::TopRight),
+                        (Point::new(bx, by + bh), ResizeHandle::BottomLeft),
+                        (Point::new(bx + bw, by + bh), ResizeHandle::BottomRight),
+                    ];
+                    for (hp, handle) in &handles {
+                        if (pos.x - hp.x).abs() < 8.0 && (pos.y - hp.y).abs() < 8.0 {
+                            return match handle {
+                                ResizeHandle::TopLeft | ResizeHandle::BottomRight => CursorIcon::NwseResize,
+                                ResizeHandle::TopRight | ResizeHandle::BottomLeft => CursorIcon::NeswResize,
+                            };
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     // Currently dragging to create selection
     if overlay.is_selecting {
         return CursorIcon::Crosshair;
@@ -1425,7 +1457,13 @@ impl ApplicationHandler for App {
                     // Forward to active tool if drawing
                     match overlay.active_tool {
                         ToolKind::Select => {
-                            if let (Some(idx), Some(drag_start)) = (overlay.selected_index, overlay.select_drag_start) {
+                            // Resize drag takes priority
+                            if let (Some(idx), Some(handle)) = (overlay.selected_index, overlay.resize_handle) {
+                                if let Some(ann) = overlay.annotations.get_mut(idx) {
+                                    resize_annotation(ann, handle, pos);
+                                }
+                                self.needs_redraw = true;
+                            } else if let (Some(idx), Some(drag_start)) = (overlay.selected_index, overlay.select_drag_start) {
                                 let dx = pos.x - drag_start.x;
                                 let dy = pos.y - drag_start.y;
                                 if let Some(ann) = overlay.annotations.get_mut(idx) {
@@ -1652,6 +1690,27 @@ impl ApplicationHandler for App {
                             // Start annotation with active tool
                             match overlay.active_tool {
                                 ToolKind::Select => {
+                                    // Check resize handles first (if an annotation is selected)
+                                    if let Some(idx) = overlay.selected_index {
+                                        if let Some(ann) = overlay.annotations.get(idx) {
+                                            if let Some((bx, by, bw, bh)) = annotation_bounding_box(ann) {
+                                                let handles = [
+                                                    (Point::new(bx, by), ResizeHandle::TopLeft),
+                                                    (Point::new(bx + bw, by), ResizeHandle::TopRight),
+                                                    (Point::new(bx, by + bh), ResizeHandle::BottomLeft),
+                                                    (Point::new(bx + bw, by + bh), ResizeHandle::BottomRight),
+                                                ];
+                                                for (hp, handle) in &handles {
+                                                    if (pos.x - hp.x).abs() < 8.0 && (pos.y - hp.y).abs() < 8.0 {
+                                                        overlay.resize_handle = Some(*handle);
+                                                        self.needs_redraw = true;
+                                                        return;
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+
                                     // Check annotations in REVERSE order (top-most first)
                                     let mut found = None;
                                     for (idx, ann) in overlay.annotations.iter().enumerate().rev() {
@@ -1756,6 +1815,7 @@ impl ApplicationHandler for App {
                     let annotation = match overlay.active_tool {
                         ToolKind::Select => {
                             overlay.select_drag_start = None;
+                            overlay.resize_handle = None;
                             None
                         }
                         ToolKind::Arrow => overlay.arrow_tool.on_mouse_up(pos),

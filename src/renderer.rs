@@ -227,15 +227,17 @@ fn rounded_rect_path(x: f32, y: f32, w: f32, h: f32, r: f32) -> Option<tiny_skia
     pb.finish()
 }
 
-/// Draw a dashed selection highlight rectangle around a selected annotation.
+/// Draw a dashed selection highlight rectangle around a selected annotation,
+/// plus resize handles at the four corners.
 fn render_selection_highlight(pixmap: &mut tiny_skia::Pixmap, x: f32, y: f32, w: f32, h: f32) {
     if w <= 0.0 || h <= 0.0 {
         return;
     }
+    let lavender_color = tiny_skia::Color::from_rgba(0.706, 0.745, 0.996, 0.8).unwrap();
     if let Some(rect) = tiny_skia::Rect::from_xywh(x, y, w, h) {
         let path = PathBuilder::from_rect(rect);
         let mut paint = Paint::default();
-        paint.set_color(tiny_skia::Color::from_rgba(0.706, 0.745, 0.996, 0.8).unwrap()); // Lavender
+        paint.set_color(lavender_color);
         paint.anti_alias = true;
         let stroke = Stroke {
             width: 1.5,
@@ -243,6 +245,35 @@ fn render_selection_highlight(pixmap: &mut tiny_skia::Pixmap, x: f32, y: f32, w:
             ..Stroke::default()
         };
         pixmap.stroke_path(&path, &paint, &stroke, Transform::identity(), None);
+    }
+
+    // Draw resize handles at the four corners
+    let handles = [
+        (x, y),
+        (x + w, y),
+        (x, y + h),
+        (x + w, y + h),
+    ];
+    for (hx, hy) in &handles {
+        let hs = 4.0; // half-size
+        if let Some(rect) = tiny_skia::Rect::from_xywh(hx - hs, hy - hs, hs * 2.0, hs * 2.0) {
+            // White filled square
+            let mut fill = Paint::default();
+            fill.set_color(tiny_skia::Color::WHITE);
+            fill.anti_alias = false;
+            pixmap.fill_rect(rect, &fill, Transform::identity(), None);
+
+            // Lavender border to match the dashed selection border
+            let path = PathBuilder::from_rect(rect);
+            let mut border = Paint::default();
+            border.set_color(lavender_color);
+            border.anti_alias = true;
+            let stroke = Stroke {
+                width: 1.0,
+                ..Stroke::default()
+            };
+            pixmap.stroke_path(&path, &border, &stroke, Transform::identity(), None);
+        }
     }
 }
 

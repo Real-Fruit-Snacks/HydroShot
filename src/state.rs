@@ -11,7 +11,7 @@ use crate::tools::pixelate::PixelateTool;
 use crate::tools::rectangle::RectangleTool;
 use crate::tools::step_marker::StepMarkerTool;
 use crate::tools::text::TextTool;
-use crate::tools::{Annotation, ToolKind};
+use crate::tools::{Annotation, ResizeHandle, ToolKind};
 
 pub enum AppState {
     Idle,
@@ -49,6 +49,7 @@ pub struct OverlayState {
     pub last_mouse_pos: Point,
     pub selected_index: Option<usize>,
     pub select_drag_start: Option<Point>,
+    pub resize_handle: Option<ResizeHandle>,
     pub icon_cache: IconCache,
     pub eyedropper_preview: Option<Color>,
 }
@@ -112,6 +113,7 @@ impl OverlayState {
             last_mouse_pos: Point::new(0.0, 0.0),
             selected_index: None,
             select_drag_start: None,
+            resize_handle: None,
             icon_cache: IconCache::new(),
             eyedropper_preview: None,
         }
