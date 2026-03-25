@@ -55,23 +55,23 @@ impl Default for ShortcutsConfig {
 }
 
 impl ShortcutsConfig {
-    /// Ordered list of (label, current key) for UI display.
-    pub fn entries(&self) -> Vec<(&'static str, &str)> {
+    /// Ordered list of (symbol, label, current key) for UI display.
+    pub fn entries(&self) -> Vec<(&'static str, &'static str, &str)> {
         vec![
-            ("Select", &self.select),
-            ("Arrow", &self.arrow),
-            ("Rectangle", &self.rectangle),
-            ("Circle", &self.circle),
-            ("Rounded Rect", &self.rounded_rect),
-            ("Line", &self.line),
-            ("Pencil", &self.pencil),
-            ("Highlight", &self.highlight),
-            ("Spotlight", &self.spotlight),
-            ("Text", &self.text),
-            ("Pixelate", &self.pixelate),
-            ("Step Marker", &self.step_marker),
-            ("Eyedropper", &self.eyedropper),
-            ("Measurement", &self.measurement),
+            ("->",  "Select / Move", &self.select),
+            (">>",  "Arrow",         &self.arrow),
+            ("[]",  "Rectangle",     &self.rectangle),
+            ("()",  "Circle",        &self.circle),
+            ("[.]", "Rounded Rect",  &self.rounded_rect),
+            ("--",  "Line",          &self.line),
+            ("~",   "Pencil",        &self.pencil),
+            ("##",  "Highlight",     &self.highlight),
+            ("**",  "Spotlight",     &self.spotlight),
+            ("Aa",  "Text",          &self.text),
+            ("::",  "Pixelate",      &self.pixelate),
+            ("1.",  "Step Marker",   &self.step_marker),
+            ("/|",  "Eyedropper",    &self.eyedropper),
+            ("|<>", "Measurement",   &self.measurement),
         ]
     }
 

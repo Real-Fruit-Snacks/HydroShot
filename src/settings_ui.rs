@@ -10,7 +10,7 @@ use crate::tools::render_text_annotation;
 
 /// Width / height of the settings window in physical pixels.
 pub const WIN_W: u32 = 400;
-pub const WIN_H: u32 = 700;
+pub const WIN_H: u32 = 780;
 
 // Catppuccin Mocha palette
 const BASE: (u8, u8, u8) = (0x1e, 0x1e, 0x2e);
@@ -309,7 +309,7 @@ impl SettingsWindow {
         let key_btn_x = WIN_W as f32 - left - key_btn_w;
 
         let entries = self.config.shortcuts.entries();
-        for (i, (label, key_val)) in entries.iter().enumerate() {
+        for (i, (symbol, label, key_val)) in entries.iter().enumerate() {
             let ry = y + i as f32 * row_h;
 
             // Highlight row if editing
@@ -324,7 +324,10 @@ impl SettingsWindow {
                 );
             }
 
-            draw_label(&mut pixmap, left, ry, label, 12.0, TEXT_RGB);
+            // Symbol (tool icon hint) in accent color
+            draw_label(&mut pixmap, left, ry, symbol, 12.0, LAVENDER);
+            // Tool name
+            draw_label(&mut pixmap, left + 36.0, ry, label, 12.0, TEXT_RGB);
 
             // Key button
             let display = if self.editing_shortcut == Some(i) {
