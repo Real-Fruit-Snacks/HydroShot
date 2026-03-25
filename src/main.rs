@@ -2463,6 +2463,16 @@ fn main() {
     tracing_subscriber::fmt::init();
     tracing::info!("HydroShot starting");
 
+    // Set Windows Application User Model ID so toast notifications display
+    #[cfg(target_os = "windows")]
+    {
+        use windows::Win32::UI::Shell::SetCurrentProcessExplicitAppUserModelID;
+        use windows::core::w;
+        unsafe {
+            let _ = SetCurrentProcessExplicitAppUserModelID(w!("HydroShot.HydroShot.0.4.0"));
+        }
+    }
+
     let cli = Cli::parse();
 
     match cli.command {
