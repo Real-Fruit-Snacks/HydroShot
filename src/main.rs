@@ -26,8 +26,9 @@ use hydroshot::renderer::render_overlay;
 use hydroshot::settings_ui::SettingsWindow;
 use hydroshot::state::{AppState, OverlayState};
 use hydroshot::tools::{
-    annotation_bounding_box, hit_test_annotation, move_annotation, recolor_annotation,
-    resize_annotation, Annotation, AnnotationTool, ResizeHandle, ToolKind,
+    annotation_bounding_box, apply_redo, apply_undo, hit_test_annotation, move_annotation,
+    recolor_annotation, record_undo, resize_annotation, Annotation, AnnotationTool, ResizeHandle,
+    ToolKind, UndoAction,
 };
 use hydroshot::tray::{self, TrayState};
 use hydroshot::window_detect;
@@ -1188,7 +1189,7 @@ impl ApplicationHandler for App {
                                     font_size: overlay.text_input_font_size,
                                 };
                                 overlay.annotations.push(ann);
-                                overlay.redo_buffer.clear();
+                                record_undo(&mut overlay.undo_stack, &mut overlay.redo_stack, UndoAction::Add(overlay.annotations.len() - 1));
                             }
                             overlay.text_input_buffer.clear();
                             overlay.text_input_active = false;
@@ -1235,7 +1236,8 @@ impl ApplicationHandler for App {
                         };
                         if let Some(idx) = overlay.selected_index {
                             if idx < overlay.annotations.len() {
-                                overlay.annotations.remove(idx);
+                                let removed = overlay.annotations.remove(idx);
+                                record_undo(&mut overlay.undo_stack, &mut overlay.redo_stack, UndoAction::Delete(idx, removed));
                                 overlay.selected_index = None;
                                 self.needs_redraw = true;
                             }
@@ -1291,8 +1293,8 @@ impl ApplicationHandler for App {
                                     AppState::Capturing(o) => o,
                                     _ => return,
                                 };
-                                if let Some(ann) = overlay.redo_buffer.pop() {
-                                    overlay.annotations.push(ann);
+                                if apply_redo(&mut overlay.annotations, &mut overlay.undo_stack, &mut overlay.redo_stack) {
+                                    overlay.selected_index = None;
                                     self.needs_redraw = true;
                                 }
                             }
@@ -1302,8 +1304,8 @@ impl ApplicationHandler for App {
                                     AppState::Capturing(o) => o,
                                     _ => return,
                                 };
-                                if let Some(ann) = overlay.annotations.pop() {
-                                    overlay.redo_buffer.push(ann);
+                                if apply_undo(&mut overlay.annotations, &mut overlay.undo_stack, &mut overlay.redo_stack) {
+                                    overlay.selected_index = None;
                                     self.needs_redraw = true;
                                 }
                             }
@@ -1313,8 +1315,8 @@ impl ApplicationHandler for App {
                                     AppState::Capturing(o) => o,
                                     _ => return,
                                 };
-                                if let Some(ann) = overlay.redo_buffer.pop() {
-                                    overlay.annotations.push(ann);
+                                if apply_redo(&mut overlay.annotations, &mut overlay.undo_stack, &mut overlay.redo_stack) {
+                                    overlay.selected_index = None;
                                     self.needs_redraw = true;
                                 }
                             }
@@ -1665,8 +1667,10 @@ impl ApplicationHandler for App {
                                 if idx < presets.len() {
                                     // If an annotation is selected, recolor it
                                     if let Some(sel_idx) = overlay.selected_index {
-                                        if let Some(ann) = overlay.annotations.get_mut(sel_idx) {
-                                            recolor_annotation(ann, presets[idx]);
+                                        if sel_idx < overlay.annotations.len() {
+                                            let old_ann = overlay.annotations[sel_idx].clone();
+                                            recolor_annotation(&mut overlay.annotations[sel_idx], presets[idx]);
+                                            record_undo(&mut overlay.undo_stack, &mut overlay.redo_stack, UndoAction::Modify(sel_idx, old_ann));
                                         }
                                     } else {
                                         overlay.current_color = presets[idx];
@@ -1748,6 +1752,8 @@ impl ApplicationHandler for App {
                                                         && (pos.y - hp.y).abs() < 8.0
                                                     {
                                                         overlay.resize_handle = Some(*handle);
+                                                        // Snapshot annotation before resize for undo
+                                                        overlay.pre_drag_annotation = Some((idx, overlay.annotations[idx].clone()));
                                                         self.needs_redraw = true;
                                                         return;
                                                     }
@@ -1775,7 +1781,8 @@ impl ApplicationHandler for App {
                                             }) = overlay.annotations.get(idx).cloned()
                                             {
                                                 // Remove the annotation and enter text edit mode with its content
-                                                overlay.annotations.remove(idx);
+                                                let removed = overlay.annotations.remove(idx);
+                                                record_undo(&mut overlay.undo_stack, &mut overlay.redo_stack, UndoAction::Delete(idx, removed));
                                                 overlay.selected_index = None;
                                                 overlay.text_input_active = true;
                                                 overlay.text_input_position = position;
@@ -1788,6 +1795,8 @@ impl ApplicationHandler for App {
                                         }
                                         overlay.selected_index = Some(idx);
                                         overlay.select_drag_start = Some(pos);
+                                        // Snapshot annotation before move for undo
+                                        overlay.pre_drag_annotation = Some((idx, overlay.annotations[idx].clone()));
                                     } else {
                                         overlay.selected_index = None;
                                     }
@@ -1865,6 +1874,12 @@ impl ApplicationHandler for App {
                     // Finalize annotation
                     let annotation = match overlay.active_tool {
                         ToolKind::Select => {
+                            // Record undo for move/resize if annotation changed
+                            if let Some((idx, old_ann)) = overlay.pre_drag_annotation.take() {
+                                if idx < overlay.annotations.len() && overlay.annotations[idx] != old_ann {
+                                    record_undo(&mut overlay.undo_stack, &mut overlay.redo_stack, UndoAction::Modify(idx, old_ann));
+                                }
+                            }
                             overlay.select_drag_start = None;
                             overlay.resize_handle = None;
                             None
@@ -1882,7 +1897,7 @@ impl ApplicationHandler for App {
                     };
                     if let Some(ann) = annotation {
                         overlay.annotations.push(ann);
-                        overlay.redo_buffer.clear();
+                        record_undo(&mut overlay.undo_stack, &mut overlay.redo_stack, UndoAction::Add(overlay.annotations.len() - 1));
                         self.needs_redraw = true;
                     }
                 }
@@ -1915,8 +1930,10 @@ impl ApplicationHandler for App {
                                     overlay.text_tool.set_color(new_color);
                                     overlay.step_marker_tool.set_color(new_color);
                                     if let Some(idx) = overlay.selected_index {
-                                        if let Some(ann) = overlay.annotations.get_mut(idx) {
-                                            recolor_annotation(ann, new_color);
+                                        if idx < overlay.annotations.len() {
+                                            let old_ann = overlay.annotations[idx].clone();
+                                            recolor_annotation(&mut overlay.annotations[idx], new_color);
+                                            record_undo(&mut overlay.undo_stack, &mut overlay.redo_stack, UndoAction::Modify(idx, old_ann));
                                         }
                                     }
                                     self.needs_redraw = true;

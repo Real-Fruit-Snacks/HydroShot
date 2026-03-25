@@ -11,7 +11,7 @@ use crate::tools::pixelate::PixelateTool;
 use crate::tools::rectangle::RectangleTool;
 use crate::tools::step_marker::StepMarkerTool;
 use crate::tools::text::TextTool;
-use crate::tools::{Annotation, ResizeHandle, ToolKind};
+use crate::tools::{Annotation, ResizeHandle, ToolKind, UndoAction};
 
 pub enum AppState {
     Idle,
@@ -26,7 +26,10 @@ pub struct OverlayState {
     pub dimmed_pixmap: tiny_skia::Pixmap,
     pub selection: Option<Selection>,
     pub annotations: Vec<Annotation>,
-    pub redo_buffer: Vec<Annotation>,
+    pub undo_stack: Vec<UndoAction>,
+    pub redo_stack: Vec<UndoAction>,
+    /// Snapshot of an annotation before a drag/resize starts, for undo recording.
+    pub pre_drag_annotation: Option<(usize, Annotation)>,
     pub active_tool: ToolKind,
     pub arrow_tool: ArrowTool,
     pub rectangle_tool: RectangleTool,
@@ -90,7 +93,9 @@ impl OverlayState {
             dimmed_pixmap,
             selection: None,
             annotations: Vec::new(),
-            redo_buffer: Vec::new(),
+            undo_stack: Vec::new(),
+            redo_stack: Vec::new(),
+            pre_drag_annotation: None,
             active_tool: ToolKind::Arrow,
             arrow_tool: ArrowTool::new(color, thickness),
             rectangle_tool: RectangleTool::new(color, thickness),

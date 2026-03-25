@@ -11,6 +11,101 @@ pub mod text;
 use crate::geometry::{Color, Point, Size};
 use tiny_skia::{Paint, PathBuilder, Pixmap, Stroke, Transform};
 
+/// Maximum number of entries in the undo stack before oldest entries are dropped.
+const UNDO_STACK_CAP: usize = 50;
+
+/// A reversible action recorded on the undo/redo stacks.
+#[derive(Debug, Clone)]
+pub enum UndoAction {
+    /// An annotation was added at the given index.
+    Add(usize),
+    /// An annotation was deleted from the given index (stores the deleted annotation).
+    Delete(usize, Annotation),
+    /// An annotation was modified at the given index (stores the OLD version).
+    Modify(usize, Annotation),
+}
+
+/// Apply one undo step: pop from `undo_stack`, reverse it, push the inverse onto `redo_stack`.
+pub fn apply_undo(
+    annotations: &mut Vec<Annotation>,
+    undo_stack: &mut Vec<UndoAction>,
+    redo_stack: &mut Vec<UndoAction>,
+) -> bool {
+    if let Some(action) = undo_stack.pop() {
+        match action {
+            UndoAction::Add(idx) => {
+                if idx < annotations.len() {
+                    let removed = annotations.remove(idx);
+                    redo_stack.push(UndoAction::Delete(idx, removed));
+                }
+            }
+            UndoAction::Delete(idx, ann) => {
+                let idx = idx.min(annotations.len());
+                annotations.insert(idx, ann);
+                redo_stack.push(UndoAction::Add(idx));
+            }
+            UndoAction::Modify(idx, old_ann) => {
+                if idx < annotations.len() {
+                    let current = annotations[idx].clone();
+                    annotations[idx] = old_ann;
+                    redo_stack.push(UndoAction::Modify(idx, current));
+                }
+            }
+        }
+        true
+    } else {
+        false
+    }
+}
+
+/// Apply one redo step: pop from `redo_stack`, reverse it, push the inverse onto `undo_stack`.
+pub fn apply_redo(
+    annotations: &mut Vec<Annotation>,
+    undo_stack: &mut Vec<UndoAction>,
+    redo_stack: &mut Vec<UndoAction>,
+) -> bool {
+    if let Some(action) = redo_stack.pop() {
+        match action {
+            UndoAction::Add(idx) => {
+                if idx < annotations.len() {
+                    let removed = annotations.remove(idx);
+                    undo_stack.push(UndoAction::Delete(idx, removed));
+                }
+            }
+            UndoAction::Delete(idx, ann) => {
+                let idx = idx.min(annotations.len());
+                annotations.insert(idx, ann);
+                undo_stack.push(UndoAction::Add(idx));
+            }
+            UndoAction::Modify(idx, old_ann) => {
+                if idx < annotations.len() {
+                    let current = annotations[idx].clone();
+                    annotations[idx] = old_ann;
+                    undo_stack.push(UndoAction::Modify(idx, current));
+                }
+            }
+        }
+        cap_undo_stack(undo_stack);
+        true
+    } else {
+        false
+    }
+}
+
+/// Record a new action on the undo stack, clearing the redo stack (new branch).
+pub fn record_undo(undo_stack: &mut Vec<UndoAction>, redo_stack: &mut Vec<UndoAction>, action: UndoAction) {
+    redo_stack.clear();
+    undo_stack.push(action);
+    cap_undo_stack(undo_stack);
+}
+
+/// Keep the undo stack within the cap by removing the oldest entries.
+fn cap_undo_stack(stack: &mut Vec<UndoAction>) {
+    while stack.len() > UNDO_STACK_CAP {
+        stack.remove(0);
+    }
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum Annotation {
     Arrow {
