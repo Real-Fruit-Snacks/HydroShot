@@ -5,6 +5,9 @@ target/
 /icon_*.png
 /capture_test_*.png
 
+# Generated icon
+assets/icon.ico
+
 # Design drafts
 logo-concepts*.html
 

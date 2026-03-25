@@ -24,6 +24,9 @@ clap = { version = "4", features = ["derive"] }
 notify-rust = "4"
 resvg = "0.44"
 
+[build-dependencies]
+winres = "0.1"
+
 # Optimize dependencies even in dev builds — critical for GUI responsiveness.
 # Without this, pixel operations (tiny-skia, fontdue, softbuffer) are 10-50x slower.
 [profile.dev.package."*"]
