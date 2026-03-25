@@ -404,7 +404,10 @@ fn render_selection_highlight(pixmap: &mut tiny_skia::Pixmap, x: f32, y: f32, w:
 }
 
 fn render_toolbar(state: &mut OverlayState, selection: &Selection, pixmap: &mut tiny_skia::Pixmap) {
-    let toolbar = Toolbar::position_for(selection, pixmap.height() as f32);
+    let visible = &state.visible_buttons;
+    let visible_count = visible.len();
+    let toolbar =
+        Toolbar::position_for_dynamic(selection, pixmap.height() as f32, visible_count);
     let presets = Color::presets();
 
     // --- Toolbar background: rounded rect with subtle border ---
@@ -459,30 +462,62 @@ fn render_toolbar(state: &mut OverlayState, selection: &Selection, pixmap: &mut 
     }
 
     // --- Separators between button groups (tools | colors | actions) ---
+    // Find the visible positions where group boundaries occur (after last tool, after last color)
     let sep_color = tiny_skia::Color::from_rgba(0.804, 0.839, 0.957, 0.15).unwrap();
-    for &after_btn in &[13usize, 18] {
-        let (bx, _, bw, _) = toolbar.button_rect(after_btn);
-        let sep_x = bx + bw + TOOLBAR_PADDING / 2.0;
-        let sep_y1 = toolbar.y + 8.0;
-        let sep_y2 = toolbar.y + toolbar.height - 8.0;
-        let mut pb = PathBuilder::new();
-        pb.move_to(sep_x, sep_y1);
-        pb.line_to(sep_x, sep_y2);
-        if let Some(path) = pb.finish() {
-            let mut paint = Paint::default();
-            paint.set_color(sep_color);
-            paint.anti_alias = true;
-            let stroke = Stroke {
-                width: 1.0,
-                ..Stroke::default()
-            };
-            pixmap.stroke_path(&path, &paint, &stroke, Transform::identity(), None);
+    // Separator after the last tool button (orig 0-13) before colors (orig 14)
+    // and after the last color button (orig 18) before actions (orig 19)
+    let sep_after_orig = [13usize, 18];
+    for &boundary in &sep_after_orig {
+        // Find the visible index of this boundary button
+        if let Some(vis_idx) = visible.iter().position(|&orig| orig == boundary) {
+            let (bx, _, bw, _) = toolbar.button_rect(vis_idx);
+            let sep_x = bx + bw + TOOLBAR_PADDING / 2.0;
+            let sep_y1 = toolbar.y + 8.0;
+            let sep_y2 = toolbar.y + toolbar.height - 8.0;
+            let mut pb = PathBuilder::new();
+            pb.move_to(sep_x, sep_y1);
+            pb.line_to(sep_x, sep_y2);
+            if let Some(path) = pb.finish() {
+                let mut paint = Paint::default();
+                paint.set_color(sep_color);
+                paint.anti_alias = true;
+                let stroke = Stroke {
+                    width: 1.0,
+                    ..Stroke::default()
+                };
+                pixmap.stroke_path(&path, &paint, &stroke, Transform::identity(), None);
+            }
+        } else if boundary == 13 {
+            // If button 13 is hidden, find the last visible tool button (0-13)
+            // and draw separator after it
+            if let Some(vis_idx) = visible.iter().rposition(|&orig| orig <= 13) {
+                // Only draw if there's actually a color/action after it
+                if vis_idx + 1 < visible_count {
+                    let (bx, _, bw, _) = toolbar.button_rect(vis_idx);
+                    let sep_x = bx + bw + TOOLBAR_PADDING / 2.0;
+                    let sep_y1 = toolbar.y + 8.0;
+                    let sep_y2 = toolbar.y + toolbar.height - 8.0;
+                    let mut pb = PathBuilder::new();
+                    pb.move_to(sep_x, sep_y1);
+                    pb.line_to(sep_x, sep_y2);
+                    if let Some(path) = pb.finish() {
+                        let mut paint = Paint::default();
+                        paint.set_color(sep_color);
+                        paint.anti_alias = true;
+                        let stroke = Stroke {
+                            width: 1.0,
+                            ..Stroke::default()
+                        };
+                        pixmap.stroke_path(&path, &paint, &stroke, Transform::identity(), None);
+                    }
+                }
+            }
         }
     }
 
     // --- Render each button ---
-    for i in 0..24usize {
-        let (bx, by, bw, bh) = toolbar.button_rect(i);
+    for (vis_idx, &i) in visible.iter().enumerate() {
+        let (bx, by, bw, bh) = toolbar.button_rect(vis_idx);
 
         let is_active = match i {
             0 => state.active_tool == ToolKind::Select,
@@ -630,7 +665,8 @@ fn render_toolbar(state: &mut OverlayState, selection: &Selection, pixmap: &mut 
 
     // --- Tooltip for hovered button ---
     let mouse = crate::geometry::Point::new(state.last_mouse_pos.x, state.last_mouse_pos.y);
-    if let Some(btn_idx) = toolbar.hit_test(mouse) {
+    if let Some(vis_idx) = toolbar.hit_test_dynamic(mouse, visible_count) {
+        let btn_idx = visible[vis_idx];
         let label = match btn_idx {
             0 => "Select (V)",
             1 => "Arrow (A)",
@@ -660,7 +696,7 @@ fn render_toolbar(state: &mut OverlayState, selection: &Selection, pixmap: &mut 
         };
 
         if !label.is_empty() {
-            let (btn_x, _btn_y, btn_w, _btn_h) = toolbar.button_rect(btn_idx);
+            let (btn_x, _btn_y, btn_w, _btn_h) = toolbar.button_rect(vis_idx);
 
             // Measure text width
             static FONT_DATA: &[u8] = include_bytes!("../assets/font.ttf");

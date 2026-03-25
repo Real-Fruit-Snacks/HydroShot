@@ -66,6 +66,8 @@ pub struct OverlayState {
     pub toast_until: Option<std::time::Instant>,
     /// Upload confirmation — true means "user confirmed, proceed"
     pub upload_confirmed: bool,
+    /// Visible toolbar button indices (original 0-23 indices), computed from ToolbarConfig.
+    pub visible_buttons: Vec<usize>,
 }
 
 impl OverlayState {
@@ -138,6 +140,7 @@ impl OverlayState {
             toast_message: None,
             toast_until: None,
             upload_confirmed: false,
+            visible_buttons: config.toolbar.visible_button_indices(),
         }
     }
 

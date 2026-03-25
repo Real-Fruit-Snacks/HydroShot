@@ -33,6 +33,129 @@ pub struct ShortcutsConfig {
     pub measurement: String,
 }
 
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct ToolbarConfig {
+    pub select: bool,
+    pub arrow: bool,
+    pub rectangle: bool,
+    pub circle: bool,
+    pub rounded_rect: bool,
+    pub line: bool,
+    pub pencil: bool,
+    pub highlight: bool,
+    pub spotlight: bool,
+    pub text: bool,
+    pub pixelate: bool,
+    pub step_marker: bool,
+    pub eyedropper: bool,
+    pub measurement: bool,
+}
+
+impl Default for ToolbarConfig {
+    fn default() -> Self {
+        Self {
+            select: true,
+            arrow: true,
+            rectangle: true,
+            circle: true,
+            rounded_rect: true,
+            line: true,
+            pencil: true,
+            highlight: true,
+            spotlight: true,
+            text: true,
+            pixelate: true,
+            step_marker: true,
+            eyedropper: true,
+            measurement: true,
+        }
+    }
+}
+
+impl ToolbarConfig {
+    /// Returns the list of visible button indices (0-23) based on which tools are enabled.
+    /// Tool buttons 0-13 are conditionally shown; colors 14-18 and actions 19-23 are always shown.
+    pub fn visible_button_indices(&self) -> Vec<usize> {
+        let mut indices = Vec::new();
+
+        let tool_flags = [
+            self.select,
+            self.arrow,
+            self.rectangle,
+            self.circle,
+            self.rounded_rect,
+            self.line,
+            self.pencil,
+            self.highlight,
+            self.spotlight,
+            self.text,
+            self.pixelate,
+            self.step_marker,
+            self.eyedropper,
+            self.measurement,
+        ];
+
+        for (i, &enabled) in tool_flags.iter().enumerate() {
+            if enabled {
+                indices.push(i);
+            }
+        }
+
+        // Colors: always visible (indices 14-18)
+        for i in 14..=18 {
+            indices.push(i);
+        }
+
+        // Actions: always visible (indices 19-23)
+        for i in 19..=23 {
+            indices.push(i);
+        }
+
+        indices
+    }
+
+    /// Ordered list of (symbol, label, enabled) for the Settings UI.
+    pub fn entries(&self) -> Vec<(&'static str, &'static str, bool)> {
+        vec![
+            ("->",  "Select / Move", self.select),
+            (">>",  "Arrow",         self.arrow),
+            ("[]",  "Rectangle",     self.rectangle),
+            ("()",  "Circle",        self.circle),
+            ("[.]", "Rounded Rect",  self.rounded_rect),
+            ("--",  "Line",          self.line),
+            ("~",   "Pencil",        self.pencil),
+            ("##",  "Highlight",     self.highlight),
+            ("**",  "Spotlight",     self.spotlight),
+            ("Aa",  "Text",          self.text),
+            ("::",  "Pixelate",      self.pixelate),
+            ("1.",  "Step Marker",   self.step_marker),
+            ("/|",  "Eyedropper",    self.eyedropper),
+            ("|<>", "Measurement",   self.measurement),
+        ]
+    }
+
+    /// Toggle a tool by index (0-13).
+    pub fn toggle_by_index(&mut self, index: usize) {
+        match index {
+            0 => self.select = !self.select,
+            1 => self.arrow = !self.arrow,
+            2 => self.rectangle = !self.rectangle,
+            3 => self.circle = !self.circle,
+            4 => self.rounded_rect = !self.rounded_rect,
+            5 => self.line = !self.line,
+            6 => self.pencil = !self.pencil,
+            7 => self.highlight = !self.highlight,
+            8 => self.spotlight = !self.spotlight,
+            9 => self.text = !self.text,
+            10 => self.pixelate = !self.pixelate,
+            11 => self.step_marker = !self.step_marker,
+            12 => self.eyedropper = !self.eyedropper,
+            13 => self.measurement = !self.measurement,
+            _ => {}
+        }
+    }
+}
+
 impl Default for ShortcutsConfig {
     fn default() -> Self {
         Self {
@@ -103,6 +226,8 @@ pub struct Config {
     pub hotkey: HotkeyConfig,
     #[serde(default)]
     pub shortcuts: ShortcutsConfig,
+    #[serde(default)]
+    pub toolbar: ToolbarConfig,
 }
 
 impl Default for Config {
@@ -117,6 +242,7 @@ impl Default for Config {
                 capture: "Ctrl+Shift+S".to_string(),
             },
             shortcuts: ShortcutsConfig::default(),
+            toolbar: ToolbarConfig::default(),
         }
     }
 }

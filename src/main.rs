@@ -1042,8 +1042,9 @@ fn determine_cursor(overlay: &OverlayState, pos: Point) -> CursorIcon {
 
     // Check toolbar hover (only if selection exists)
     if let Some(ref sel) = overlay.selection {
-        let toolbar = Toolbar::position_for(sel, overlay.screenshot.height as f32);
-        if toolbar.hit_test(pos).is_some() {
+        let visible_count = overlay.visible_buttons.len();
+        let toolbar = Toolbar::position_for_dynamic(sel, overlay.screenshot.height as f32, visible_count);
+        if toolbar.hit_test_dynamic(pos, visible_count).is_some() {
             return CursorIcon::Pointer;
         }
     }
@@ -1911,8 +1912,10 @@ impl ApplicationHandler for App {
 
                 // 1. Check toolbar hit first (only if selection exists)
                 if let Some(ref sel) = overlay.selection {
-                    let toolbar = Toolbar::position_for(sel, overlay.screenshot.height as f32);
-                    if let Some(btn) = toolbar.hit_test(pos) {
+                    let visible_count = overlay.visible_buttons.len();
+                    let toolbar = Toolbar::position_for_dynamic(sel, overlay.screenshot.height as f32, visible_count);
+                    if let Some(vis_idx) = toolbar.hit_test_dynamic(pos, visible_count) {
+                        let btn = overlay.visible_buttons[vis_idx];
                         // Reset upload confirmation if clicking anything other than Upload
                         if btn != 19 {
                             overlay.upload_confirmed = false;
@@ -2281,9 +2284,11 @@ impl ApplicationHandler for App {
             } => {
                 if let AppState::Capturing(ref mut overlay) = self.state {
                     if let Some(ref sel) = overlay.selection {
-                        let toolbar = Toolbar::position_for(sel, overlay.screenshot.height as f32);
+                        let visible_count = overlay.visible_buttons.len();
+                        let toolbar = Toolbar::position_for_dynamic(sel, overlay.screenshot.height as f32, visible_count);
                         let pos = overlay.last_mouse_pos;
-                        if let Some(btn) = toolbar.hit_test(pos) {
+                        if let Some(vis_idx) = toolbar.hit_test_dynamic(pos, visible_count) {
+                            let btn = overlay.visible_buttons[vis_idx];
                             if (14..=18).contains(&btn) {
                                 let swatch_idx = btn - 14;
                                 let current = Color::presets()[swatch_idx];

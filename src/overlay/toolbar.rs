@@ -23,9 +23,23 @@ impl Toolbar {
         TOOLBAR_PADDING + (BUTTON_COUNT as f32) * (BUTTON_SIZE + TOOLBAR_PADDING)
     }
 
+    /// Total width for a dynamic number of visible buttons.
+    pub fn toolbar_width_dynamic(visible_count: usize) -> f32 {
+        TOOLBAR_PADDING + (visible_count as f32) * (BUTTON_SIZE + TOOLBAR_PADDING)
+    }
+
     /// Position the toolbar centered below (or above) the selection.
     pub fn position_for(selection: &Selection, screen_height: f32) -> Self {
-        let width = Self::toolbar_width();
+        Self::position_for_dynamic(selection, screen_height, BUTTON_COUNT)
+    }
+
+    /// Position the toolbar with a dynamic button count.
+    pub fn position_for_dynamic(
+        selection: &Selection,
+        screen_height: f32,
+        visible_count: usize,
+    ) -> Self {
+        let width = Self::toolbar_width_dynamic(visible_count);
         let height = TOOLBAR_HEIGHT;
 
         // Center horizontally on the selection
@@ -51,6 +65,11 @@ impl Toolbar {
 
     /// Hit-test a point, returning the button index if hit.
     pub fn hit_test(&self, point: Point) -> Option<usize> {
+        self.hit_test_dynamic(point, BUTTON_COUNT)
+    }
+
+    /// Hit-test with a dynamic visible button count, returning the visible index.
+    pub fn hit_test_dynamic(&self, point: Point, visible_count: usize) -> Option<usize> {
         // Check if point is within toolbar bounds first
         if point.x < self.x
             || point.x > self.x + self.width
@@ -60,7 +79,7 @@ impl Toolbar {
             return None;
         }
 
-        for i in 0..BUTTON_COUNT {
+        for i in 0..visible_count {
             let (bx, by, bw, bh) = self.button_rect(i);
             if point.x >= bx && point.x <= bx + bw && point.y >= by && point.y <= by + bh {
                 return Some(i);

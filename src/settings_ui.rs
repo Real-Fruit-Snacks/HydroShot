@@ -10,7 +10,7 @@ use crate::tools::render_text_annotation;
 
 /// Width / height of the settings window in physical pixels.
 pub const WIN_W: u32 = 400;
-pub const WIN_H: u32 = 780;
+pub const WIN_H: u32 = 1120;
 
 // Catppuccin Mocha palette
 const BASE: (u8, u8, u8) = (0x1e, 0x1e, 0x2e);
@@ -39,6 +39,7 @@ pub enum Action {
     BrowseDir,
     ToggleAutostart,
     ClickShortcut(usize),
+    ToggleToolbar(usize),
     SaveClose,
 }
 
@@ -356,6 +357,69 @@ impl SettingsWindow {
         }
         y += entries.len() as f32 * row_h + 16.0;
 
+        // ── Toolbar Visibility ──
+        draw_label(&mut pixmap, left, y, "Toolbar", 14.0, SUBTEXT0);
+        y += 4.0;
+        fill_rect_rgb(
+            &mut pixmap,
+            left,
+            y + 14.0,
+            WIN_W as f32 - left * 2.0,
+            1.0,
+            SURFACE0,
+        );
+        y += 22.0;
+
+        let toolbar_entries = self.config.toolbar.entries();
+        let toggle_w: f32 = 50.0;
+        let toggle_h: f32 = 20.0;
+        let toggle_x = WIN_W as f32 - left - toggle_w;
+
+        for (i, (symbol, label, enabled)) in toolbar_entries.iter().enumerate() {
+            let ry = y + i as f32 * row_h;
+
+            // Symbol in accent color
+            draw_label(&mut pixmap, left, ry, symbol, 12.0, LAVENDER);
+            // Tool name
+            draw_label(&mut pixmap, left + 36.0, ry, label, 12.0, TEXT_RGB);
+
+            // Toggle button
+            let toggle_label = if *enabled { "ON" } else { "OFF" };
+            let toggle_bg = if *enabled { GREEN_RGB } else { SURFACE0 };
+            let btn_hovered = self.is_hovered(toggle_x, ry - 1.0, toggle_w, toggle_h);
+
+            if btn_hovered {
+                fill_rect_rgb(
+                    &mut pixmap,
+                    toggle_x,
+                    ry - 1.0,
+                    toggle_w,
+                    toggle_h,
+                    SURFACE1,
+                );
+            }
+            fill_rect_rgb(
+                &mut pixmap,
+                toggle_x + 1.0,
+                ry,
+                toggle_w - 2.0,
+                toggle_h - 2.0,
+                toggle_bg,
+            );
+
+            let tl_x = toggle_x + if *enabled { 14.0 } else { 12.0 };
+            draw_label(&mut pixmap, tl_x, ry + 2.0, toggle_label, 12.0, TEXT_RGB);
+
+            self.hit_rects.push(HitRect {
+                x: toggle_x,
+                y: ry - 1.0,
+                w: toggle_w,
+                h: toggle_h,
+                action: Action::ToggleToolbar(i),
+            });
+        }
+        y += toolbar_entries.len() as f32 * row_h + 16.0;
+
         // ── Save & Close button ──
         let sc_w: f32 = 140.0;
         let sc_h: f32 = 34.0;
@@ -455,6 +519,11 @@ impl SettingsWindow {
             }
             Action::ClickShortcut(idx) => {
                 self.editing_shortcut = Some(idx);
+                self.needs_redraw = true;
+                false
+            }
+            Action::ToggleToolbar(idx) => {
+                self.config.toolbar.toggle_by_index(idx);
                 self.needs_redraw = true;
                 false
             }
