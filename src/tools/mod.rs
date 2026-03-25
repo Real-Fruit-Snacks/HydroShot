@@ -2,6 +2,7 @@ pub mod arrow;
 pub mod circle;
 pub mod highlight;
 pub mod line;
+pub mod measurement;
 pub mod pencil;
 pub mod pixelate;
 pub mod rectangle;
@@ -177,6 +178,11 @@ pub enum Annotation {
         top_left: Point,
         size: Size,
     },
+    Measurement {
+        start: Point,
+        end: Point,
+        color: Color,
+    },
 }
 
 pub trait AnnotationTool {
@@ -202,6 +208,7 @@ pub enum ToolKind {
     Eyedropper,
     RoundedRect,
     Spotlight,
+    Measurement,
 }
 
 /// Compute the three vertices of an arrowhead triangle.
@@ -654,6 +661,109 @@ pub fn render_annotation(
             // Spotlight rendering is handled in renderer.rs where we have access
             // to the original screenshot pixmap for restoring bright cutout areas.
         }
+        Annotation::Measurement { start, end, color } => {
+            let mut paint = Paint::default();
+            paint.set_color((*color).into());
+            paint.anti_alias = true;
+
+            // Dashed line
+            let mut pb = PathBuilder::new();
+            pb.move_to(start.x, start.y);
+            pb.line_to(end.x, end.y);
+            if let Some(path) = pb.finish() {
+                let stroke = Stroke {
+                    width: 1.5,
+                    dash: tiny_skia::StrokeDash::new(vec![6.0, 4.0], 0.0),
+                    ..Stroke::default()
+                };
+                pixmap.stroke_path(&path, &paint, &stroke, Transform::identity(), None);
+            }
+
+            // Endpoint circles (small filled dots)
+            for pt in [start, end] {
+                let r = 3.0;
+                let k: f32 = 0.5522848;
+                let mut pb = PathBuilder::new();
+                pb.move_to(pt.x + r, pt.y);
+                pb.cubic_to(
+                    pt.x + r,
+                    pt.y + r * k,
+                    pt.x + r * k,
+                    pt.y + r,
+                    pt.x,
+                    pt.y + r,
+                );
+                pb.cubic_to(
+                    pt.x - r * k,
+                    pt.y + r,
+                    pt.x - r,
+                    pt.y + r * k,
+                    pt.x - r,
+                    pt.y,
+                );
+                pb.cubic_to(
+                    pt.x - r,
+                    pt.y - r * k,
+                    pt.x - r * k,
+                    pt.y - r,
+                    pt.x,
+                    pt.y - r,
+                );
+                pb.cubic_to(
+                    pt.x + r * k,
+                    pt.y - r,
+                    pt.x + r,
+                    pt.y - r * k,
+                    pt.x + r,
+                    pt.y,
+                );
+                pb.close();
+                if let Some(path) = pb.finish() {
+                    pixmap.fill_path(
+                        &path,
+                        &paint,
+                        tiny_skia::FillRule::Winding,
+                        Transform::identity(),
+                        None,
+                    );
+                }
+            }
+
+            // Distance label at midpoint
+            let dx = end.x - start.x;
+            let dy = end.y - start.y;
+            let distance = (dx * dx + dy * dy).sqrt();
+            let label = format!("{:.0} px", distance);
+            let mid_x = (start.x + end.x) / 2.0;
+            let mid_y = (start.y + end.y) / 2.0;
+
+            // Offset label slightly above the line
+            let label_y = mid_y - 12.0;
+
+            // Background pill for readability
+            let font_size = 12.0;
+            let label_w = label.len() as f32 * font_size * 0.6 + 8.0;
+            let label_h = font_size + 6.0;
+            let pill_x = mid_x - label_w / 2.0;
+            let pill_y = label_y - 2.0;
+
+            // Draw background pill
+            if let Some(pill) = tiny_skia::Rect::from_xywh(pill_x, pill_y, label_w, label_h) {
+                let mut bg = Paint::default();
+                bg.set_color(tiny_skia::Color::from_rgba(0.067, 0.067, 0.094, 0.85).unwrap());
+                bg.anti_alias = false;
+                pixmap.fill_rect(pill, &bg, Transform::identity(), None);
+            }
+
+            // Draw text
+            render_text_annotation(
+                pixmap,
+                &Point::new(pill_x + 4.0, pill_y + 2.0),
+                &label,
+                &Color::new(0.804, 0.839, 0.957, 1.0),
+                font_size,
+            );
+        }
     }
 }
 
@@ -778,6 +888,9 @@ pub fn hit_test_annotation(annotation: &Annotation, point: &Point, threshold: f3
             thickness,
             ..
         } => point_to_segment_distance(point, start, end) < threshold + thickness / 2.0,
+        Annotation::Measurement { start, end, .. } => {
+            point_to_segment_distance(point, start, end) < threshold + 1.0
+        }
         Annotation::Rectangle {
             top_left,
             size,
@@ -863,7 +976,9 @@ pub fn hit_test_annotation(annotation: &Annotation, point: &Point, threshold: f3
 /// Move an annotation by (dx, dy).
 pub fn move_annotation(annotation: &mut Annotation, dx: f32, dy: f32) {
     match annotation {
-        Annotation::Arrow { start, end, .. } | Annotation::Line { start, end, .. } => {
+        Annotation::Arrow { start, end, .. }
+        | Annotation::Line { start, end, .. }
+        | Annotation::Measurement { start, end, .. } => {
             start.x += dx;
             start.y += dy;
             end.x += dx;
@@ -905,7 +1020,8 @@ pub fn recolor_annotation(annotation: &mut Annotation, new_color: Color) {
         | Annotation::Pencil { color, .. }
         | Annotation::Highlight { color, .. }
         | Annotation::Text { color, .. }
-        | Annotation::StepMarker { color, .. } => {
+        | Annotation::StepMarker { color, .. }
+        | Annotation::Measurement { color, .. } => {
             *color = new_color;
         }
         Annotation::Pixelate { .. } | Annotation::Spotlight { .. } => {} // no color
@@ -958,7 +1074,9 @@ pub fn resize_annotation(annotation: &mut Annotation, handle: ResizeHandle, new_
 
         // Apply transform based on annotation type
         match annotation {
-            Annotation::Arrow { start, end, .. } | Annotation::Line { start, end, .. } => {
+            Annotation::Arrow { start, end, .. }
+            | Annotation::Line { start, end, .. }
+            | Annotation::Measurement { start, end, .. } => {
                 start.x = new_x + (start.x - bx) * sx;
                 start.y = new_y + (start.y - by) * sy;
                 end.x = new_x + (end.x - bx) * sx;
@@ -1026,6 +1144,14 @@ pub fn annotation_bounding_box(annotation: &Annotation) -> Option<(f32, f32, f32
             let min_y = start.y.min(end.y) - thickness / 2.0;
             let max_x = start.x.max(end.x) + thickness / 2.0;
             let max_y = start.y.max(end.y) + thickness / 2.0;
+            Some((min_x, min_y, max_x - min_x, max_y - min_y))
+        }
+        Annotation::Measurement { start, end, .. } => {
+            let pad = 3.0; // endpoint circle radius
+            let min_x = start.x.min(end.x) - pad;
+            let min_y = start.y.min(end.y) - pad;
+            let max_x = start.x.max(end.x) + pad;
+            let max_y = start.y.max(end.y) + pad;
             Some((min_x, min_y, max_x - min_x, max_y - min_y))
         }
         Annotation::Rectangle { top_left, size, .. }

@@ -1084,7 +1084,9 @@ fn hitzone_to_cursor(zone: HitZone, overlay: &OverlayState) -> CursorIcon {
                 ToolKind::Text => CursorIcon::Text,
                 ToolKind::StepMarker => CursorIcon::Cell,
                 ToolKind::Eyedropper => CursorIcon::Crosshair,
-                ToolKind::Arrow | ToolKind::Line | ToolKind::Pencil => CursorIcon::Crosshair,
+                ToolKind::Arrow | ToolKind::Line | ToolKind::Pencil | ToolKind::Measurement => {
+                    CursorIcon::Crosshair
+                }
                 ToolKind::Rectangle
                 | ToolKind::RoundedRect
                 | ToolKind::Circle
@@ -1713,6 +1715,14 @@ impl ApplicationHandler for App {
                                 overlay.active_tool = ToolKind::RoundedRect;
                                 self.needs_redraw = true;
                             }
+                            "m" if !ctrl => {
+                                let overlay = match &mut self.state {
+                                    AppState::Capturing(o) => o,
+                                    _ => return,
+                                };
+                                overlay.active_tool = ToolKind::Measurement;
+                                self.needs_redraw = true;
+                            }
                             _ => {}
                         }
                     }
@@ -1824,6 +1834,12 @@ impl ApplicationHandler for App {
                         ToolKind::Line => {
                             if overlay.line_tool.is_drawing() {
                                 overlay.line_tool.on_mouse_move(pos);
+                                self.needs_redraw = true;
+                            }
+                        }
+                        ToolKind::Measurement => {
+                            if overlay.measurement_tool.is_drawing() {
+                                overlay.measurement_tool.on_mouse_move(pos);
                                 self.needs_redraw = true;
                             }
                         }
@@ -1973,9 +1989,14 @@ impl ApplicationHandler for App {
                                 overlay.selected_index = None;
                                 self.needs_redraw = true;
                             }
-                            13..=17 => {
+                            13 => {
+                                overlay.active_tool = ToolKind::Measurement;
+                                overlay.selected_index = None;
+                                self.needs_redraw = true;
+                            }
+                            14..=18 => {
                                 let presets = Color::presets();
-                                let idx = btn - 13;
+                                let idx = btn - 14;
                                 if idx < presets.len() {
                                     // If an annotation is selected, recolor it
                                     if let Some(sel_idx) = overlay.selected_index {
@@ -2002,31 +2023,32 @@ impl ApplicationHandler for App {
                                         overlay.highlight_tool.set_color(presets[idx]);
                                         overlay.text_tool.set_color(presets[idx]);
                                         overlay.step_marker_tool.set_color(presets[idx]);
+                                        overlay.measurement_tool.set_color(presets[idx]);
                                     }
                                     self.needs_redraw = true;
                                 }
                             }
-                            18 => {
+                            19 => {
                                 // OCR button
                                 self.do_ocr();
                                 return;
                             }
-                            19 => {
+                            20 => {
                                 // Upload button
                                 self.do_upload();
                                 return;
                             }
-                            20 => {
+                            21 => {
                                 // Pin button
                                 self.do_pin(_event_loop);
                                 return;
                             }
-                            21 => {
+                            22 => {
                                 // Copy button
                                 self.do_copy();
                                 return;
                             }
-                            22 => {
+                            23 => {
                                 // Save button
                                 self.do_save();
                                 return;
@@ -2141,6 +2163,9 @@ impl ApplicationHandler for App {
                                 }
                                 ToolKind::Circle => overlay.circle_tool.on_mouse_down(pos),
                                 ToolKind::Line => overlay.line_tool.on_mouse_down(pos),
+                                ToolKind::Measurement => {
+                                    overlay.measurement_tool.on_mouse_down(pos)
+                                }
                                 ToolKind::Pencil => overlay.pencil_tool.on_mouse_down(pos),
                                 ToolKind::Highlight => overlay.highlight_tool.on_mouse_down(pos),
                                 ToolKind::Text => {
@@ -2168,6 +2193,7 @@ impl ApplicationHandler for App {
                                         overlay.highlight_tool.set_color(color);
                                         overlay.text_tool.set_color(color);
                                         overlay.step_marker_tool.set_color(color);
+                                        overlay.measurement_tool.set_color(color);
                                         overlay.active_tool = ToolKind::Arrow;
                                     }
                                 }
@@ -2233,6 +2259,7 @@ impl ApplicationHandler for App {
                         ToolKind::RoundedRect => overlay.rounded_rect_tool.on_mouse_up(pos),
                         ToolKind::Circle => overlay.circle_tool.on_mouse_up(pos),
                         ToolKind::Line => overlay.line_tool.on_mouse_up(pos),
+                        ToolKind::Measurement => overlay.measurement_tool.on_mouse_up(pos),
                         ToolKind::Pencil => overlay.pencil_tool.on_mouse_up(pos),
                         ToolKind::Highlight => overlay.highlight_tool.on_mouse_up(pos),
                         ToolKind::Text => overlay.text_tool.on_mouse_up(pos),
@@ -2264,8 +2291,8 @@ impl ApplicationHandler for App {
                         let toolbar = Toolbar::position_for(sel, overlay.screenshot.height as f32);
                         let pos = overlay.last_mouse_pos;
                         if let Some(btn) = toolbar.hit_test(pos) {
-                            if (13..=17).contains(&btn) {
-                                let swatch_idx = btn - 13;
+                            if (14..=18).contains(&btn) {
+                                let swatch_idx = btn - 14;
                                 let current = Color::presets()[swatch_idx];
                                 if let Some(new_color) =
                                     hydroshot::color_picker::pick_color(&current)
@@ -2280,6 +2307,7 @@ impl ApplicationHandler for App {
                                     overlay.highlight_tool.set_color(new_color);
                                     overlay.text_tool.set_color(new_color);
                                     overlay.step_marker_tool.set_color(new_color);
+                                    overlay.measurement_tool.set_color(new_color);
                                     if let Some(idx) = overlay.selected_index {
                                         if idx < overlay.annotations.len() {
                                             let old_ann = overlay.annotations[idx].clone();

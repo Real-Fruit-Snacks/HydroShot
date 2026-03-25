@@ -83,6 +83,7 @@ pub fn render_overlay(state: &mut OverlayState, pixmap: &mut tiny_skia::Pixmap) 
         ToolKind::Eyedropper => None,
         ToolKind::RoundedRect => state.rounded_rect_tool.in_progress_annotation(),
         ToolKind::Spotlight => state.spotlight_tool.in_progress_annotation(),
+        ToolKind::Measurement => state.measurement_tool.in_progress_annotation(),
     };
     if let Some(ref ann) = in_progress {
         render_annotation(ann, pixmap, ss_pixels, ss_width);
@@ -410,7 +411,7 @@ fn render_toolbar(state: &mut OverlayState, selection: &Selection, pixmap: &mut 
 
     // --- Separators between button groups (tools | colors | actions) ---
     let sep_color = tiny_skia::Color::from_rgba(0.804, 0.839, 0.957, 0.15).unwrap();
-    for &after_btn in &[12usize, 17] {
+    for &after_btn in &[13usize, 18] {
         let (bx, _, bw, _) = toolbar.button_rect(after_btn);
         let sep_x = bx + bw + TOOLBAR_PADDING / 2.0;
         let sep_y1 = toolbar.y + 8.0;
@@ -431,7 +432,7 @@ fn render_toolbar(state: &mut OverlayState, selection: &Selection, pixmap: &mut 
     }
 
     // --- Render each button ---
-    for i in 0..23usize {
+    for i in 0..24usize {
         let (bx, by, bw, bh) = toolbar.button_rect(i);
 
         let is_active = match i {
@@ -448,8 +449,9 @@ fn render_toolbar(state: &mut OverlayState, selection: &Selection, pixmap: &mut 
             10 => state.active_tool == ToolKind::Pixelate,
             11 => state.active_tool == ToolKind::StepMarker,
             12 => state.active_tool == ToolKind::Eyedropper,
-            13..=17 => {
-                let idx = i - 13;
+            13 => state.active_tool == ToolKind::Measurement,
+            14..=18 => {
+                let idx = i - 14;
                 idx < presets.len() && state.current_color == presets[idx]
             }
             _ => false,
@@ -509,11 +511,12 @@ fn render_toolbar(state: &mut OverlayState, selection: &Selection, pixmap: &mut 
             10 => Some("pixelate"),
             11 => Some("step-marker"),
             12 => Some("eyedropper"),
-            18 => Some("ocr"),
-            19 => Some("upload"),
-            20 => Some("pin"),
-            21 => Some("copy"),
-            22 => Some("save"),
+            13 => Some("measurement"),
+            19 => Some("ocr"),
+            20 => Some("upload"),
+            21 => Some("pin"),
+            22 => Some("copy"),
+            23 => Some("save"),
             _ => None,
         };
 
@@ -527,10 +530,10 @@ fn render_toolbar(state: &mut OverlayState, selection: &Selection, pixmap: &mut 
             }
         }
 
-        if let 13..=17 = i {
+        if let 14..=18 = i {
             {
                 // Color swatch: rounded filled rect with border
-                let idx = i - 13;
+                let idx = i - 14;
                 if idx < SWATCH_COLORS.len() {
                     let (r, g, b) = SWATCH_COLORS[idx];
                     let inset = 6.0;
@@ -593,16 +596,17 @@ fn render_toolbar(state: &mut OverlayState, selection: &Selection, pixmap: &mut 
             10 => "Pixelate (B)",
             11 => "Step Marker (N)",
             12 => "Eyedropper (I)",
-            13 => "Red (right-click: pick)",
-            14 => "Blue (right-click: pick)",
-            15 => "Green (right-click: pick)",
-            16 => "Yellow (right-click: pick)",
-            17 => "Mauve (right-click: pick)",
-            18 => "OCR (Extract Text)",
-            19 => "Upload (Imgur)",
-            20 => "Pin",
-            21 => "Copy (Ctrl+C)",
-            22 => "Save (Ctrl+S)",
+            13 => "Measurement (M)",
+            14 => "Red (right-click: pick)",
+            15 => "Blue (right-click: pick)",
+            16 => "Green (right-click: pick)",
+            17 => "Yellow (right-click: pick)",
+            18 => "Mauve (right-click: pick)",
+            19 => "OCR (Extract Text)",
+            20 => "Upload (Imgur)",
+            21 => "Pin",
+            22 => "Copy (Ctrl+C)",
+            23 => "Save (Ctrl+S)",
             _ => "",
         };
 

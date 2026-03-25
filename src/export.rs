@@ -203,6 +203,11 @@ fn offset_annotation(annotation: &Annotation, dx: f32, dy: f32) -> Annotation {
             top_left: Point::new(top_left.x - dx, top_left.y - dy),
             size: Size::new(size.width, size.height),
         },
+        Annotation::Measurement { start, end, color } => Annotation::Measurement {
+            start: Point::new(start.x - dx, start.y - dy),
+            end: Point::new(end.x - dx, end.y - dy),
+            color: *color,
+        },
     }
 }
 

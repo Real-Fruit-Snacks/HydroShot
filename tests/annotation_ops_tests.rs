@@ -336,7 +336,8 @@ fn recolor_all_colored_types() {
             | Annotation::Highlight { color, .. }
             | Annotation::Pencil { color, .. }
             | Annotation::Text { color, .. }
-            | Annotation::StepMarker { color, .. } => *color,
+            | Annotation::StepMarker { color, .. }
+            | Annotation::Measurement { color, .. } => *color,
             Annotation::Pixelate { .. } | Annotation::Spotlight { .. } => unreachable!(),
         };
         assert_eq!(got_color, new_color);

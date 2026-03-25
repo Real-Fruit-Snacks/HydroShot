@@ -6,6 +6,7 @@ use crate::tools::arrow::ArrowTool;
 use crate::tools::circle::CircleTool;
 use crate::tools::highlight::HighlightTool;
 use crate::tools::line::LineTool;
+use crate::tools::measurement::MeasurementTool;
 use crate::tools::pencil::PencilTool;
 use crate::tools::pixelate::PixelateTool;
 use crate::tools::rectangle::RectangleTool;
@@ -44,6 +45,7 @@ pub struct OverlayState {
     pub pixelate_tool: PixelateTool,
     pub step_marker_tool: StepMarkerTool,
     pub spotlight_tool: SpotlightTool,
+    pub measurement_tool: MeasurementTool,
     pub text_input_active: bool,
     pub text_input_buffer: String,
     pub text_input_position: Point,
@@ -112,6 +114,7 @@ impl OverlayState {
             pixelate_tool: PixelateTool::new(10),
             step_marker_tool: StepMarkerTool::new(color, 28.0),
             spotlight_tool: SpotlightTool::new(),
+            measurement_tool: MeasurementTool::new(color),
             text_input_active: false,
             text_input_buffer: String::new(),
             text_input_position: Point::new(0.0, 0.0),
