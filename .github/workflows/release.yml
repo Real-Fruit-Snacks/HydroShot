@@ -18,7 +18,11 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - name: Build release
         run: cargo build --release
-      - name: Package
+      - name: Install cargo-wix
+        run: cargo install cargo-wix
+      - name: Build MSI installer
+        run: cargo wix --no-build --nocapture -o hydroshot-${{ github.ref_name }}-windows-x64.msi
+      - name: Package ZIP
         run: |
           New-Item -ItemType Directory -Force -Path release
           Copy-Item target/release/hydroshot.exe release/
@@ -27,7 +31,9 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: windows-binary
-          path: hydroshot-*.zip
+          path: |
+            hydroshot-*.zip
+            hydroshot-*.msi
 
   build-linux:
     name: Build (Linux)
@@ -66,5 +72,6 @@ jobs:
           files: |
             hydroshot-*.zip
             hydroshot-*.tar.gz
+            hydroshot-*.msi
           generate_release_notes: true
           draft: false
