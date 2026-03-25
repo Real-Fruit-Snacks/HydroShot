@@ -4,7 +4,7 @@ version = "0.5.2"
 description = "Screenshot capture and annotation tool for Windows"
 license = "MIT"
 edition = "2021"
-rust-version = "1.75"
+rust-version = "1.80"
 
 [dependencies]
 winit = "0.30"

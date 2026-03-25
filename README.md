@@ -225,7 +225,7 @@ Settings can also be changed through the in-app Settings UI (General, Shortcuts,
 
 ### Prerequisites
 
-- [Rust](https://rustup.rs/) 1.75 or later
+- [Rust](https://rustup.rs/) 1.80 or later
 - Platform-specific dependencies:
   - **Windows:** No additional dependencies
   - **Linux:** `libxkbcommon-dev`, `libwayland-dev`, `libglib2.0-dev`, `libgtk-3-dev`, `libxdo-dev`
