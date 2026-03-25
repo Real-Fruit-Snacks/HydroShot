@@ -10,7 +10,11 @@ fn resize_rectangle_bottom_right_outward() {
         thickness: 3.0,
     };
     // Drag bottom-right corner from (100, 80) to (120, 100)
-    resize_annotation(&mut ann, ResizeHandle::BottomRight, Point::new(120.0, 100.0));
+    resize_annotation(
+        &mut ann,
+        ResizeHandle::BottomRight,
+        Point::new(120.0, 100.0),
+    );
     match &ann {
         Annotation::Rectangle { top_left, size, .. } => {
             assert_eq!(top_left.x, 20.0);
@@ -126,16 +130,10 @@ fn resize_rounded_rect() {
         radius: 8.0,
     };
 
-    resize_annotation(
-        &mut ann,
-        ResizeHandle::BottomRight,
-        Point::new(100.0, 80.0),
-    );
+    resize_annotation(&mut ann, ResizeHandle::BottomRight, Point::new(100.0, 80.0));
 
     match &ann {
-        Annotation::RoundedRect {
-            top_left, size, ..
-        } => {
+        Annotation::RoundedRect { top_left, size, .. } => {
             assert_eq!(top_left.x, 10.0);
             assert_eq!(top_left.y, 10.0);
             assert_eq!(size.width, 90.0);

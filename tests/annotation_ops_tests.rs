@@ -140,17 +140,9 @@ fn hit_test_rounded_rect_near_edge() {
 fn hit_test_ellipse_near_border() {
     let ann = make_ellipse();
     // Point on the right edge of the ellipse (center.x + radius_x, center.y)
-    assert!(hit_test_annotation(
-        &ann,
-        &Point::new(140.0, 100.0),
-        5.0
-    ));
+    assert!(hit_test_annotation(&ann, &Point::new(140.0, 100.0), 5.0));
     // Center of ellipse (far from border)
-    assert!(!hit_test_annotation(
-        &ann,
-        &Point::new(100.0, 100.0),
-        3.0
-    ));
+    assert!(!hit_test_annotation(&ann, &Point::new(100.0, 100.0), 3.0));
 }
 
 #[test]
@@ -159,22 +151,14 @@ fn hit_test_highlight_inside_rect() {
     // Inside
     assert!(hit_test_annotation(&ann, &Point::new(30.0, 25.0), 5.0));
     // Outside
-    assert!(!hit_test_annotation(
-        &ann,
-        &Point::new(200.0, 200.0),
-        5.0
-    ));
+    assert!(!hit_test_annotation(&ann, &Point::new(200.0, 200.0), 5.0));
 }
 
 #[test]
 fn hit_test_pixelate_inside_rect() {
     let ann = make_pixelate();
     assert!(hit_test_annotation(&ann, &Point::new(30.0, 25.0), 5.0));
-    assert!(!hit_test_annotation(
-        &ann,
-        &Point::new(200.0, 200.0),
-        5.0
-    ));
+    assert!(!hit_test_annotation(&ann, &Point::new(200.0, 200.0), 5.0));
 }
 
 #[test]
@@ -183,11 +167,7 @@ fn hit_test_pencil_near_segment() {
     // Near the first segment (horizontal at y=0)
     assert!(hit_test_annotation(&ann, &Point::new(25.0, 1.0), 5.0));
     // Far away
-    assert!(!hit_test_annotation(
-        &ann,
-        &Point::new(200.0, 200.0),
-        5.0
-    ));
+    assert!(!hit_test_annotation(&ann, &Point::new(200.0, 200.0), 5.0));
 }
 
 #[test]
@@ -196,11 +176,7 @@ fn hit_test_text_inside_bbox() {
     // Inside the text bounding box
     assert!(hit_test_annotation(&ann, &Point::new(35.0, 35.0), 5.0));
     // Outside
-    assert!(!hit_test_annotation(
-        &ann,
-        &Point::new(200.0, 200.0),
-        5.0
-    ));
+    assert!(!hit_test_annotation(&ann, &Point::new(200.0, 200.0), 5.0));
 }
 
 #[test]
@@ -209,11 +185,7 @@ fn hit_test_step_marker_inside_circle() {
     // At center
     assert!(hit_test_annotation(&ann, &Point::new(50.0, 50.0), 5.0));
     // Far away
-    assert!(!hit_test_annotation(
-        &ann,
-        &Point::new(200.0, 200.0),
-        5.0
-    ));
+    assert!(!hit_test_annotation(&ann, &Point::new(200.0, 200.0), 5.0));
 }
 
 // ============================================================
@@ -365,7 +337,7 @@ fn recolor_all_colored_types() {
             | Annotation::Pencil { color, .. }
             | Annotation::Text { color, .. }
             | Annotation::StepMarker { color, .. } => *color,
-            Annotation::Pixelate { .. } => unreachable!(),
+            Annotation::Pixelate { .. } | Annotation::Spotlight { .. } => unreachable!(),
         };
         assert_eq!(got_color, new_color);
     }

@@ -58,6 +58,9 @@ fn get_svg(name: &str) -> Option<String> {
         "ocr" => {
             r#"<path d="M4 7V4h3"/><path d="M17 4h3v3"/><path d="M4 17v3h3"/><path d="M17 20h3v-3"/><path d="M7 8h10"/><path d="M7 12h10"/><path d="M7 16h10"/>"#
         }
+        "spotlight" => {
+            r#"<circle cx="12" cy="12" r="3"/><path d="M3 7V3h4"/><path d="M17 3h4v4"/><path d="M21 17v4h-4"/><path d="M7 21H3v-4"/>"#
+        }
         _ => return None,
     };
     Some(wrap_svg(inner))

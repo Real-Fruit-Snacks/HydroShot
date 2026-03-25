@@ -1089,7 +1089,8 @@ fn hitzone_to_cursor(zone: HitZone, overlay: &OverlayState) -> CursorIcon {
                 | ToolKind::RoundedRect
                 | ToolKind::Circle
                 | ToolKind::Highlight
-                | ToolKind::Pixelate => CursorIcon::Crosshair,
+                | ToolKind::Pixelate
+                | ToolKind::Spotlight => CursorIcon::Crosshair,
             }
         }
     }
@@ -1656,6 +1657,14 @@ impl ApplicationHandler for App {
                                 overlay.active_tool = ToolKind::Highlight;
                                 self.needs_redraw = true;
                             }
+                            "f" if !ctrl => {
+                                let overlay = match &mut self.state {
+                                    AppState::Capturing(o) => o,
+                                    _ => return,
+                                };
+                                overlay.active_tool = ToolKind::Spotlight;
+                                self.needs_redraw = true;
+                            }
                             "t" if !ctrl => {
                                 let overlay = match &mut self.state {
                                     AppState::Capturing(o) => o,
@@ -1830,6 +1839,12 @@ impl ApplicationHandler for App {
                                 self.needs_redraw = true;
                             }
                         }
+                        ToolKind::Spotlight => {
+                            if overlay.spotlight_tool.is_drawing() {
+                                overlay.spotlight_tool.on_mouse_move(pos);
+                                self.needs_redraw = true;
+                            }
+                        }
                         ToolKind::Text => {
                             // Text tool does not use mouse move
                             overlay.text_tool.on_mouse_move(pos);
@@ -1934,28 +1949,33 @@ impl ApplicationHandler for App {
                                 self.needs_redraw = true;
                             }
                             8 => {
-                                overlay.active_tool = ToolKind::Text;
+                                overlay.active_tool = ToolKind::Spotlight;
                                 overlay.selected_index = None;
                                 self.needs_redraw = true;
                             }
                             9 => {
-                                overlay.active_tool = ToolKind::Pixelate;
+                                overlay.active_tool = ToolKind::Text;
                                 overlay.selected_index = None;
                                 self.needs_redraw = true;
                             }
                             10 => {
-                                overlay.active_tool = ToolKind::StepMarker;
+                                overlay.active_tool = ToolKind::Pixelate;
                                 overlay.selected_index = None;
                                 self.needs_redraw = true;
                             }
                             11 => {
+                                overlay.active_tool = ToolKind::StepMarker;
+                                overlay.selected_index = None;
+                                self.needs_redraw = true;
+                            }
+                            12 => {
                                 overlay.active_tool = ToolKind::Eyedropper;
                                 overlay.selected_index = None;
                                 self.needs_redraw = true;
                             }
-                            12..=16 => {
+                            13..=17 => {
                                 let presets = Color::presets();
-                                let idx = btn - 12;
+                                let idx = btn - 13;
                                 if idx < presets.len() {
                                     // If an annotation is selected, recolor it
                                     if let Some(sel_idx) = overlay.selected_index {
@@ -1986,27 +2006,27 @@ impl ApplicationHandler for App {
                                     self.needs_redraw = true;
                                 }
                             }
-                            17 => {
+                            18 => {
                                 // OCR button
                                 self.do_ocr();
                                 return;
                             }
-                            18 => {
+                            19 => {
                                 // Upload button
                                 self.do_upload();
                                 return;
                             }
-                            19 => {
+                            20 => {
                                 // Pin button
                                 self.do_pin(_event_loop);
                                 return;
                             }
-                            20 => {
+                            21 => {
                                 // Copy button
                                 self.do_copy();
                                 return;
                             }
-                            21 => {
+                            22 => {
                                 // Save button
                                 self.do_save();
                                 return;
@@ -2135,6 +2155,7 @@ impl ApplicationHandler for App {
                                 }
                                 ToolKind::Pixelate => overlay.pixelate_tool.on_mouse_down(pos),
                                 ToolKind::StepMarker => overlay.step_marker_tool.on_mouse_down(pos),
+                                ToolKind::Spotlight => overlay.spotlight_tool.on_mouse_down(pos),
                                 ToolKind::Eyedropper => {
                                     if let Some(color) = overlay.eyedropper_preview {
                                         overlay.current_color = color;
@@ -2217,6 +2238,7 @@ impl ApplicationHandler for App {
                         ToolKind::Text => overlay.text_tool.on_mouse_up(pos),
                         ToolKind::Pixelate => overlay.pixelate_tool.on_mouse_up(pos),
                         ToolKind::StepMarker => overlay.step_marker_tool.on_mouse_up(pos),
+                        ToolKind::Spotlight => overlay.spotlight_tool.on_mouse_up(pos),
                         ToolKind::Eyedropper => None,
                     };
                     if let Some(ann) = annotation {
@@ -2242,8 +2264,8 @@ impl ApplicationHandler for App {
                         let toolbar = Toolbar::position_for(sel, overlay.screenshot.height as f32);
                         let pos = overlay.last_mouse_pos;
                         if let Some(btn) = toolbar.hit_test(pos) {
-                            if (12..=16).contains(&btn) {
-                                let swatch_idx = btn - 12;
+                            if (13..=17).contains(&btn) {
+                                let swatch_idx = btn - 13;
                                 let current = Color::presets()[swatch_idx];
                                 if let Some(new_color) =
                                     hydroshot::color_picker::pick_color(&current)

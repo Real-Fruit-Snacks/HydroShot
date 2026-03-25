@@ -73,11 +73,7 @@ fn test_undo_modify() {
     // Simulate modify (move)
     let old = annotations[0].clone();
     move_annotation(&mut annotations[0], 50.0, 50.0);
-    record_undo(
-        &mut undo_stack,
-        &mut redo_stack,
-        UndoAction::Modify(0, old),
-    );
+    record_undo(&mut undo_stack, &mut redo_stack, UndoAction::Modify(0, old));
 
     // Verify moved
     match &annotations[0] {
@@ -107,11 +103,7 @@ fn test_undo_stack_cap() {
 
     // Push 55 actions; cap is 50
     for i in 0..55 {
-        record_undo(
-            &mut undo_stack,
-            &mut redo_stack,
-            UndoAction::Add(i),
-        );
+        record_undo(&mut undo_stack, &mut redo_stack, UndoAction::Add(i));
     }
     assert_eq!(undo_stack.len(), 50);
 }

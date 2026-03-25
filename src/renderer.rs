@@ -82,9 +82,75 @@ pub fn render_overlay(state: &mut OverlayState, pixmap: &mut tiny_skia::Pixmap) 
         ToolKind::StepMarker => state.step_marker_tool.in_progress_annotation(),
         ToolKind::Eyedropper => None,
         ToolKind::RoundedRect => state.rounded_rect_tool.in_progress_annotation(),
+        ToolKind::Spotlight => state.spotlight_tool.in_progress_annotation(),
     };
     if let Some(ref ann) = in_progress {
         render_annotation(ann, pixmap, ss_pixels, ss_width);
+    }
+
+    // 6a. Spotlight effect — dim everything outside spotlight rectangles
+    {
+        let mut spotlights: Vec<(crate::geometry::Point, crate::geometry::Size)> = state
+            .annotations
+            .iter()
+            .filter_map(|a| match a {
+                Annotation::Spotlight { top_left, size } => Some((*top_left, *size)),
+                _ => None,
+            })
+            .collect();
+        // Include in-progress spotlight
+        if let Some(Annotation::Spotlight { top_left, size }) = in_progress.as_ref() {
+            spotlights.push((*top_left, *size));
+        }
+        if !spotlights.is_empty() {
+            // Dim the entire pixmap with 50% black overlay
+            let pw = pixmap.width() as f32;
+            let ph = pixmap.height() as f32;
+            if let Some(r) = tiny_skia::Rect::from_xywh(0.0, 0.0, pw, ph) {
+                let mut dim = Paint::default();
+                dim.set_color(tiny_skia::Color::from_rgba(0.0, 0.0, 0.0, 0.5).unwrap());
+                dim.anti_alias = false;
+                pixmap.fill_rect(r, &dim, Transform::identity(), None);
+            }
+
+            // Restore the bright areas (spotlight cutouts) from screenshot_pixmap
+            let src_w = state.screenshot_pixmap.width();
+            let screenshot_data = state.screenshot_pixmap.data();
+            for (tl, sz) in &spotlights {
+                let sx = tl.x.max(0.0) as u32;
+                let sy = tl.y.max(0.0) as u32;
+                let sw = sz.width as u32;
+                let sh = sz.height as u32;
+                let pm_w = pixmap.width();
+                let pm_h = pixmap.height();
+                let pixmap_data = pixmap.data_mut();
+                for y in sy..(sy + sh).min(pm_h) {
+                    let row_start = ((y * src_w + sx) * 4) as usize;
+                    let copy_w = sw
+                        .min(src_w.saturating_sub(sx))
+                        .min(pm_w.saturating_sub(sx));
+                    let row_end = row_start + (copy_w * 4) as usize;
+                    let dst_start = ((y * pm_w + sx) * 4) as usize;
+                    let dst_end = dst_start + (copy_w * 4) as usize;
+                    if row_end <= screenshot_data.len() && dst_end <= pixmap_data.len() {
+                        pixmap_data[dst_start..dst_end]
+                            .copy_from_slice(&screenshot_data[row_start..row_end]);
+                    }
+                }
+            }
+
+            // Re-draw non-spotlight annotations so they remain visible over dimmed areas
+            for ann in &state.annotations {
+                if !matches!(ann, Annotation::Spotlight { .. }) {
+                    render_annotation(ann, pixmap, ss_pixels, ss_width);
+                }
+            }
+            if let Some(ref ann) = in_progress {
+                if !matches!(ann, Annotation::Spotlight { .. }) {
+                    render_annotation(ann, pixmap, ss_pixels, ss_width);
+                }
+            }
+        }
     }
 
     // 6b. Selection highlight around selected annotation
@@ -344,7 +410,7 @@ fn render_toolbar(state: &mut OverlayState, selection: &Selection, pixmap: &mut 
 
     // --- Separators between button groups (tools | colors | actions) ---
     let sep_color = tiny_skia::Color::from_rgba(0.804, 0.839, 0.957, 0.15).unwrap();
-    for &after_btn in &[11usize, 16] {
+    for &after_btn in &[12usize, 17] {
         let (bx, _, bw, _) = toolbar.button_rect(after_btn);
         let sep_x = bx + bw + TOOLBAR_PADDING / 2.0;
         let sep_y1 = toolbar.y + 8.0;
@@ -365,7 +431,7 @@ fn render_toolbar(state: &mut OverlayState, selection: &Selection, pixmap: &mut 
     }
 
     // --- Render each button ---
-    for i in 0..22usize {
+    for i in 0..23usize {
         let (bx, by, bw, bh) = toolbar.button_rect(i);
 
         let is_active = match i {
@@ -377,12 +443,13 @@ fn render_toolbar(state: &mut OverlayState, selection: &Selection, pixmap: &mut 
             5 => state.active_tool == ToolKind::Line,
             6 => state.active_tool == ToolKind::Pencil,
             7 => state.active_tool == ToolKind::Highlight,
-            8 => state.active_tool == ToolKind::Text,
-            9 => state.active_tool == ToolKind::Pixelate,
-            10 => state.active_tool == ToolKind::StepMarker,
-            11 => state.active_tool == ToolKind::Eyedropper,
-            12..=16 => {
-                let idx = i - 12;
+            8 => state.active_tool == ToolKind::Spotlight,
+            9 => state.active_tool == ToolKind::Text,
+            10 => state.active_tool == ToolKind::Pixelate,
+            11 => state.active_tool == ToolKind::StepMarker,
+            12 => state.active_tool == ToolKind::Eyedropper,
+            13..=17 => {
+                let idx = i - 13;
                 idx < presets.len() && state.current_color == presets[idx]
             }
             _ => false,
@@ -437,15 +504,16 @@ fn render_toolbar(state: &mut OverlayState, selection: &Selection, pixmap: &mut 
             5 => Some("line"),
             6 => Some("pencil"),
             7 => Some("highlight"),
-            8 => Some("text"),
-            9 => Some("pixelate"),
-            10 => Some("step-marker"),
-            11 => Some("eyedropper"),
-            17 => Some("ocr"),
-            18 => Some("upload"),
-            19 => Some("pin"),
-            20 => Some("copy"),
-            21 => Some("save"),
+            8 => Some("spotlight"),
+            9 => Some("text"),
+            10 => Some("pixelate"),
+            11 => Some("step-marker"),
+            12 => Some("eyedropper"),
+            18 => Some("ocr"),
+            19 => Some("upload"),
+            20 => Some("pin"),
+            21 => Some("copy"),
+            22 => Some("save"),
             _ => None,
         };
 
@@ -459,10 +527,10 @@ fn render_toolbar(state: &mut OverlayState, selection: &Selection, pixmap: &mut 
             }
         }
 
-        if let 12..=16 = i {
+        if let 13..=17 = i {
             {
                 // Color swatch: rounded filled rect with border
-                let idx = i - 12;
+                let idx = i - 13;
                 if idx < SWATCH_COLORS.len() {
                     let (r, g, b) = SWATCH_COLORS[idx];
                     let inset = 6.0;
@@ -520,20 +588,21 @@ fn render_toolbar(state: &mut OverlayState, selection: &Selection, pixmap: &mut 
             5 => "Line (L)",
             6 => "Pencil (P)",
             7 => "Highlight (H)",
-            8 => "Text (T)",
-            9 => "Pixelate (B)",
-            10 => "Step Marker (N)",
-            11 => "Eyedropper (I)",
-            12 => "Red (right-click: pick)",
-            13 => "Blue (right-click: pick)",
-            14 => "Green (right-click: pick)",
-            15 => "Yellow (right-click: pick)",
-            16 => "Mauve (right-click: pick)",
-            17 => "OCR (Extract Text)",
-            18 => "Upload (Imgur)",
-            19 => "Pin",
-            20 => "Copy (Ctrl+C)",
-            21 => "Save (Ctrl+S)",
+            8 => "Spotlight (F)",
+            9 => "Text (T)",
+            10 => "Pixelate (B)",
+            11 => "Step Marker (N)",
+            12 => "Eyedropper (I)",
+            13 => "Red (right-click: pick)",
+            14 => "Blue (right-click: pick)",
+            15 => "Green (right-click: pick)",
+            16 => "Yellow (right-click: pick)",
+            17 => "Mauve (right-click: pick)",
+            18 => "OCR (Extract Text)",
+            19 => "Upload (Imgur)",
+            20 => "Pin",
+            21 => "Copy (Ctrl+C)",
+            22 => "Save (Ctrl+S)",
             _ => "",
         };
 

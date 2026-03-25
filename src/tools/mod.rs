@@ -6,6 +6,7 @@ pub mod pencil;
 pub mod pixelate;
 pub mod rectangle;
 pub mod rounded_rect;
+pub mod spotlight;
 pub mod step_marker;
 pub mod text;
 
@@ -172,6 +173,10 @@ pub enum Annotation {
         thickness: f32,
         radius: f32,
     },
+    Spotlight {
+        top_left: Point,
+        size: Size,
+    },
 }
 
 pub trait AnnotationTool {
@@ -196,6 +201,7 @@ pub enum ToolKind {
     StepMarker,
     Eyedropper,
     RoundedRect,
+    Spotlight,
 }
 
 /// Compute the three vertices of an arrowhead triangle.
@@ -644,6 +650,10 @@ pub fn render_annotation(
                 pixmap.stroke_path(&path, &paint, &stroke, Transform::identity(), None);
             }
         }
+        Annotation::Spotlight { .. } => {
+            // Spotlight rendering is handled in renderer.rs where we have access
+            // to the original screenshot pixmap for restoring bright cutout areas.
+        }
     }
 }
 
@@ -816,7 +826,8 @@ pub fn hit_test_annotation(annotation: &Annotation, point: &Point, threshold: f3
                 < threshold / radius_x.min(*radius_y) + thickness / (2.0 * radius_x.min(*radius_y))
         }
         Annotation::Highlight { top_left, size, .. }
-        | Annotation::Pixelate { top_left, size, .. } => {
+        | Annotation::Pixelate { top_left, size, .. }
+        | Annotation::Spotlight { top_left, size } => {
             point.x >= top_left.x
                 && point.x <= top_left.x + size.width
                 && point.y >= top_left.y
@@ -861,7 +872,8 @@ pub fn move_annotation(annotation: &mut Annotation, dx: f32, dy: f32) {
         Annotation::Rectangle { top_left, .. }
         | Annotation::RoundedRect { top_left, .. }
         | Annotation::Highlight { top_left, .. }
-        | Annotation::Pixelate { top_left, .. } => {
+        | Annotation::Pixelate { top_left, .. }
+        | Annotation::Spotlight { top_left, .. } => {
             top_left.x += dx;
             top_left.y += dy;
         }
@@ -896,7 +908,7 @@ pub fn recolor_annotation(annotation: &mut Annotation, new_color: Color) {
         | Annotation::StepMarker { color, .. } => {
             *color = new_color;
         }
-        Annotation::Pixelate { .. } => {} // pixelate has no color
+        Annotation::Pixelate { .. } | Annotation::Spotlight { .. } => {} // no color
     }
 }
 
@@ -955,7 +967,8 @@ pub fn resize_annotation(annotation: &mut Annotation, handle: ResizeHandle, new_
             Annotation::Rectangle { top_left, size, .. }
             | Annotation::RoundedRect { top_left, size, .. }
             | Annotation::Highlight { top_left, size, .. }
-            | Annotation::Pixelate { top_left, size, .. } => {
+            | Annotation::Pixelate { top_left, size, .. }
+            | Annotation::Spotlight { top_left, size } => {
                 top_left.x = new_x;
                 top_left.y = new_y;
                 size.width = new_w;
@@ -1031,7 +1044,8 @@ pub fn annotation_bounding_box(annotation: &Annotation) -> Option<(f32, f32, f32
             radius_y * 2.0,
         )),
         Annotation::Highlight { top_left, size, .. }
-        | Annotation::Pixelate { top_left, size, .. } => {
+        | Annotation::Pixelate { top_left, size, .. }
+        | Annotation::Spotlight { top_left, size } => {
             Some((top_left.x, top_left.y, size.width, size.height))
         }
         Annotation::Pencil {

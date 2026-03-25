@@ -1,8 +1,6 @@
 use hydroshot::geometry::{Color, Point, Size};
 use hydroshot::tools::{
-    render_annotation,
-    rounded_rect::RoundedRectTool,
-    Annotation, AnnotationTool,
+    render_annotation, rounded_rect::RoundedRectTool, Annotation, AnnotationTool,
 };
 
 #[test]

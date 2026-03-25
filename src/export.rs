@@ -199,6 +199,10 @@ fn offset_annotation(annotation: &Annotation, dx: f32, dy: f32) -> Annotation {
             thickness: *thickness,
             radius: *radius,
         },
+        Annotation::Spotlight { top_left, size } => Annotation::Spotlight {
+            top_left: Point::new(top_left.x - dx, top_left.y - dy),
+            size: Size::new(size.width, size.height),
+        },
     }
 }
 
