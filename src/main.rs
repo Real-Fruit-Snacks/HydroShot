@@ -1,4 +1,5 @@
 use std::num::NonZeroU32;
+use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
@@ -47,6 +48,7 @@ struct PinnedWindow {
     height: u32,
     dragging: bool,
     drag_start: Option<winit::dpi::PhysicalPosition<f64>>,
+    temp_path: Option<PathBuf>,
 }
 
 struct App {
@@ -666,6 +668,30 @@ impl App {
 
                 window.request_redraw();
 
+                // Save the pin image to a temp file for drag-and-drop support
+                let temp_path = {
+                    let temp_dir = std::env::temp_dir();
+                    let ts = std::time::SystemTime::now()
+                        .duration_since(std::time::UNIX_EPOCH)
+                        .unwrap_or_default()
+                        .as_millis();
+                    let path = temp_dir.join(format!("hydroshot_pin_{ts}.png"));
+                    if let Some(img) = image::RgbaImage::from_raw(pin_w, pin_h, pixels.clone()) {
+                        match img.save(&path) {
+                            Ok(()) => {
+                                tracing::info!("Pin temp file saved to {}", path.display());
+                                Some(path)
+                            }
+                            Err(e) => {
+                                tracing::warn!("Failed to save pin temp file: {e}");
+                                None
+                            }
+                        }
+                    } else {
+                        None
+                    }
+                };
+
                 self.pinned_windows.push(PinnedWindow {
                     window,
                     surface,
@@ -674,6 +700,7 @@ impl App {
                     height: pin_h,
                     dragging: false,
                     drag_start: None,
+                    temp_path,
                 });
 
                 // Set grab cursor to indicate the pin is draggable
@@ -1118,7 +1145,10 @@ impl ApplicationHandler for App {
         {
             match event {
                 WindowEvent::CloseRequested => {
-                    self.pinned_windows.remove(pin_idx);
+                    let pin = self.pinned_windows.remove(pin_idx);
+                    if let Some(ref path) = pin.temp_path {
+                        let _ = std::fs::remove_file(path);
+                    }
                     tracing::info!("Pinned window closed");
                     return;
                 }
@@ -1145,7 +1175,10 @@ impl ApplicationHandler for App {
                 WindowEvent::KeyboardInput { ref event, .. } => {
                     if event.state == ElementState::Pressed {
                         if let Key::Named(NamedKey::Escape) = &event.logical_key {
-                            self.pinned_windows.remove(pin_idx);
+                            let pin = self.pinned_windows.remove(pin_idx);
+                            if let Some(ref path) = pin.temp_path {
+                                let _ = std::fs::remove_file(path);
+                            }
                             tracing::info!("Pinned window closed via Escape");
                             return;
                         }
@@ -1169,6 +1202,32 @@ impl ApplicationHandler for App {
                             pin.window.set_cursor(CursorIcon::Grab);
                         }
                     }
+                }
+                WindowEvent::MouseInput {
+                    state: ElementState::Pressed,
+                    button: WinitMouseButton::Right,
+                    ..
+                } => {
+                    let pin = &self.pinned_windows[pin_idx];
+                    if let Some(ref path) = pin.temp_path {
+                        let _ = std::process::Command::new("explorer")
+                            .arg("/select,")
+                            .arg(path)
+                            .spawn();
+                    }
+                }
+                WindowEvent::MouseInput {
+                    state: ElementState::Pressed,
+                    button: WinitMouseButton::Middle,
+                    ..
+                } => {
+                    let pin = &self.pinned_windows[pin_idx];
+                    let _ = export::copy_to_clipboard(&pin.pixels, pin.width, pin.height);
+                    let _ = Notification::new()
+                        .summary("HydroShot")
+                        .body("Pin image copied to clipboard")
+                        .timeout(2000)
+                        .show();
                 }
                 WindowEvent::CursorMoved { position, .. } => {
                     let pin = &mut self.pinned_windows[pin_idx];
