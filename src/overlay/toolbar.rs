@@ -4,10 +4,11 @@ use crate::geometry::Point;
 pub const TOOLBAR_HEIGHT: f32 = 40.0;
 pub const TOOLBAR_PADDING: f32 = 8.0;
 pub const BUTTON_SIZE: f32 = 32.0;
-pub const BUTTON_COUNT: usize = 12;
+pub const BUTTON_COUNT: usize = 18;
 
 /// Toolbar that appears near the selection rectangle.
-/// Buttons: 0=Arrow, 1=Rect, 2=Pencil, 3=Text, 4=Pixelate, 5-9=colors, 10=Copy, 11=Save
+/// Buttons: 0=Select, 1=Arrow, 2=Rect, 3=Circle, 4=Line, 5=Pencil, 6=Highlight, 7=Text, 8=Pixelate, 9=StepMarker,
+///          10-14=colors, 15=Pin, 16=Copy, 17=Save
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Toolbar {
     pub x: f32,

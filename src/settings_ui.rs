@@ -10,7 +10,7 @@ use crate::tools::render_text_annotation;
 
 /// Width / height of the settings window in physical pixels.
 pub const WIN_W: u32 = 400;
-pub const WIN_H: u32 = 380;
+pub const WIN_H: u32 = 440;
 
 // Catppuccin Mocha palette
 const BASE: (u8, u8, u8) = (0x1e, 0x1e, 0x2e);

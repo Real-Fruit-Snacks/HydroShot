@@ -142,6 +142,50 @@ fn offset_annotation(annotation: &Annotation, dx: f32, dy: f32) -> Annotation {
             size: Size::new(size.width, size.height),
             block_size: *block_size,
         },
+        Annotation::Ellipse {
+            center,
+            radius_x,
+            radius_y,
+            color,
+            thickness,
+        } => Annotation::Ellipse {
+            center: Point::new(center.x - dx, center.y - dy),
+            radius_x: *radius_x,
+            radius_y: *radius_y,
+            color: *color,
+            thickness: *thickness,
+        },
+        Annotation::Line {
+            start,
+            end,
+            color,
+            thickness,
+        } => Annotation::Line {
+            start: Point::new(start.x - dx, start.y - dy),
+            end: Point::new(end.x - dx, end.y - dy),
+            color: *color,
+            thickness: *thickness,
+        },
+        Annotation::Highlight {
+            top_left,
+            size,
+            color,
+        } => Annotation::Highlight {
+            top_left: Point::new(top_left.x - dx, top_left.y - dy),
+            size: Size::new(size.width, size.height),
+            color: *color,
+        },
+        Annotation::StepMarker {
+            position,
+            number,
+            color,
+            size,
+        } => Annotation::StepMarker {
+            position: Point::new(position.x - dx, position.y - dy),
+            number: *number,
+            color: *color,
+            size: *size,
+        },
     }
 }
 

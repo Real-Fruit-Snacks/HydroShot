@@ -20,10 +20,23 @@ fontdue = "0.9"
 toml = "0.8"
 serde = { version = "1", features = ["derive"] }
 dirs = "6"
+clap = { version = "4", features = ["derive"] }
 notify-rust = "4"
+resvg = "0.44"
+
+# Optimize dependencies even in dev builds — critical for GUI responsiveness.
+# Without this, pixel operations (tiny-skia, fontdue, softbuffer) are 10-50x slower.
+[profile.dev.package."*"]
+opt-level = 2
+
+# Keep our own code at opt-level 1 for faster compile + reasonable speed
+[profile.dev]
+opt-level = 1
 
 [target.'cfg(target_os = "windows")'.dependencies]
 windows = { version = "0.58", features = [
     "Win32_Graphics_Gdi",
     "Win32_UI_WindowsAndMessaging",
+    "Win32_System_Registry",
+    "Win32_UI_Controls_Dialogs",
 ] }

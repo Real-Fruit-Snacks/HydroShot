@@ -1,7 +1,11 @@
 pub mod arrow;
+pub mod circle;
+pub mod highlight;
+pub mod line;
 pub mod pencil;
 pub mod pixelate;
 pub mod rectangle;
+pub mod step_marker;
 pub mod text;
 
 use crate::geometry::{Color, Point, Size};
@@ -37,6 +41,30 @@ pub enum Annotation {
         size: Size,
         block_size: u8,
     },
+    Ellipse {
+        center: Point,
+        radius_x: f32,
+        radius_y: f32,
+        color: Color,
+        thickness: f32,
+    },
+    Line {
+        start: Point,
+        end: Point,
+        color: Color,
+        thickness: f32,
+    },
+    Highlight {
+        top_left: Point,
+        size: Size,
+        color: Color,
+    },
+    StepMarker {
+        position: Point,
+        number: u32,
+        color: Color,
+        size: f32,
+    },
 }
 
 pub trait AnnotationTool {
@@ -49,11 +77,16 @@ pub trait AnnotationTool {
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum ToolKind {
+    Select,
     Arrow,
     Rectangle,
+    Circle,
+    Line,
     Pencil,
+    Highlight,
     Text,
     Pixelate,
+    StepMarker,
 }
 
 /// Compute the three vertices of an arrowhead triangle.
@@ -194,6 +227,143 @@ pub fn render_annotation(
         } => {
             render_text_annotation(pixmap, position, text, color, *font_size);
         }
+        Annotation::Ellipse {
+            center,
+            radius_x,
+            radius_y,
+            color,
+            thickness,
+        } => {
+            let mut paint = Paint::default();
+            let c: tiny_skia::Color = (*color).into();
+            paint.set_color(c);
+            paint.anti_alias = true;
+
+            let cx = center.x;
+            let cy = center.y;
+            let rx = *radius_x;
+            let ry = *radius_y;
+            let k: f32 = 0.5522848;
+            let kx = rx * k;
+            let ky = ry * k;
+
+            let mut pb = PathBuilder::new();
+            pb.move_to(cx + rx, cy);
+            pb.cubic_to(cx + rx, cy + ky, cx + kx, cy + ry, cx, cy + ry);
+            pb.cubic_to(cx - kx, cy + ry, cx - rx, cy + ky, cx - rx, cy);
+            pb.cubic_to(cx - rx, cy - ky, cx - kx, cy - ry, cx, cy - ry);
+            pb.cubic_to(cx + kx, cy - ry, cx + rx, cy - ky, cx + rx, cy);
+            pb.close();
+            if let Some(path) = pb.finish() {
+                let stroke = Stroke {
+                    width: *thickness,
+                    ..Stroke::default()
+                };
+                pixmap.stroke_path(&path, &paint, &stroke, Transform::identity(), None);
+            }
+        }
+        Annotation::Line {
+            start,
+            end,
+            color,
+            thickness,
+        } => {
+            let mut paint = Paint::default();
+            let c: tiny_skia::Color = (*color).into();
+            paint.set_color(c);
+            paint.anti_alias = true;
+
+            let mut pb = PathBuilder::new();
+            pb.move_to(start.x, start.y);
+            pb.line_to(end.x, end.y);
+            if let Some(path) = pb.finish() {
+                let stroke = Stroke {
+                    width: *thickness,
+                    ..Stroke::default()
+                };
+                pixmap.stroke_path(&path, &paint, &stroke, Transform::identity(), None);
+            }
+        }
+        Annotation::Highlight {
+            top_left,
+            size,
+            color,
+        } => {
+            let rect = tiny_skia::Rect::from_xywh(top_left.x, top_left.y, size.width, size.height);
+            if let Some(rect) = rect {
+                let mut paint = Paint::default();
+                let c = tiny_skia::Color::from_rgba(color.r, color.g, color.b, 0.3);
+                if let Some(c) = c {
+                    paint.set_color(c);
+                }
+                paint.anti_alias = false;
+                pixmap.fill_rect(rect, &paint, Transform::identity(), None);
+            }
+        }
+        Annotation::StepMarker {
+            position,
+            number,
+            color,
+            size,
+        } => {
+            let radius = size / 2.0;
+
+            // Draw filled circle using bezier approximation
+            let k: f32 = 0.5522848;
+            let kr = radius * k;
+            let mut pb = PathBuilder::new();
+            pb.move_to(position.x + radius, position.y);
+            pb.cubic_to(position.x + radius, position.y + kr, position.x + kr, position.y + radius, position.x, position.y + radius);
+            pb.cubic_to(position.x - kr, position.y + radius, position.x - radius, position.y + kr, position.x - radius, position.y);
+            pb.cubic_to(position.x - radius, position.y - kr, position.x - kr, position.y - radius, position.x, position.y - radius);
+            pb.cubic_to(position.x + kr, position.y - radius, position.x + radius, position.y - kr, position.x + radius, position.y);
+            pb.close();
+
+            if let Some(path) = pb.finish() {
+                // Fill with annotation color
+                let mut paint = Paint::default();
+                paint.set_color((*color).into());
+                paint.anti_alias = true;
+                pixmap.fill_path(&path, &paint, tiny_skia::FillRule::Winding, Transform::identity(), None);
+
+                // White border
+                let mut border = Paint::default();
+                border.set_color(tiny_skia::Color::WHITE);
+                border.anti_alias = true;
+                let stroke = Stroke { width: 2.0, ..Stroke::default() };
+                pixmap.stroke_path(&path, &border, &stroke, Transform::identity(), None);
+            }
+
+            // Black text for consistent readability on all circle colors
+            let text_color = Color::new(0.0, 0.0, 0.0, 1.0);
+            let num_str = number.to_string();
+            let fs = size * 0.55;
+
+            // Measure actual text dimensions using fontdue for precise centering
+            static FONT_DATA: &[u8] = include_bytes!("../../assets/font.ttf");
+            let font = fontdue::Font::from_bytes(FONT_DATA, fontdue::FontSettings::default())
+                .expect("failed to load font");
+
+            // Measure total advance width
+            let total_width: f32 = num_str.chars()
+                .map(|ch| {
+                    let (metrics, _) = font.rasterize(ch, fs);
+                    metrics.advance_width
+                })
+                .sum();
+
+            // Get line metrics for vertical centering
+            let line_metrics = font.horizontal_line_metrics(fs);
+            let ascent = line_metrics.map(|m| m.ascent).unwrap_or(fs * 0.8);
+            let descent = line_metrics.map(|m| m.descent.abs()).unwrap_or(fs * 0.2);
+            let text_height = ascent + descent;
+
+            // Center horizontally and vertically in the circle
+            // render_text_annotation treats position as the TOP of the text
+            let text_x = position.x - total_width * 0.5;
+            let text_y = position.y - text_height * 0.5;
+            render_text_annotation(pixmap, &Point::new(text_x, text_y), &num_str, &text_color, fs);
+        }
         Annotation::Pixelate {
             top_left,
             size,
@@ -288,7 +458,7 @@ pub fn render_annotation(
 }
 
 /// Rasterize a single-line text annotation onto a pixmap using fontdue.
-fn render_text_annotation(
+pub fn render_text_annotation(
     pixmap: &mut Pixmap,
     position: &Point,
     text: &str,
@@ -310,7 +480,11 @@ fn render_text_annotation(
     let sa = color.a;
 
     let mut cursor_x = position.x;
-    let baseline_y = position.y;
+    // Treat click position as the TOP of the text line.
+    // Compute baseline from font metrics: baseline = top + ascent
+    let line_metrics = font.horizontal_line_metrics(font_size);
+    let ascent = line_metrics.map(|m| m.ascent).unwrap_or(font_size * 0.8);
+    let baseline_y = position.y + ascent;
 
     let pixels = pixmap.data_mut();
 
@@ -321,8 +495,9 @@ fn render_text_annotation(
             continue;
         }
 
-        // fontdue metrics: ymin is distance from baseline to bottom of glyph (can be negative)
-        // The glyph origin y = baseline_y - metrics.height as offset from top
+        // fontdue: ymin is the distance from baseline to the bottom of the glyph bitmap
+        // glyph top = baseline - (height + ymin) ... but we use the standard formula:
+        // glyph_y = baseline - glyph_top_offset, where glyph_top_offset = height + ymin
         let glyph_x = cursor_x as i32 + metrics.xmin;
         let glyph_y = baseline_y as i32 - metrics.height as i32 - metrics.ymin;
 
@@ -369,5 +544,185 @@ fn render_text_annotation(
         }
 
         cursor_x += metrics.advance_width;
+    }
+}
+
+/// Distance from a point to a line segment.
+fn point_to_segment_distance(point: &Point, a: &Point, b: &Point) -> f32 {
+    let dx = b.x - a.x;
+    let dy = b.y - a.y;
+    let len_sq = dx * dx + dy * dy;
+    if len_sq < 0.001 {
+        return ((point.x - a.x).powi(2) + (point.y - a.y).powi(2)).sqrt();
+    }
+    let t = ((point.x - a.x) * dx + (point.y - a.y) * dy) / len_sq;
+    let t = t.clamp(0.0, 1.0);
+    let proj_x = a.x + t * dx;
+    let proj_y = a.y + t * dy;
+    ((point.x - proj_x).powi(2) + (point.y - proj_y).powi(2)).sqrt()
+}
+
+/// Test if a point is close enough to an annotation to "hit" it.
+/// Returns true if the point is within `threshold` pixels of the annotation.
+pub fn hit_test_annotation(annotation: &Annotation, point: &Point, threshold: f32) -> bool {
+    match annotation {
+        Annotation::Arrow { start, end, thickness, .. }
+        | Annotation::Line { start, end, thickness, .. } => {
+            point_to_segment_distance(point, start, end) < threshold + thickness / 2.0
+        }
+        Annotation::Rectangle { top_left, size, thickness: _, .. } => {
+            let r = tiny_skia::Rect::from_xywh(top_left.x, top_left.y, size.width, size.height);
+            if let Some(r) = r {
+                let near_left = (point.x - r.left()).abs() < threshold
+                    && point.y >= r.top() - threshold
+                    && point.y <= r.bottom() + threshold;
+                let near_right = (point.x - r.right()).abs() < threshold
+                    && point.y >= r.top() - threshold
+                    && point.y <= r.bottom() + threshold;
+                let near_top = (point.y - r.top()).abs() < threshold
+                    && point.x >= r.left() - threshold
+                    && point.x <= r.right() + threshold;
+                let near_bottom = (point.y - r.bottom()).abs() < threshold
+                    && point.x >= r.left() - threshold
+                    && point.x <= r.right() + threshold;
+                near_left || near_right || near_top || near_bottom
+            } else {
+                false
+            }
+        }
+        Annotation::Ellipse { center, radius_x, radius_y, thickness, .. } => {
+            if *radius_x < 0.001 || *radius_y < 0.001 {
+                return false;
+            }
+            let nx = (point.x - center.x) / radius_x;
+            let ny = (point.y - center.y) / radius_y;
+            let dist = (nx * nx + ny * ny).sqrt();
+            (dist - 1.0).abs()
+                < threshold / radius_x.min(*radius_y)
+                    + thickness / (2.0 * radius_x.min(*radius_y))
+        }
+        Annotation::Highlight { top_left, size, .. }
+        | Annotation::Pixelate { top_left, size, .. } => {
+            point.x >= top_left.x
+                && point.x <= top_left.x + size.width
+                && point.y >= top_left.y
+                && point.y <= top_left.y + size.height
+        }
+        Annotation::Pencil { points, thickness, .. } => points.windows(2).any(|seg| {
+            point_to_segment_distance(point, &seg[0], &seg[1]) < threshold + thickness / 2.0
+        }),
+        Annotation::Text { position, font_size, text, .. } => {
+            let char_width = font_size * 0.6;
+            let text_width = char_width * text.len() as f32;
+            let text_height = *font_size;
+            point.x >= position.x
+                && point.x <= position.x + text_width
+                && point.y >= position.y
+                && point.y <= position.y + text_height
+        }
+        Annotation::StepMarker { position, size, .. } => {
+            let dx = point.x - position.x;
+            let dy = point.y - position.y;
+            (dx * dx + dy * dy).sqrt() < size / 2.0 + threshold
+        }
+    }
+}
+
+/// Move an annotation by (dx, dy).
+pub fn move_annotation(annotation: &mut Annotation, dx: f32, dy: f32) {
+    match annotation {
+        Annotation::Arrow { start, end, .. } | Annotation::Line { start, end, .. } => {
+            start.x += dx;
+            start.y += dy;
+            end.x += dx;
+            end.y += dy;
+        }
+        Annotation::Rectangle { top_left, .. }
+        | Annotation::Highlight { top_left, .. }
+        | Annotation::Pixelate { top_left, .. } => {
+            top_left.x += dx;
+            top_left.y += dy;
+        }
+        Annotation::Ellipse { center, .. } => {
+            center.x += dx;
+            center.y += dy;
+        }
+        Annotation::Pencil { points, .. } => {
+            for p in points.iter_mut() {
+                p.x += dx;
+                p.y += dy;
+            }
+        }
+        Annotation::Text { position, .. } | Annotation::StepMarker { position, .. } => {
+            position.x += dx;
+            position.y += dy;
+        }
+    }
+}
+
+/// Update the color of an annotation.
+pub fn recolor_annotation(annotation: &mut Annotation, new_color: Color) {
+    match annotation {
+        Annotation::Arrow { color, .. }
+        | Annotation::Rectangle { color, .. }
+        | Annotation::Ellipse { color, .. }
+        | Annotation::Line { color, .. }
+        | Annotation::Pencil { color, .. }
+        | Annotation::Highlight { color, .. }
+        | Annotation::Text { color, .. }
+        | Annotation::StepMarker { color, .. } => {
+            *color = new_color;
+        }
+        Annotation::Pixelate { .. } => {} // pixelate has no color
+    }
+}
+
+/// Compute the bounding box of an annotation as (x, y, w, h).
+pub fn annotation_bounding_box(annotation: &Annotation) -> Option<(f32, f32, f32, f32)> {
+    match annotation {
+        Annotation::Arrow { start, end, thickness, .. }
+        | Annotation::Line { start, end, thickness, .. } => {
+            let min_x = start.x.min(end.x) - thickness / 2.0;
+            let min_y = start.y.min(end.y) - thickness / 2.0;
+            let max_x = start.x.max(end.x) + thickness / 2.0;
+            let max_y = start.y.max(end.y) + thickness / 2.0;
+            Some((min_x, min_y, max_x - min_x, max_y - min_y))
+        }
+        Annotation::Rectangle { top_left, size, .. } => {
+            Some((top_left.x, top_left.y, size.width, size.height))
+        }
+        Annotation::Ellipse { center, radius_x, radius_y, .. } => {
+            Some((center.x - radius_x, center.y - radius_y, radius_x * 2.0, radius_y * 2.0))
+        }
+        Annotation::Highlight { top_left, size, .. }
+        | Annotation::Pixelate { top_left, size, .. } => {
+            Some((top_left.x, top_left.y, size.width, size.height))
+        }
+        Annotation::Pencil { points, thickness, .. } => {
+            if points.is_empty() {
+                return None;
+            }
+            let mut min_x = f32::MAX;
+            let mut min_y = f32::MAX;
+            let mut max_x = f32::MIN;
+            let mut max_y = f32::MIN;
+            for p in points {
+                min_x = min_x.min(p.x);
+                min_y = min_y.min(p.y);
+                max_x = max_x.max(p.x);
+                max_y = max_y.max(p.y);
+            }
+            let half = thickness / 2.0;
+            Some((min_x - half, min_y - half, max_x - min_x + *thickness, max_y - min_y + *thickness))
+        }
+        Annotation::Text { position, font_size, text, .. } => {
+            let char_width = font_size * 0.6;
+            let text_width = char_width * text.len() as f32;
+            Some((position.x, position.y, text_width, *font_size))
+        }
+        Annotation::StepMarker { position, size, .. } => {
+            let half = size / 2.0;
+            Some((position.x - half, position.y - half, *size, *size))
+        }
     }
 }

@@ -4,7 +4,10 @@ use windows::Win32::Graphics::Gdi::{
     SelectObject, BITMAPINFO, BITMAPINFOHEADER, BI_RGB, DIB_RGB_COLORS, SRCCOPY,
 };
 use windows::Win32::Graphics::Gdi::{GetDC, ReleaseDC};
-use windows::Win32::UI::WindowsAndMessaging::{GetSystemMetrics, SM_CXSCREEN, SM_CYSCREEN};
+use windows::Win32::UI::WindowsAndMessaging::{
+    GetSystemMetrics, SM_CXVIRTUALSCREEN, SM_CYVIRTUALSCREEN, SM_XVIRTUALSCREEN,
+    SM_YVIRTUALSCREEN,
+};
 
 pub struct WindowsCapturer;
 
@@ -16,13 +19,15 @@ impl WindowsCapturer {
 
 impl ScreenCapture for WindowsCapturer {
     fn capture_all_screens(&self) -> Result<Vec<CapturedScreen>, CaptureError> {
-        unsafe { capture_primary_screen() }.map(|screen| vec![screen])
+        unsafe { capture_virtual_desktop() }.map(|screen| vec![screen])
     }
 }
 
-unsafe fn capture_primary_screen() -> Result<CapturedScreen, CaptureError> {
-    let width = unsafe { GetSystemMetrics(SM_CXSCREEN) };
-    let height = unsafe { GetSystemMetrics(SM_CYSCREEN) };
+unsafe fn capture_virtual_desktop() -> Result<CapturedScreen, CaptureError> {
+    let x = unsafe { GetSystemMetrics(SM_XVIRTUALSCREEN) };
+    let y = unsafe { GetSystemMetrics(SM_YVIRTUALSCREEN) };
+    let width = unsafe { GetSystemMetrics(SM_CXVIRTUALSCREEN) };
+    let height = unsafe { GetSystemMetrics(SM_CYVIRTUALSCREEN) };
 
     if width <= 0 || height <= 0 {
         return Err(CaptureError::NoDisplay);
@@ -56,7 +61,7 @@ unsafe fn capture_primary_screen() -> Result<CapturedScreen, CaptureError> {
 
     let old_bm = unsafe { SelectObject(hdc_mem, hbm) };
 
-    let blt_result = unsafe { BitBlt(hdc_mem, 0, 0, width, height, hdc_screen, 0, 0, SRCCOPY) };
+    let blt_result = unsafe { BitBlt(hdc_mem, 0, 0, width, height, hdc_screen, x, y, SRCCOPY) };
     if blt_result.is_err() {
         unsafe {
             SelectObject(hdc_mem, old_bm);
@@ -123,8 +128,8 @@ unsafe fn capture_primary_screen() -> Result<CapturedScreen, CaptureError> {
         pixels: bgra_pixels,
         width: width as u32,
         height: height as u32,
-        x_offset: 0,
-        y_offset: 0,
+        x_offset: x,
+        y_offset: y,
         scale_factor: 1.0,
     })
 }

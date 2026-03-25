@@ -17,9 +17,10 @@ fn test_size_creation() {
 #[test]
 fn test_color_red() {
     let c = Color::red();
-    assert_eq!(c.r, 1.0);
-    assert_eq!(c.g, 0.0);
-    assert_eq!(c.b, 0.0);
+    // Catppuccin Mocha Red #f38ba8
+    assert!((c.r - 0.953).abs() < 0.01);
+    assert!((c.g - 0.545).abs() < 0.01);
+    assert!((c.b - 0.659).abs() < 0.01);
     assert_eq!(c.a, 1.0);
 }
 

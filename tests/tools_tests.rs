@@ -1,7 +1,7 @@
 use hydroshot::geometry::{Color, Point, Size};
 use hydroshot::tools::{
-    arrow::ArrowTool, arrowhead_points, rectangle::RectangleTool, render_annotation, Annotation,
-    AnnotationTool,
+    arrow::ArrowTool, arrowhead_points, circle::CircleTool, highlight::HighlightTool,
+    line::LineTool, rectangle::RectangleTool, render_annotation, Annotation, AnnotationTool,
 };
 
 #[test]
@@ -169,5 +169,134 @@ fn render_annotation_draws_to_pixmap() {
     assert!(
         pixel2.alpha() > 0,
         "Expected non-transparent pixel on arrow shaft"
+    );
+}
+
+// ---- Circle/Ellipse tool tests ----
+
+#[test]
+fn circle_produces_annotation() {
+    let mut tool = CircleTool::new(Color::red(), 3.0);
+    tool.on_mouse_down(Point::new(10.0, 20.0));
+    tool.on_mouse_move(Point::new(50.0, 60.0));
+    let ann = tool.on_mouse_up(Point::new(50.0, 60.0));
+    assert!(ann.is_some());
+    match ann.unwrap() {
+        Annotation::Ellipse {
+            center,
+            radius_x,
+            radius_y,
+            color,
+            thickness,
+        } => {
+            assert_eq!(center, Point::new(30.0, 40.0));
+            assert_eq!(radius_x, 20.0);
+            assert_eq!(radius_y, 20.0);
+            assert_eq!(color, Color::red());
+            assert_eq!(thickness, 3.0);
+        }
+        _ => panic!("Expected Ellipse annotation"),
+    }
+}
+
+#[test]
+fn circle_render_smoke_test() {
+    let mut pixmap = tiny_skia::Pixmap::new(200, 200).unwrap();
+    let ann = Annotation::Ellipse {
+        center: Point::new(100.0, 100.0),
+        radius_x: 40.0,
+        radius_y: 30.0,
+        color: Color::red(),
+        thickness: 3.0,
+    };
+    render_annotation(&ann, &mut pixmap, None, None);
+    // Check a pixel on the rightmost edge of the ellipse (center.x + radius_x, center.y)
+    let pixel = pixmap.pixel(140, 100).unwrap();
+    assert!(
+        pixel.alpha() > 0,
+        "Expected non-transparent pixel on ellipse edge"
+    );
+}
+
+// ---- Line tool tests ----
+
+#[test]
+fn line_produces_annotation() {
+    let mut tool = LineTool::new(Color::blue(), 2.0);
+    tool.on_mouse_down(Point::new(5.0, 5.0));
+    tool.on_mouse_move(Point::new(100.0, 100.0));
+    let ann = tool.on_mouse_up(Point::new(100.0, 100.0));
+    assert!(ann.is_some());
+    match ann.unwrap() {
+        Annotation::Line {
+            start,
+            end,
+            color,
+            thickness,
+        } => {
+            assert_eq!(start, Point::new(5.0, 5.0));
+            assert_eq!(end, Point::new(100.0, 100.0));
+            assert_eq!(color, Color::blue());
+            assert_eq!(thickness, 2.0);
+        }
+        _ => panic!("Expected Line annotation"),
+    }
+}
+
+#[test]
+fn line_render_smoke_test() {
+    let mut pixmap = tiny_skia::Pixmap::new(200, 200).unwrap();
+    let ann = Annotation::Line {
+        start: Point::new(10.0, 100.0),
+        end: Point::new(190.0, 100.0),
+        color: Color::blue(),
+        thickness: 3.0,
+    };
+    render_annotation(&ann, &mut pixmap, None, None);
+    // Check pixel along the line
+    let pixel = pixmap.pixel(100, 100).unwrap();
+    assert!(
+        pixel.alpha() > 0,
+        "Expected non-transparent pixel on line"
+    );
+}
+
+// ---- Highlight tool tests ----
+
+#[test]
+fn highlight_produces_annotation() {
+    let mut tool = HighlightTool::new(Color::yellow());
+    tool.on_mouse_down(Point::new(10.0, 10.0));
+    tool.on_mouse_move(Point::new(60.0, 40.0));
+    let ann = tool.on_mouse_up(Point::new(60.0, 40.0));
+    assert!(ann.is_some());
+    match ann.unwrap() {
+        Annotation::Highlight {
+            top_left,
+            size,
+            color,
+        } => {
+            assert_eq!(top_left, Point::new(10.0, 10.0));
+            assert_eq!(size, Size::new(50.0, 30.0));
+            assert_eq!(color, Color::yellow());
+        }
+        _ => panic!("Expected Highlight annotation"),
+    }
+}
+
+#[test]
+fn highlight_render_smoke_test() {
+    let mut pixmap = tiny_skia::Pixmap::new(200, 200).unwrap();
+    let ann = Annotation::Highlight {
+        top_left: Point::new(20.0, 20.0),
+        size: Size::new(80.0, 40.0),
+        color: Color::yellow(),
+    };
+    render_annotation(&ann, &mut pixmap, None, None);
+    // Check a pixel inside the highlighted area — should be non-transparent
+    let pixel = pixmap.pixel(50, 35).unwrap();
+    assert!(
+        pixel.alpha() > 0,
+        "Expected non-transparent pixel inside highlight"
     );
 }

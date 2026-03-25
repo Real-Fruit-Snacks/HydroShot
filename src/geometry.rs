@@ -35,24 +35,45 @@ impl Color {
         Self { r, g, b, a }
     }
 
+    // Catppuccin Mocha palette
     pub fn red() -> Self {
-        Self::new(1.0, 0.0, 0.0, 1.0)
+        Self::new(0.953, 0.545, 0.659, 1.0) // #f38ba8
     }
 
     pub fn blue() -> Self {
-        Self::new(0.0, 0.4, 1.0, 1.0)
+        Self::new(0.537, 0.706, 0.980, 1.0) // #89b4fa
     }
 
     pub fn green() -> Self {
-        Self::new(0.0, 0.8, 0.0, 1.0)
+        Self::new(0.651, 0.890, 0.631, 1.0) // #a6e3a1
     }
 
     pub fn yellow() -> Self {
-        Self::new(1.0, 0.9, 0.0, 1.0)
+        Self::new(0.976, 0.886, 0.686, 1.0) // #f9e2af
     }
 
     pub fn white() -> Self {
-        Self::new(1.0, 1.0, 1.0, 1.0)
+        Self::new(0.804, 0.839, 0.957, 1.0) // #cdd6f4 (Mocha Text)
+    }
+
+    pub fn mauve() -> Self {
+        Self::new(0.796, 0.651, 0.969, 1.0) // #cba6f7
+    }
+
+    pub fn peach() -> Self {
+        Self::new(0.980, 0.702, 0.529, 1.0) // #fab387
+    }
+
+    pub fn teal() -> Self {
+        Self::new(0.580, 0.886, 0.835, 1.0) // #94e2d5
+    }
+
+    pub fn sky() -> Self {
+        Self::new(0.537, 0.863, 0.922, 1.0) // #89dceb
+    }
+
+    pub fn lavender() -> Self {
+        Self::new(0.706, 0.745, 0.996, 1.0) // #b4befe
     }
 
     pub fn presets() -> Vec<Self> {
@@ -61,7 +82,7 @@ impl Color {
             Self::blue(),
             Self::green(),
             Self::yellow(),
-            Self::white(),
+            Self::mauve(),
         ]
     }
 }

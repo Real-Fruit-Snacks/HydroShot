@@ -1,2 +1,27 @@
-/target/
+# Build
+target/
+
+# Generated test files
+/icon_*.png
+/capture_test_*.png
+
+# Design drafts
+logo-concepts*.html
+
+# IDE / Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Tooling state
 .omc/
+
+# Environment
+.env
+.env.*

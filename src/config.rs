@@ -101,6 +101,11 @@ impl Config {
             "green" => Color::green(),
             "yellow" => Color::yellow(),
             "white" => Color::white(),
+            "mauve" => Color::mauve(),
+            "peach" => Color::peach(),
+            "teal" => Color::teal(),
+            "sky" => Color::sky(),
+            "lavender" => Color::lavender(),
             other => {
                 tracing::warn!("Unknown color '{other}', falling back to red");
                 Color::red()

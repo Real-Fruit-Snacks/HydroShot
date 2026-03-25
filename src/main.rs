@@ -203,7 +203,17 @@ impl App {
 
         let config = Config::load();
 
-        let attrs = WindowAttributes::default()
+        // Load window icon from embedded PNG
+        let win_icon = {
+            let icon_bytes = include_bytes!("../assets/icon.png");
+            let img = image::load_from_memory(icon_bytes).ok().map(|i| i.to_rgba8());
+            img.and_then(|i| {
+                let (w, h) = i.dimensions();
+                winit::window::Icon::from_rgba(i.into_raw(), w, h).ok()
+            })
+        };
+
+        let mut attrs = WindowAttributes::default()
             .with_title("HydroShot Settings")
             .with_inner_size(winit::dpi::PhysicalSize::new(
                 hydroshot::settings_ui::WIN_W,
@@ -211,6 +221,10 @@ impl App {
             ))
             .with_resizable(false)
             .with_decorations(true);
+
+        if let Some(icon) = win_icon {
+            attrs = attrs.with_window_icon(Some(icon));
+        }
 
         let window = match event_loop.create_window(attrs) {
             Ok(w) => Arc::new(w),

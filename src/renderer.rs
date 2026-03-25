@@ -1,67 +1,43 @@
 use crate::geometry::Color;
+use crate::icons::blend_pixmap;
 use crate::overlay::selection::Selection;
 use crate::overlay::toolbar::Toolbar;
 use crate::state::OverlayState;
-use crate::tools::{render_annotation, Annotation, AnnotationTool, ToolKind};
-use tiny_skia::{Paint, PathBuilder, PremultipliedColorU8, Stroke, Transform};
+use crate::tools::{annotation_bounding_box, render_annotation, Annotation, AnnotationTool, ToolKind};
+use tiny_skia::{Paint, PathBuilder, Stroke, Transform};
 
 /// Render the full overlay frame: screenshot background, dim, selection highlight,
 /// annotations, and toolbar.
-pub fn render_overlay(state: &OverlayState, pixmap: &mut tiny_skia::Pixmap) {
+pub fn render_overlay(state: &mut OverlayState, pixmap: &mut tiny_skia::Pixmap) {
     let width = pixmap.width() as usize;
     let height = pixmap.height() as usize;
-    let screenshot = &state.screenshot;
 
-    // 1. Copy screenshot pixels as background (premultiplied)
-    let pixels = pixmap.pixels_mut();
-    let src = &screenshot.pixels;
-    let src_w = screenshot.width as usize;
-    let src_h = screenshot.height as usize;
-    let copy_w = width.min(src_w);
-    let copy_h = height.min(src_h);
+    // 1+2. Bulk copy pre-computed dimmed screenshot (fast memcpy, done once at capture time)
+    let dimmed_data = state.dimmed_pixmap.data();
+    let pixmap_data = pixmap.data_mut();
+    let copy_len = dimmed_data.len().min(pixmap_data.len());
+    pixmap_data[..copy_len].copy_from_slice(&dimmed_data[..copy_len]);
 
-    for y in 0..copy_h {
-        for x in 0..copy_w {
-            let si = (y * src_w + x) * 4;
-            if si + 3 < src.len() {
-                let r = src[si];
-                let g = src[si + 1];
-                let b = src[si + 2];
-                let a = src[si + 3];
-                if let Some(c) = PremultipliedColorU8::from_rgba(r, g, b, a) {
-                    pixels[y * width + x] = c;
-                }
-            }
-        }
-    }
-
-    // 2. Dim the entire screen with semi-transparent black overlay
-    if let Some(rect) = tiny_skia::Rect::from_xywh(0.0, 0.0, width as f32, height as f32) {
-        let mut paint = Paint::default();
-        paint.set_color(tiny_skia::Color::from_rgba(0.0, 0.0, 0.0, 0.4).unwrap());
-        paint.anti_alias = false;
-        pixmap.fill_rect(rect, &paint, Transform::identity(), None);
-    }
-
-    // 3. If selection exists, restore brightness within selection bounds
+    // 3. If selection exists, restore brightness by copying from cached screenshot pixmap
     if let Some(sel) = &state.selection {
-        let sx = (sel.x as usize).min(copy_w);
-        let sy = (sel.y as usize).min(copy_h);
-        let sx2 = ((sel.x + sel.width) as usize).min(copy_w);
-        let sy2 = ((sel.y + sel.height) as usize).min(copy_h);
+        let src_w = state.screenshot_pixmap.width() as usize;
+        let sx = (sel.x as usize).min(width);
+        let sy = (sel.y as usize).min(height);
+        let sx2 = ((sel.x + sel.width) as usize).min(width).min(src_w);
+        let sy2 = ((sel.y + sel.height) as usize).min(height);
+        let row_bytes = (sx2.saturating_sub(sx)) * 4; // 4 bytes per pixel
 
-        let pixels = pixmap.pixels_mut();
-        for y in sy..sy2 {
-            for x in sx..sx2 {
-                let si = (y * src_w + x) * 4;
-                if si + 3 < src.len() {
-                    let r = src[si];
-                    let g = src[si + 1];
-                    let b = src[si + 2];
-                    let a = src[si + 3];
-                    if let Some(c) = PremultipliedColorU8::from_rgba(r, g, b, a) {
-                        pixels[y * width + x] = c;
-                    }
+        if row_bytes > 0 {
+            let screenshot_data = state.screenshot_pixmap.data();
+            let pixmap_data = pixmap.data_mut();
+            for y in sy..sy2 {
+                let src_offset = (y * src_w + sx) * 4;
+                let dst_offset = (y * width + sx) * 4;
+                if src_offset + row_bytes <= screenshot_data.len()
+                    && dst_offset + row_bytes <= pixmap_data.len()
+                {
+                    pixmap_data[dst_offset..dst_offset + row_bytes]
+                        .copy_from_slice(&screenshot_data[src_offset..src_offset + row_bytes]);
                 }
             }
         }
@@ -70,14 +46,17 @@ pub fn render_overlay(state: &OverlayState, pixmap: &mut tiny_skia::Pixmap) {
         if let Some(rect) = tiny_skia::Rect::from_xywh(sel.x, sel.y, sel.width, sel.height) {
             let path = PathBuilder::from_rect(rect);
             let mut paint = Paint::default();
-            paint.set_color(tiny_skia::Color::WHITE);
+            paint.set_color(tiny_skia::Color::from_rgba(0.706, 0.745, 0.996, 0.9).unwrap()); // Lavender #b4befe
             paint.anti_alias = true;
             let stroke = Stroke {
-                width: 1.0,
+                width: 1.5,
                 ..Stroke::default()
             };
             pixmap.stroke_path(&path, &paint, &stroke, Transform::identity(), None);
         }
+
+        // 4b. Selection size label
+        render_size_label(pixmap, sel, width as f32, height as f32);
     }
 
     // 5. Finalized annotations
@@ -89,14 +68,28 @@ pub fn render_overlay(state: &OverlayState, pixmap: &mut tiny_skia::Pixmap) {
 
     // 6. In-progress annotation preview
     let in_progress = match state.active_tool {
+        ToolKind::Select => None,
         ToolKind::Arrow => state.arrow_tool.in_progress_annotation(),
         ToolKind::Rectangle => state.rectangle_tool.in_progress_annotation(),
+        ToolKind::Circle => state.circle_tool.in_progress_annotation(),
+        ToolKind::Line => state.line_tool.in_progress_annotation(),
         ToolKind::Pencil => state.pencil_tool.in_progress_annotation(),
+        ToolKind::Highlight => state.highlight_tool.in_progress_annotation(),
         ToolKind::Text => state.text_tool.in_progress_annotation(),
         ToolKind::Pixelate => state.pixelate_tool.in_progress_annotation(),
+        ToolKind::StepMarker => state.step_marker_tool.in_progress_annotation(),
     };
     if let Some(ref ann) = in_progress {
         render_annotation(ann, pixmap, ss_pixels, ss_width);
+    }
+
+    // 6b. Selection highlight around selected annotation
+    if let Some(idx) = state.selected_index {
+        if let Some(ann) = state.annotations.get(idx) {
+            if let Some((bx, by, bw, bh)) = annotation_bounding_box(ann) {
+                render_selection_highlight(pixmap, bx - 4.0, by - 4.0, bw + 8.0, bh + 8.0);
+            }
+        }
     }
 
     // 7. Text input preview (in-progress text being typed)
@@ -131,18 +124,18 @@ pub fn render_overlay(state: &OverlayState, pixmap: &mut tiny_skia::Pixmap) {
     }
 
     // 8. Toolbar (only if there is a selection)
-    if let Some(sel) = &state.selection {
-        render_toolbar(state, sel, pixmap);
+    if let Some(sel) = state.selection {
+        render_toolbar(state, &sel, pixmap);
     }
 }
 
-/// Swatch colors matching Color::presets() order.
+/// Catppuccin Mocha swatch colors matching Color::presets() order.
 const SWATCH_COLORS: [(f32, f32, f32); 5] = [
-    (1.0, 0.0, 0.0), // red
-    (0.0, 0.4, 1.0), // blue
-    (0.0, 0.8, 0.0), // green
-    (1.0, 0.9, 0.0), // yellow
-    (1.0, 1.0, 1.0), // white
+    (0.953, 0.545, 0.659), // Red (#f38ba8)
+    (0.537, 0.706, 0.980), // Blue (#89b4fa)
+    (0.651, 0.890, 0.631), // Green (#a6e3a1)
+    (0.976, 0.886, 0.686), // Yellow (#f9e2af)
+    (0.796, 0.651, 0.969), // Mauve (#cba6f7)
 ];
 
 /// Build a rounded rectangle path with given corner radius.
@@ -170,7 +163,26 @@ fn rounded_rect_path(x: f32, y: f32, w: f32, h: f32, r: f32) -> Option<tiny_skia
     pb.finish()
 }
 
-fn render_toolbar(state: &OverlayState, selection: &Selection, pixmap: &mut tiny_skia::Pixmap) {
+/// Draw a dashed selection highlight rectangle around a selected annotation.
+fn render_selection_highlight(pixmap: &mut tiny_skia::Pixmap, x: f32, y: f32, w: f32, h: f32) {
+    if w <= 0.0 || h <= 0.0 {
+        return;
+    }
+    if let Some(rect) = tiny_skia::Rect::from_xywh(x, y, w, h) {
+        let path = PathBuilder::from_rect(rect);
+        let mut paint = Paint::default();
+        paint.set_color(tiny_skia::Color::from_rgba(0.706, 0.745, 0.996, 0.8).unwrap()); // Lavender
+        paint.anti_alias = true;
+        let stroke = Stroke {
+            width: 1.5,
+            dash: tiny_skia::StrokeDash::new(vec![4.0, 4.0], 0.0),
+            ..Stroke::default()
+        };
+        pixmap.stroke_path(&path, &paint, &stroke, Transform::identity(), None);
+    }
+}
+
+fn render_toolbar(state: &mut OverlayState, selection: &Selection, pixmap: &mut tiny_skia::Pixmap) {
     let toolbar = Toolbar::position_for(selection, pixmap.height() as f32);
     let presets = Color::presets();
 
@@ -199,7 +211,7 @@ fn render_toolbar(state: &OverlayState, selection: &Selection, pixmap: &mut tiny
         }
         // Background fill
         let mut bg_paint = Paint::default();
-        bg_paint.set_color(tiny_skia::Color::from_rgba(0.12, 0.12, 0.14, 0.92).unwrap());
+        bg_paint.set_color(tiny_skia::Color::from_rgba(0.067, 0.067, 0.094, 0.95).unwrap());
         bg_paint.anti_alias = true;
         pixmap.fill_path(
             &bg_path,
@@ -210,7 +222,7 @@ fn render_toolbar(state: &OverlayState, selection: &Selection, pixmap: &mut tiny
         );
         // Subtle border
         let mut border_paint = Paint::default();
-        border_paint.set_color(tiny_skia::Color::from_rgba(1.0, 1.0, 1.0, 0.1).unwrap());
+        border_paint.set_color(tiny_skia::Color::from_rgba(0.804, 0.839, 0.957, 0.12).unwrap());
         border_paint.anti_alias = true;
         let border_stroke = Stroke {
             width: 1.0,
@@ -226,8 +238,8 @@ fn render_toolbar(state: &OverlayState, selection: &Selection, pixmap: &mut tiny
     }
 
     // --- Separators between button groups (tools | colors | actions) ---
-    let sep_color = tiny_skia::Color::from_rgba(1.0, 1.0, 1.0, 0.15).unwrap();
-    for &after_btn in &[4usize, 9] {
+    let sep_color = tiny_skia::Color::from_rgba(0.804, 0.839, 0.957, 0.15).unwrap();
+    for &after_btn in &[9usize, 14] {
         let (bx, _, bw, _) = toolbar.button_rect(after_btn);
         let sep_x = bx + bw + TOOLBAR_PADDING / 2.0;
         let sep_y1 = toolbar.y + 8.0;
@@ -248,17 +260,22 @@ fn render_toolbar(state: &OverlayState, selection: &Selection, pixmap: &mut tiny
     }
 
     // --- Render each button ---
-    for i in 0..12usize {
+    for i in 0..18usize {
         let (bx, by, bw, bh) = toolbar.button_rect(i);
 
         let is_active = match i {
-            0 => state.active_tool == ToolKind::Arrow,
-            1 => state.active_tool == ToolKind::Rectangle,
-            2 => state.active_tool == ToolKind::Pencil,
-            3 => state.active_tool == ToolKind::Text,
-            4 => state.active_tool == ToolKind::Pixelate,
-            5..=9 => {
-                let idx = i - 5;
+            0 => state.active_tool == ToolKind::Select,
+            1 => state.active_tool == ToolKind::Arrow,
+            2 => state.active_tool == ToolKind::Rectangle,
+            3 => state.active_tool == ToolKind::Circle,
+            4 => state.active_tool == ToolKind::Line,
+            5 => state.active_tool == ToolKind::Pencil,
+            6 => state.active_tool == ToolKind::Highlight,
+            7 => state.active_tool == ToolKind::Text,
+            8 => state.active_tool == ToolKind::Pixelate,
+            9 => state.active_tool == ToolKind::StepMarker,
+            10..=14 => {
+                let idx = i - 10;
                 idx < presets.len() && state.current_color == presets[idx]
             }
             _ => false,
@@ -270,7 +287,7 @@ fn render_toolbar(state: &OverlayState, selection: &Selection, pixmap: &mut tiny
             if is_active {
                 // Active: filled highlight
                 let mut fill = Paint::default();
-                fill.set_color(tiny_skia::Color::from_rgba(0.25, 0.52, 0.95, 0.35).unwrap());
+                fill.set_color(tiny_skia::Color::from_rgba(0.537, 0.706, 0.980, 0.3).unwrap());
                 fill.anti_alias = true;
                 pixmap.fill_path(
                     &btn_path,
@@ -281,7 +298,7 @@ fn render_toolbar(state: &OverlayState, selection: &Selection, pixmap: &mut tiny
                 );
                 // Active border glow
                 let mut glow = Paint::default();
-                glow.set_color(tiny_skia::Color::from_rgba(0.4, 0.65, 1.0, 0.7).unwrap());
+                glow.set_color(tiny_skia::Color::from_rgba(0.706, 0.745, 0.996, 0.7).unwrap());
                 glow.anti_alias = true;
                 let glow_stroke = Stroke {
                     width: 1.5,
@@ -291,7 +308,7 @@ fn render_toolbar(state: &OverlayState, selection: &Selection, pixmap: &mut tiny
             } else {
                 // Inactive: subtle hover-ready background
                 let mut fill = Paint::default();
-                fill.set_color(tiny_skia::Color::from_rgba(1.0, 1.0, 1.0, 0.06).unwrap());
+                fill.set_color(tiny_skia::Color::from_rgba(0.804, 0.839, 0.957, 0.08).unwrap());
                 fill.anti_alias = true;
                 pixmap.fill_path(
                     &btn_path,
@@ -303,174 +320,38 @@ fn render_toolbar(state: &OverlayState, selection: &Selection, pixmap: &mut tiny
             }
         }
 
-        let icon_color = if is_active {
-            tiny_skia::Color::WHITE
-        } else {
-            tiny_skia::Color::from_rgba(0.8, 0.8, 0.8, 1.0).unwrap()
+        // --- SVG icon rendering for tool buttons and action buttons ---
+        let icon_name = match i {
+            0 => Some("select"),
+            1 => Some("arrow"),
+            2 => Some("rectangle"),
+            3 => Some("circle"),
+            4 => Some("line"),
+            5 => Some("pencil"),
+            6 => Some("highlight"),
+            7 => Some("text"),
+            8 => Some("pixelate"),
+            9 => Some("step-marker"),
+            15 => Some("pin"),
+            16 => Some("copy"),
+            17 => Some("save"),
+            _ => None,
         };
 
-        match i {
-            0 => {
-                // Arrow icon: diagonal line with proper arrowhead
-                let x1 = bx + 8.0;
-                let y1 = by + bh - 8.0;
-                let x2 = bx + bw - 8.0;
-                let y2 = by + 8.0;
+        if let Some(name) = icon_name {
+            let icon_size = (bw - 12.0).max(12.0) as u32;
+            let color_hex = if is_active { "#cdd6f4" } else { "#a6adc8" };
+            if let Some(icon_pixmap) = state.icon_cache.get_or_render(name, icon_size, color_hex) {
+                let icon_x = (bx + (bw - icon_size as f32) / 2.0) as i32;
+                let icon_y = (by + (bh - icon_size as f32) / 2.0) as i32;
+                blend_pixmap(pixmap, icon_pixmap, icon_x, icon_y);
+            }
+        }
 
-                // Shaft
-                let mut pb = PathBuilder::new();
-                pb.move_to(x1, y1);
-                pb.line_to(x2, y2);
-                if let Some(path) = pb.finish() {
-                    let mut paint = Paint::default();
-                    paint.set_color(icon_color);
-                    paint.anti_alias = true;
-                    let stroke = Stroke {
-                        width: 2.0,
-                        ..Stroke::default()
-                    };
-                    pixmap.stroke_path(&path, &paint, &stroke, Transform::identity(), None);
-                }
-
-                // Arrowhead triangle at (x2, y2)
-                let dx = x2 - x1;
-                let dy = y2 - y1;
-                let len = (dx * dx + dy * dy).sqrt();
-                let ux = dx / len;
-                let uy = dy / len;
-                let arrow_len = 8.0;
-                let arrow_half_w = 4.0;
-                let base_x = x2 - ux * arrow_len;
-                let base_y = y2 - uy * arrow_len;
-                let perp_x = -uy;
-                let perp_y = ux;
-
-                let mut pb = PathBuilder::new();
-                pb.move_to(x2, y2);
-                pb.line_to(
-                    base_x + perp_x * arrow_half_w,
-                    base_y + perp_y * arrow_half_w,
-                );
-                pb.line_to(
-                    base_x - perp_x * arrow_half_w,
-                    base_y - perp_y * arrow_half_w,
-                );
-                pb.close();
-                if let Some(path) = pb.finish() {
-                    let mut paint = Paint::default();
-                    paint.set_color(icon_color);
-                    paint.anti_alias = true;
-                    pixmap.fill_path(
-                        &path,
-                        &paint,
-                        tiny_skia::FillRule::Winding,
-                        Transform::identity(),
-                        None,
-                    );
-                }
-            }
-            1 => {
-                // Rectangle icon: rounded outlined rect
-                let inset = 7.0;
-                if let Some(path) = rounded_rect_path(
-                    bx + inset,
-                    by + inset,
-                    bw - inset * 2.0,
-                    bh - inset * 2.0,
-                    2.0,
-                ) {
-                    let mut paint = Paint::default();
-                    paint.set_color(icon_color);
-                    paint.anti_alias = true;
-                    let stroke = Stroke {
-                        width: 2.0,
-                        ..Stroke::default()
-                    };
-                    pixmap.stroke_path(&path, &paint, &stroke, Transform::identity(), None);
-                }
-            }
-            2 => {
-                // Pencil icon: wavy freehand line
-                let mut pb = PathBuilder::new();
-                pb.move_to(bx + 7.0, by + bh - 10.0);
-                pb.quad_to(bx + 12.0, by + 10.0, bx + 16.0, by + bh / 2.0);
-                pb.quad_to(bx + 20.0, by + bh - 8.0, bx + bw - 7.0, by + 10.0);
-                if let Some(path) = pb.finish() {
-                    let mut paint = Paint::default();
-                    paint.set_color(icon_color);
-                    paint.anti_alias = true;
-                    let stroke = Stroke {
-                        width: 2.0,
-                        ..Stroke::default()
-                    };
-                    pixmap.stroke_path(&path, &paint, &stroke, Transform::identity(), None);
-                }
-            }
-            3 => {
-                // Text icon: letter "T"
-                let cx = bx + bw / 2.0;
-                // Horizontal bar of T
-                let mut pb = PathBuilder::new();
-                pb.move_to(cx - 8.0, by + 8.0);
-                pb.line_to(cx + 8.0, by + 8.0);
-                if let Some(path) = pb.finish() {
-                    let mut paint = Paint::default();
-                    paint.set_color(icon_color);
-                    paint.anti_alias = true;
-                    let stroke = Stroke {
-                        width: 2.5,
-                        ..Stroke::default()
-                    };
-                    pixmap.stroke_path(&path, &paint, &stroke, Transform::identity(), None);
-                }
-                // Vertical stem of T
-                let mut pb = PathBuilder::new();
-                pb.move_to(cx, by + 8.0);
-                pb.line_to(cx, by + bh - 8.0);
-                if let Some(path) = pb.finish() {
-                    let mut paint = Paint::default();
-                    paint.set_color(icon_color);
-                    paint.anti_alias = true;
-                    let stroke = Stroke {
-                        width: 2.5,
-                        ..Stroke::default()
-                    };
-                    pixmap.stroke_path(&path, &paint, &stroke, Transform::identity(), None);
-                }
-            }
-            4 => {
-                // Pixelate icon: 3x3 grid of small squares
-                let grid_inset = 7.0;
-                let grid_size = bw - grid_inset * 2.0;
-                let cell = grid_size / 3.0;
-                let gap = 1.5;
-                for row in 0..3 {
-                    for col in 0..3 {
-                        let cx = bx + grid_inset + col as f32 * cell + gap / 2.0;
-                        let cy = by + grid_inset + row as f32 * cell + gap / 2.0;
-                        let cs = cell - gap;
-                        if let Some(rect) = tiny_skia::Rect::from_xywh(cx, cy, cs, cs) {
-                            let mut paint = Paint::default();
-                            // Checkerboard-ish pattern for visual interest
-                            let alpha = if (row + col) % 2 == 0 { 1.0 } else { 0.5 };
-                            paint.set_color(
-                                tiny_skia::Color::from_rgba(
-                                    icon_color.red(),
-                                    icon_color.green(),
-                                    icon_color.blue(),
-                                    alpha,
-                                )
-                                .unwrap(),
-                            );
-                            paint.anti_alias = false;
-                            pixmap.fill_rect(rect, &paint, Transform::identity(), None);
-                        }
-                    }
-                }
-            }
-            5..=9 => {
+        if let 10..=14 = i {
+            {
                 // Color swatch: rounded filled rect with border
-                let idx = i - 5;
+                let idx = i - 10;
                 if idx < SWATCH_COLORS.len() {
                     let (r, g, b) = SWATCH_COLORS[idx];
                     let inset = 6.0;
@@ -513,121 +394,202 @@ fn render_toolbar(state: &OverlayState, selection: &Selection, pixmap: &mut tiny
                     }
                 }
             }
-            10 => {
-                // Copy icon: two overlapping rounded rects
-                let s = 10.0;
-                let off = 4.0;
-                let cx = bx + bw / 2.0;
-                let cy = by + bh / 2.0;
-                // Back rect (top-left)
-                if let Some(path) = rounded_rect_path(
-                    cx - s / 2.0 - off / 2.0,
-                    cy - s / 2.0 - off / 2.0,
-                    s,
-                    s,
-                    2.0,
-                ) {
-                    let mut paint = Paint::default();
-                    paint.set_color(icon_color);
-                    paint.anti_alias = true;
-                    let stroke = Stroke {
-                        width: 1.5,
-                        ..Stroke::default()
-                    };
-                    pixmap.stroke_path(&path, &paint, &stroke, Transform::identity(), None);
-                }
-                // Front rect (bottom-right, slightly filled)
-                if let Some(path) = rounded_rect_path(
-                    cx - s / 2.0 + off / 2.0,
-                    cy - s / 2.0 + off / 2.0,
-                    s,
-                    s,
-                    2.0,
-                ) {
-                    // Slight fill to distinguish from back
-                    let mut fill = Paint::default();
-                    fill.set_color(tiny_skia::Color::from_rgba(0.12, 0.12, 0.14, 0.92).unwrap());
-                    fill.anti_alias = true;
-                    pixmap.fill_path(
-                        &path,
-                        &fill,
-                        tiny_skia::FillRule::Winding,
-                        Transform::identity(),
-                        None,
-                    );
-                    let mut paint = Paint::default();
-                    paint.set_color(icon_color);
-                    paint.anti_alias = true;
-                    let stroke = Stroke {
-                        width: 1.5,
-                        ..Stroke::default()
-                    };
-                    pixmap.stroke_path(&path, &paint, &stroke, Transform::identity(), None);
-                }
+        }
+    }
+
+    // --- Tooltip for hovered button ---
+    let mouse = crate::geometry::Point::new(state.last_mouse_pos.x, state.last_mouse_pos.y);
+    if let Some(btn_idx) = toolbar.hit_test(mouse) {
+        let label = match btn_idx {
+            0 => "Select (V)",
+            1 => "Arrow (A)",
+            2 => "Rectangle (R)",
+            3 => "Circle (C)",
+            4 => "Line (L)",
+            5 => "Pencil (P)",
+            6 => "Highlight (H)",
+            7 => "Text (T)",
+            8 => "Pixelate (B)",
+            9 => "Step Marker (N)",
+            10 => "Red (right-click: pick)",
+            11 => "Blue (right-click: pick)",
+            12 => "Green (right-click: pick)",
+            13 => "Yellow (right-click: pick)",
+            14 => "Mauve (right-click: pick)",
+            15 => "Pin",
+            16 => "Copy (Ctrl+C)",
+            17 => "Save (Ctrl+S)",
+            _ => "",
+        };
+
+        if !label.is_empty() {
+            let (btn_x, _btn_y, btn_w, _btn_h) = toolbar.button_rect(btn_idx);
+
+            // Measure text width
+            static FONT_DATA: &[u8] = include_bytes!("../assets/font.ttf");
+            let font = fontdue::Font::from_bytes(
+                FONT_DATA, fontdue::FontSettings::default()
+            ).expect("font");
+            let font_size = 12.0;
+            let text_width: f32 = label.chars()
+                .map(|ch| font.rasterize(ch, font_size).0.advance_width)
+                .sum();
+
+            let pad_x = 6.0;
+            let pad_y = 4.0;
+            let tip_w = text_width + pad_x * 2.0;
+            let tip_h = font_size + pad_y * 2.0;
+
+            // Center tooltip above the button
+            let tip_x = (btn_x + btn_w / 2.0 - tip_w / 2.0)
+                .max(toolbar.x)
+                .min(toolbar.x + toolbar.width - tip_w);
+            let tip_y = toolbar.y - tip_h - 6.0;
+
+            // Background pill
+            if let Some(bg) = rounded_rect_path(tip_x, tip_y, tip_w, tip_h, 4.0) {
+                let mut bg_paint = Paint::default();
+                bg_paint.set_color(tiny_skia::Color::from_rgba(0.067, 0.067, 0.094, 0.95).unwrap());
+                bg_paint.anti_alias = true;
+                pixmap.fill_path(&bg, &bg_paint, tiny_skia::FillRule::Winding, Transform::identity(), None);
+
+                // Border
+                let mut border_paint = Paint::default();
+                border_paint.set_color(tiny_skia::Color::from_rgba(0.804, 0.839, 0.957, 0.2).unwrap());
+                border_paint.anti_alias = true;
+                let border_stroke = Stroke { width: 0.5, ..Stroke::default() };
+                pixmap.stroke_path(&bg, &border_paint, &border_stroke, Transform::identity(), None);
             }
-            11 => {
-                // Save/download icon: arrow pointing down into a tray
-                let cx = bx + bw / 2.0;
-                let top = by + 8.0;
-                let arrow_tip = by + bh - 12.0;
-                let tray_y = by + bh - 8.0;
 
-                // Vertical stem
-                let mut pb = PathBuilder::new();
-                pb.move_to(cx, top);
-                pb.line_to(cx, arrow_tip);
-                if let Some(path) = pb.finish() {
-                    let mut paint = Paint::default();
-                    paint.set_color(icon_color);
-                    paint.anti_alias = true;
-                    let stroke = Stroke {
-                        width: 2.0,
-                        ..Stroke::default()
-                    };
-                    pixmap.stroke_path(&path, &paint, &stroke, Transform::identity(), None);
-                }
-
-                // Arrowhead (filled triangle)
-                let mut pb = PathBuilder::new();
-                pb.move_to(cx, arrow_tip + 2.0);
-                pb.line_to(cx - 5.0, arrow_tip - 4.0);
-                pb.line_to(cx + 5.0, arrow_tip - 4.0);
-                pb.close();
-                if let Some(path) = pb.finish() {
-                    let mut paint = Paint::default();
-                    paint.set_color(icon_color);
-                    paint.anti_alias = true;
-                    pixmap.fill_path(
-                        &path,
-                        &paint,
-                        tiny_skia::FillRule::Winding,
-                        Transform::identity(),
-                        None,
-                    );
-                }
-
-                // Tray: U-shape
-                let mut pb = PathBuilder::new();
-                let tray_left = bx + 8.0;
-                let tray_right = bx + bw - 8.0;
-                pb.move_to(tray_left, tray_y - 4.0);
-                pb.line_to(tray_left, tray_y);
-                pb.line_to(tray_right, tray_y);
-                pb.line_to(tray_right, tray_y - 4.0);
-                if let Some(path) = pb.finish() {
-                    let mut paint = Paint::default();
-                    paint.set_color(icon_color);
-                    paint.anti_alias = true;
-                    let stroke = Stroke {
-                        width: 2.0,
-                        ..Stroke::default()
-                    };
-                    pixmap.stroke_path(&path, &paint, &stroke, Transform::identity(), None);
-                }
-            }
-            _ => {}
+            // Text
+            use crate::tools::render_text_annotation;
+            let text_pos = crate::geometry::Point::new(tip_x + pad_x, tip_y + pad_y);
+            let white = crate::geometry::Color::new(0.804, 0.839, 0.957, 1.0);
+            render_text_annotation(pixmap, &text_pos, label, &white, font_size);
         }
     }
 }
 
 use crate::overlay::toolbar::TOOLBAR_PADDING;
+
+/// Render a small label showing the selection dimensions (e.g. "1920 × 1080")
+/// near the bottom-right corner of the selection, flipping position if near screen edges.
+fn render_size_label(
+    pixmap: &mut tiny_skia::Pixmap,
+    sel: &Selection,
+    screen_w: f32,
+    screen_h: f32,
+) {
+    use fontdue::{Font, FontSettings};
+
+    static FONT_DATA: &[u8] = include_bytes!("../assets/font.ttf");
+
+    let font = Font::from_bytes(FONT_DATA, FontSettings::default()).expect("failed to load font");
+    let font_size = 14.0;
+
+    let label = format!("{} \u{00D7} {}", sel.width as u32, sel.height as u32);
+
+    // Measure text width
+    let mut text_width: f32 = 0.0;
+    for ch in label.chars() {
+        let (metrics, _) = font.rasterize(ch, font_size);
+        text_width += metrics.advance_width;
+    }
+
+    let pad_x: f32 = 8.0;
+    let pad_y: f32 = 4.0;
+    let pill_w = text_width + pad_x * 2.0;
+    let pill_h = font_size + pad_y * 2.0;
+    let margin = 4.0;
+
+    // Default: bottom-right, offset outside selection
+    let mut pill_x = sel.x + sel.width - pill_w + margin;
+    let mut pill_y = sel.y + sel.height + margin;
+
+    // Flip left if near right edge
+    if pill_x + pill_w > screen_w {
+        pill_x = sel.x - margin;
+    }
+    // Flip above if near bottom edge
+    if pill_y + pill_h > screen_h {
+        pill_y = sel.y - pill_h - margin;
+    }
+
+    // Clamp to screen
+    if pill_x < 0.0 {
+        pill_x = 0.0;
+    }
+    if pill_y < 0.0 {
+        pill_y = 0.0;
+    }
+
+    // Draw background pill (dark semi-transparent rounded rect)
+    if let Some(bg_path) = rounded_rect_path(pill_x, pill_y, pill_w, pill_h, 4.0) {
+        let mut paint = Paint::default();
+        paint.set_color(tiny_skia::Color::from_rgba(0.0, 0.0, 0.0, 0.7).unwrap());
+        paint.anti_alias = true;
+        pixmap.fill_path(
+            &bg_path,
+            &paint,
+            tiny_skia::FillRule::Winding,
+            Transform::identity(),
+            None,
+        );
+    }
+
+    // Render text on top
+    let line_metrics = font.horizontal_line_metrics(font_size);
+    let ascent = line_metrics.map(|m| m.ascent).unwrap_or(font_size * 0.8);
+    let text_x = pill_x + pad_x;
+    let baseline_y = pill_y + pad_y + ascent;
+
+    let pw = pixmap.width() as i32;
+    let ph = pixmap.height() as i32;
+    let pixels = pixmap.data_mut();
+
+    let mut cursor_x = text_x;
+    for ch in label.chars() {
+        let (metrics, bitmap) = font.rasterize(ch, font_size);
+        if metrics.width == 0 || metrics.height == 0 {
+            cursor_x += metrics.advance_width;
+            continue;
+        }
+
+        let glyph_x = cursor_x as i32 + metrics.xmin;
+        let glyph_y = baseline_y as i32 - metrics.height as i32 - metrics.ymin;
+
+        for row in 0..metrics.height {
+            for col in 0..metrics.width {
+                let px_x = glyph_x + col as i32;
+                let px_y = glyph_y + row as i32;
+                if px_x < 0 || px_x >= pw || px_y < 0 || px_y >= ph {
+                    continue;
+                }
+
+                let coverage = bitmap[row * metrics.width + col] as f32 / 255.0;
+                if coverage < 1.0 / 255.0 {
+                    continue;
+                }
+
+                let idx = ((px_y as u32 * pw as u32 + px_x as u32) * 4) as usize;
+
+                // White text, alpha-blended
+                let src_val = (255.0 * coverage) as u8;
+                let src_a = coverage;
+                let inv_a = 1.0 - src_a;
+
+                let dst_r = pixels[idx];
+                let dst_g = pixels[idx + 1];
+                let dst_b = pixels[idx + 2];
+                let dst_a = pixels[idx + 3];
+
+                pixels[idx] = (src_val as f32 + dst_r as f32 * inv_a).min(255.0) as u8;
+                pixels[idx + 1] = (src_val as f32 + dst_g as f32 * inv_a).min(255.0) as u8;
+                pixels[idx + 2] = (src_val as f32 + dst_b as f32 * inv_a).min(255.0) as u8;
+                pixels[idx + 3] = (src_a * 255.0 + dst_a as f32 * inv_a).min(255.0) as u8;
+            }
+        }
+
+        cursor_x += metrics.advance_width;
+    }
+}
