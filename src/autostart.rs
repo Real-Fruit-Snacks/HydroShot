@@ -83,7 +83,7 @@ fn set_enabled_windows(enabled: bool) -> Result<(), String> {
 #[cfg(target_os = "linux")]
 fn is_enabled_linux() -> bool {
     let path = autostart_desktop_path();
-    path.map_or(false, |p| p.exists())
+    path.is_some_and(|p| p.exists())
 }
 
 #[cfg(target_os = "linux")]
