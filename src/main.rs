@@ -504,10 +504,11 @@ impl App {
             }
 
             // Close overlay immediately, upload in background thread
+            let imgur_id = self.config.general.imgur_client_id.clone();
             self.close_overlay();
 
             std::thread::spawn(move || {
-                let toast_msg = match hydroshot::upload::upload_to_imgur(&png_bytes) {
+                let toast_msg = match hydroshot::upload::upload_to_imgur(&png_bytes, &imgur_id) {
                     Ok(url) => {
                         if let Ok(mut clipboard) = arboard::Clipboard::new() {
                             let _ = clipboard.set_text(&url);

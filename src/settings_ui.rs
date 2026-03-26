@@ -342,6 +342,15 @@ impl SettingsWindow {
         });
         y += btn_h + 20.0;
 
+        // ── Imgur Client ID ──
+        let imgur_status = if self.config.general.imgur_client_id.is_empty() {
+            "Imgur Upload: not configured (set in config.toml)"
+        } else {
+            "Imgur Upload: configured"
+        };
+        draw_label(pixmap, left, y, imgur_status, 14.0, SUBTEXT0);
+        y += 30.0;
+
         // ── Hotkey ──
         let hotkey_label = format!("Hotkey: {}", self.config.hotkey.capture);
         draw_label(pixmap, left, y, &hotkey_label, 14.0, SUBTEXT0);

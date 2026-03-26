@@ -53,7 +53,7 @@ Built with Rust, winit, and tiny-skia.
 - **File save** — `Ctrl+S` to save with a file picker dialog.
 - **Quick crop** — Press `Enter` to crop and export immediately.
 - **Pin to screen** — Float captures as always-on-top windows for reference. Right-click to reveal in Explorer, middle-click to copy, draggable.
-- **Imgur upload** — Upload screenshots directly via the toolbar Upload button with confirmation click. Requires `HYDROSHOT_IMGUR_CLIENT_ID` environment variable.
+- **Imgur upload** — Upload screenshots directly via the toolbar Upload button with confirmation click. Set your Imgur client ID in Settings or `config.toml`.
 - **OCR text extraction** — Extract text from a selected region using Windows OCR.
 - **Recent captures history** — Access previous captures from the tray History menu with thumbnails; click to re-copy.
 - **In-overlay toast notifications** — Visual feedback shown directly on the overlay.
@@ -198,6 +198,7 @@ HydroShot stores its configuration in a TOML file:
 default_color = "#89b4fa"
 default_thickness = 3.0
 save_directory = ""
+imgur_client_id = ""  # Get one at https://api.imgur.com/oauth2/addclient
 
 [hotkey]
 capture = "Ctrl+Shift+S"

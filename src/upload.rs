@@ -1,20 +1,30 @@
 //! Imgur anonymous image upload.
 
-fn imgur_client_id() -> Result<String, String> {
-    std::env::var("HYDROSHOT_IMGUR_CLIENT_ID").map_err(|_| {
-        "HYDROSHOT_IMGUR_CLIENT_ID environment variable not set. \
-         Set it to your Imgur client ID to enable uploads."
-            .to_string()
-    })
+fn imgur_client_id(config_id: &str) -> Result<String, String> {
+    // Environment variable overrides config
+    if let Ok(env_id) = std::env::var("HYDROSHOT_IMGUR_CLIENT_ID") {
+        if !env_id.is_empty() {
+            return Ok(env_id);
+        }
+    }
+    // Fall back to config setting
+    if !config_id.is_empty() {
+        return Ok(config_id.to_string());
+    }
+    Err(
+        "No Imgur client ID configured. Set one in Settings > General, \
+         or via the HYDROSHOT_IMGUR_CLIENT_ID environment variable."
+            .to_string(),
+    )
 }
 
-pub fn upload_to_imgur(png_data: &[u8]) -> Result<String, String> {
+pub fn upload_to_imgur(png_data: &[u8], config_client_id: &str) -> Result<String, String> {
     let base64_image = {
         use base64::Engine;
         base64::engine::general_purpose::STANDARD.encode(png_data)
     };
 
-    let client_id = imgur_client_id()?;
+    let client_id = imgur_client_id(config_client_id)?;
     let response = ureq::post("https://api.imgur.com/3/image")
         .set("Authorization", &format!("Client-ID {}", client_id))
         .timeout(std::time::Duration::from_secs(30))

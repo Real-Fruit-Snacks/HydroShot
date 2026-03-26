@@ -8,6 +8,8 @@ pub struct GeneralConfig {
     pub default_color: String,
     pub default_thickness: f32,
     pub save_directory: String,
+    #[serde(default)]
+    pub imgur_client_id: String,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -237,6 +239,7 @@ impl Default for Config {
                 default_color: "red".to_string(),
                 default_thickness: 3.0,
                 save_directory: String::new(),
+                imgur_client_id: String::new(),
             },
             hotkey: HotkeyConfig {
                 capture: "Ctrl+Shift+S".to_string(),

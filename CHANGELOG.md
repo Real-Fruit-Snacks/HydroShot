@@ -5,7 +5,7 @@ All notable changes to HydroShot will be documented in this file.
 ## [0.5.3] - 2026-03-25
 
 ### Security
-- Removed hardcoded Imgur client ID from source code — now requires `HYDROSHOT_IMGUR_CLIENT_ID` environment variable
+- Removed hardcoded Imgur client ID from source code — now configured via Settings/config.toml (env var `HYDROSHOT_IMGUR_CLIENT_ID` as override)
 - Replaced hand-rolled JSON parser with `serde_json` to eliminate panic on malformed Imgur responses
 - Fixed OCR temp file race condition with unique filenames and Drop-guard cleanup
 - Added `-ExecutionPolicy Bypass` to PowerShell OCR invocation for restricted systems

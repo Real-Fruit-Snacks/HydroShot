@@ -1,12 +1,18 @@
 use std::fs;
+use std::sync::Mutex;
+use std::time::Duration;
 
 /// Skip history tests if no config directory is available (e.g., headless CI).
 fn require_config_dir() -> bool {
     hydroshot::history::history_dir().is_some()
 }
 
+/// Mutex to serialize history tests that share the same directory.
+static HISTORY_LOCK: Mutex<()> = Mutex::new(());
+
 #[test]
 fn save_creates_file_in_history_dir() {
+    let _lock = HISTORY_LOCK.lock().unwrap();
     if !require_config_dir() {
         eprintln!("Skipping: no config directory available");
         return;
@@ -26,6 +32,7 @@ fn save_creates_file_in_history_dir() {
 
 #[test]
 fn list_history_returns_entries_sorted_newest_first() {
+    let _lock = HISTORY_LOCK.lock().unwrap();
     if !require_config_dir() {
         eprintln!("Skipping: no config directory available");
         return;
@@ -33,7 +40,7 @@ fn list_history_returns_entries_sorted_newest_first() {
     let pixels: Vec<u8> = vec![0, 0, 255, 255]; // 1x1 blue pixel
 
     let path1 = hydroshot::history::save_to_history(&pixels, 1, 1).unwrap();
-    std::thread::sleep(std::time::Duration::from_secs(1));
+    std::thread::sleep(Duration::from_secs(1));
     let path2 = hydroshot::history::save_to_history(&pixels, 1, 1).unwrap();
 
     let entries = hydroshot::history::list_history();
@@ -51,6 +58,7 @@ fn list_history_returns_entries_sorted_newest_first() {
 
 #[test]
 fn prune_keeps_only_max_entries() {
+    let _lock = HISTORY_LOCK.lock().unwrap();
     if !require_config_dir() {
         eprintln!("Skipping: no config directory available");
         return;
@@ -62,7 +70,7 @@ fn prune_keeps_only_max_entries() {
         if let Ok(p) = hydroshot::history::save_to_history(&pixels, 1, 1) {
             paths.push(p);
         }
-        std::thread::sleep(std::time::Duration::from_millis(50));
+        std::thread::sleep(Duration::from_millis(50));
     }
 
     let entries = hydroshot::history::list_history();
