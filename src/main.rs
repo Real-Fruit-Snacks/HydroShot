@@ -432,6 +432,21 @@ impl App {
     }
 
     fn do_upload(&mut self) {
+        // Check if Imgur is configured before entering the confirmation flow
+        let has_client_id = !self.config.general.imgur_client_id.is_empty()
+            || std::env::var("HYDROSHOT_IMGUR_CLIENT_ID").map(|v| !v.is_empty()).unwrap_or(false);
+
+        if !has_client_id {
+            if let AppState::Capturing(ref mut o) = self.state {
+                o.show_toast(
+                    "Set imgur_client_id in config.toml to enable uploads".into(),
+                    4000,
+                );
+            }
+            self.needs_redraw = true;
+            return;
+        }
+
         // First click: show confirmation toast
         // Second click: actually upload
         let confirmed = if let AppState::Capturing(ref overlay) = self.state {

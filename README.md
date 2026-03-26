@@ -195,7 +195,7 @@ HydroShot stores its configuration in a TOML file:
 
 ```toml
 [general]
-default_color = "#89b4fa"
+default_color = "blue"
 default_thickness = 3.0
 save_directory = ""
 imgur_client_id = ""  # Get one at https://api.imgur.com/oauth2/addclient
