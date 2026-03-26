@@ -355,7 +355,8 @@ impl App {
     }
 
     fn do_copy(&mut self) {
-        if let AppState::Capturing(ref overlay) = self.state {
+        // Collect data from overlay, then close and do heavy work on a background thread
+        let copy_data = if let AppState::Capturing(ref overlay) = self.state {
             if let Some(ref sel) = overlay.selection {
                 let r = sel.clamped(overlay.screenshot.width, overlay.screenshot.height);
                 let pixels = export::crop_and_flatten(
@@ -367,25 +368,41 @@ impl App {
                     r.h,
                     &overlay.annotations,
                 );
-                match export::copy_to_clipboard(&pixels, r.w, r.h) {
-                    Ok(()) => {
-                        let _ = hydroshot::history::save_to_history(&pixels, r.w, r.h);
-                        tracing::info!("Copied to clipboard");
-                        let _ = Notification::new()
-                            .summary("HydroShot")
-                            .body("Copied to clipboard")
-                            .timeout(2000)
-                            .show();
-                    }
-                    Err(e) => tracing::error!("Clipboard copy failed: {e}"),
-                }
-                self.close_overlay();
+                Some((pixels, r.w, r.h))
+            } else {
+                None
             }
+        } else {
+            None
+        };
+
+        if let Some((pixels, w, h)) = copy_data {
+            self.close_overlay();
+            std::thread::spawn(move || match export::copy_to_clipboard(&pixels, w, h) {
+                Ok(()) => {
+                    let _ = hydroshot::history::save_to_history(&pixels, w, h);
+                    tracing::info!("Copied to clipboard");
+                    let _ = Notification::new()
+                        .summary("HydroShot")
+                        .body("Copied to clipboard")
+                        .timeout(2000)
+                        .show();
+                }
+                Err(e) => {
+                    tracing::error!("Clipboard copy failed: {e}");
+                    let _ = Notification::new()
+                        .summary("HydroShot")
+                        .body(&format!("Copy failed: {e}"))
+                        .timeout(3000)
+                        .show();
+                }
+            });
         }
     }
 
     fn do_save(&mut self) {
-        if let AppState::Capturing(ref overlay) = self.state {
+        // Collect data from overlay, then close and do heavy work on a background thread
+        let save_data = if let AppState::Capturing(ref overlay) = self.state {
             if let Some(ref sel) = overlay.selection {
                 let r = sel.clamped(overlay.screenshot.width, overlay.screenshot.height);
                 let pixels = export::crop_and_flatten(
@@ -397,29 +414,44 @@ impl App {
                     r.h,
                     &overlay.annotations,
                 );
-                match export::save_to_file(
-                    &pixels,
-                    r.w,
-                    r.h,
-                    self.config.save_directory().as_deref(),
-                ) {
+                let save_dir = self.config.save_directory();
+                Some((pixels, r.w, r.h, save_dir))
+            } else {
+                None
+            }
+        } else {
+            None
+        };
+
+        if let Some((pixels, w, h, save_dir)) = save_data {
+            self.close_overlay();
+            std::thread::spawn(move || {
+                match export::save_to_file(pixels, w, h, save_dir.as_deref()) {
                     Ok(Some(path)) => {
-                        let _ = hydroshot::history::save_to_history(&pixels, r.w, r.h);
+                        // Copy saved file to history instead of re-encoding
+                        let _ = hydroshot::history::save_to_history_from_file(
+                            std::path::Path::new(&path),
+                        );
                         tracing::info!("Saved to {path}");
                         let _ = Notification::new()
                             .summary("HydroShot")
                             .body(&format!("Saved to {path}"))
                             .timeout(2000)
                             .show();
-                        self.close_overlay();
                     }
                     Ok(None) => {
                         tracing::info!("Save cancelled by user");
-                        // Don't close overlay on cancel
                     }
-                    Err(e) => tracing::error!("Save failed: {e}"),
+                    Err(e) => {
+                        tracing::error!("Save failed: {e}");
+                        let _ = Notification::new()
+                            .summary("HydroShot")
+                            .body(&format!("Save failed: {e}"))
+                            .timeout(3000)
+                            .show();
+                    }
                 }
-            }
+            });
         }
     }
 

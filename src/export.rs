@@ -23,13 +23,21 @@ pub fn flatten_annotations(
     if pixels.len() < expected_len {
         return pixels.to_vec(); // undersized buffer: return input unchanged
     }
+
+    // Fast path: screenshots are fully opaque (a=255), so premultiplication is a
+    // no-op — we can bulk-copy instead of per-pixel conversion.
+    let all_opaque = pixels.chunks_exact(4).all(|px| px[3] == 255);
     let pm_pixels = pixmap.pixels_mut();
-    for i in 0..(width as usize) * (height as usize) {
-        let r = pixels[i * 4];
-        let g = pixels[i * 4 + 1];
-        let b = pixels[i * 4 + 2];
-        let a = pixels[i * 4 + 3];
-        pm_pixels[i] = PremultipliedColorU8::from_rgba(r, g, b, a).unwrap();
+    if all_opaque {
+        for (i, chunk) in pixels.chunks_exact(4).enumerate() {
+            pm_pixels[i] =
+                PremultipliedColorU8::from_rgba(chunk[0], chunk[1], chunk[2], 255).unwrap();
+        }
+    } else {
+        for (i, chunk) in pixels.chunks_exact(4).enumerate() {
+            pm_pixels[i] =
+                PremultipliedColorU8::from_rgba(chunk[0], chunk[1], chunk[2], chunk[3]).unwrap();
+        }
     }
 
     // Render each annotation
@@ -39,22 +47,23 @@ pub fn flatten_annotations(
 
     // Demultiply back to straight alpha
     let pm_pixels = pixmap.pixels();
-    let mut output = Vec::with_capacity((width as usize) * (height as usize) * 4);
-    for px in pm_pixels {
+    let mut output = vec![0u8; expected_len];
+    for (i, px) in pm_pixels.iter().enumerate() {
         let a = px.alpha();
+        let base = i * 4;
         if a == 0 {
-            output.push(0);
-            output.push(0);
-            output.push(0);
-            output.push(0);
+            // output is already zeroed
+        } else if a == 255 {
+            // Fully opaque: no division needed
+            output[base] = px.red();
+            output[base + 1] = px.green();
+            output[base + 2] = px.blue();
+            output[base + 3] = 255;
         } else {
-            let r = (px.red() as u16 * 255 / a as u16) as u8;
-            let g = (px.green() as u16 * 255 / a as u16) as u8;
-            let b = (px.blue() as u16 * 255 / a as u16) as u8;
-            output.push(r);
-            output.push(g);
-            output.push(b);
-            output.push(a);
+            output[base] = (px.red() as u16 * 255 / a as u16) as u8;
+            output[base + 1] = (px.green() as u16 * 255 / a as u16) as u8;
+            output[base + 2] = (px.blue() as u16 * 255 / a as u16) as u8;
+            output[base + 3] = a;
         }
     }
 
@@ -242,7 +251,7 @@ pub fn copy_to_clipboard(pixels: &[u8], width: u32, height: u32) -> Result<(), S
         .map_err(|e| format!("Failed to copy image to clipboard: {e}"))
 }
 
-/// Save pixel data to an image file.
+/// Save pixel data to an image file (accepts owned Vec to avoid redundant copy).
 ///
 /// When `default_dir` is `Some`, auto-saves to that directory with a
 /// timestamped PNG filename (no dialog). When `None`, opens a native save
@@ -251,7 +260,7 @@ pub fn copy_to_clipboard(pixels: &[u8], width: u32, height: u32) -> Result<(), S
 /// Returns `Ok(Some(path))` on success, `Ok(None)` if the user cancelled,
 /// or `Err` on failure.
 pub fn save_to_file(
-    pixels: &[u8],
+    pixels: Vec<u8>,
     width: u32,
     height: u32,
     default_dir: Option<&std::path::Path>,
@@ -264,7 +273,7 @@ pub fn save_to_file(
         std::fs::create_dir_all(dir)
             .map_err(|e| format!("Failed to create save directory: {e}"))?;
         let path = dir.join(&default_name);
-        let img = image::RgbaImage::from_raw(width, height, pixels.to_vec())
+        let img = image::RgbaImage::from_raw(width, height, pixels)
             .ok_or_else(|| "Failed to create image from pixel data".to_string())?;
         img.save(&path)
             .map_err(|e| format!("Failed to save image: {e}"))?;
@@ -281,7 +290,7 @@ pub fn save_to_file(
 
     match path {
         Some(p) => {
-            let img = image::RgbaImage::from_raw(width, height, pixels.to_vec())
+            let img = image::RgbaImage::from_raw(width, height, pixels)
                 .ok_or_else(|| "Failed to create image from pixel data".to_string())?;
 
             // Detect format from extension

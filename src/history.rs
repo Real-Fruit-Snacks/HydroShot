@@ -28,6 +28,24 @@ pub fn save_to_history(pixels: &[u8], width: u32, height: u32) -> Result<PathBuf
     Ok(path)
 }
 
+/// Copy an already-saved file into history (avoids re-encoding).
+pub fn save_to_history_from_file(source: &std::path::Path) -> Result<PathBuf, String> {
+    let dir = history_dir().ok_or("No config directory")?;
+    std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+
+    let timestamp = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_millis();
+    let filename = format!("{}.png", timestamp);
+    let path = dir.join(&filename);
+
+    std::fs::copy(source, &path).map_err(|e| format!("Failed to copy to history: {e}"))?;
+
+    prune_history(&dir);
+    Ok(path)
+}
+
 /// Get list of history entries sorted newest first
 pub fn list_history() -> Vec<PathBuf> {
     let Some(dir) = history_dir() else {
