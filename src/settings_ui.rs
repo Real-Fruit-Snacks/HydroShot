@@ -489,9 +489,10 @@ impl SettingsWindow {
         self.cursor_pos = (x, y);
         // Only redraw when the hovered element actually changes
         let old_hovered = self.hovered;
-        self.hovered = self.hit_rects.iter().position(|hr| {
-            x >= hr.x && x <= hr.x + hr.w && y >= hr.y && y <= hr.y + hr.h
-        });
+        self.hovered = self
+            .hit_rects
+            .iter()
+            .position(|hr| x >= hr.x && x <= hr.x + hr.w && y >= hr.y && y <= hr.y + hr.h);
         old_hovered != self.hovered
     }
 

@@ -83,11 +83,36 @@ impl Color {
 
     pub fn presets() -> &'static [Self] {
         static PRESETS: &[Color] = &[
-            Color { r: 0.953, g: 0.545, b: 0.659, a: 1.0 }, // red
-            Color { r: 0.537, g: 0.706, b: 0.980, a: 1.0 }, // blue
-            Color { r: 0.651, g: 0.890, b: 0.631, a: 1.0 }, // green
-            Color { r: 0.976, g: 0.886, b: 0.686, a: 1.0 }, // yellow
-            Color { r: 0.796, g: 0.651, b: 0.969, a: 1.0 }, // mauve
+            Color {
+                r: 0.953,
+                g: 0.545,
+                b: 0.659,
+                a: 1.0,
+            }, // red
+            Color {
+                r: 0.537,
+                g: 0.706,
+                b: 0.980,
+                a: 1.0,
+            }, // blue
+            Color {
+                r: 0.651,
+                g: 0.890,
+                b: 0.631,
+                a: 1.0,
+            }, // green
+            Color {
+                r: 0.976,
+                g: 0.886,
+                b: 0.686,
+                a: 1.0,
+            }, // yellow
+            Color {
+                r: 0.796,
+                g: 0.651,
+                b: 0.969,
+                a: 1.0,
+            }, // mauve
         ];
         PRESETS
     }

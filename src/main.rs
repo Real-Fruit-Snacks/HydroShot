@@ -369,11 +369,7 @@ impl App {
                 );
                 match export::copy_to_clipboard(&pixels, r.w, r.h) {
                     Ok(()) => {
-                        let _ = hydroshot::history::save_to_history(
-                            &pixels,
-                            r.w,
-                            r.h,
-                        );
+                        let _ = hydroshot::history::save_to_history(&pixels, r.w, r.h);
                         tracing::info!("Copied to clipboard");
                         let _ = Notification::new()
                             .summary("HydroShot")
@@ -408,11 +404,7 @@ impl App {
                     self.config.save_directory().as_deref(),
                 ) {
                     Ok(Some(path)) => {
-                        let _ = hydroshot::history::save_to_history(
-                            &pixels,
-                            r.w,
-                            r.h,
-                        );
+                        let _ = hydroshot::history::save_to_history(&pixels, r.w, r.h);
                         tracing::info!("Saved to {path}");
                         let _ = Notification::new()
                             .summary("HydroShot")
@@ -434,7 +426,9 @@ impl App {
     fn do_upload(&mut self) {
         // Check if Imgur is configured before entering the confirmation flow
         let has_client_id = !self.config.general.imgur_client_id.is_empty()
-            || std::env::var("HYDROSHOT_IMGUR_CLIENT_ID").map(|v| !v.is_empty()).unwrap_or(false);
+            || std::env::var("HYDROSHOT_IMGUR_CLIENT_ID")
+                .map(|v| !v.is_empty())
+                .unwrap_or(false);
 
         if !has_client_id {
             if let AppState::Capturing(ref mut o) = self.state {
@@ -1650,7 +1644,8 @@ impl ApplicationHandler for App {
                     Key::Named(NamedKey::Enter) => {
                         if let Some(ref sel) = overlay.selection {
                             // Quick crop: copy raw screenshot pixels (no annotations) to clipboard
-                            let cr = sel.clamped(overlay.screenshot.width, overlay.screenshot.height);
+                            let cr =
+                                sel.clamped(overlay.screenshot.width, overlay.screenshot.height);
                             let mut cropped = vec![0u8; (cr.w as usize) * (cr.h as usize) * 4];
                             for row in 0..cr.h {
                                 let src_offset =
@@ -1663,7 +1658,9 @@ impl ApplicationHandler for App {
                                     );
                                 }
                             }
-                            if let Err(e) = hydroshot::export::copy_to_clipboard(&cropped, cr.w, cr.h) {
+                            if let Err(e) =
+                                hydroshot::export::copy_to_clipboard(&cropped, cr.w, cr.h)
+                            {
                                 tracing::error!("Quick crop clipboard error: {}", e);
                             } else {
                                 let _ = Notification::new()

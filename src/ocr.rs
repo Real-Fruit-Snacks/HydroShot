@@ -82,7 +82,14 @@ Write-Output $result.Text
 
     let output = std::process::Command::new("powershell")
         .env("HYDROSHOT_OCR_PATH", image_path)
-        .args(["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-Command", script])
+        .args([
+            "-NoProfile",
+            "-NonInteractive",
+            "-ExecutionPolicy",
+            "Bypass",
+            "-Command",
+            script,
+        ])
         .output()
         .map_err(|e| format!("Failed to run PowerShell: {e}"))?;
 

@@ -38,9 +38,7 @@ pub fn register_hotkey(binding: &str) -> Result<(GlobalHotKeyManager, u32), Stri
             s if s.len() == 1 => {
                 let c = s.chars().next().unwrap();
                 if c.is_ascii_alphabetic() {
-                    key_code = Some(
-                        letter_to_code(c).ok_or_else(|| format!("Unknown key: {c}"))?,
-                    );
+                    key_code = Some(letter_to_code(c).ok_or_else(|| format!("Unknown key: {c}"))?);
                 } else {
                     return Err(format!("Unknown hotkey part: {s}"));
                 }
