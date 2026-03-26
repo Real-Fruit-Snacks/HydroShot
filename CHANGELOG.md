@@ -2,6 +2,15 @@
 
 All notable changes to HydroShot will be documented in this file.
 
+## [0.5.4] - 2026-03-25
+
+### Fixed
+- Upload button now shows a helpful message immediately when Imgur is not configured, instead of going through the confirmation flow first
+- Fixed README config example using hex color code (`#89b4fa`) that silently fell back to red — now uses named color `blue`
+- Imgur client ID is now a config.toml setting (`imgur_client_id` under `[general]`) — no environment variable needed for normal use
+- Settings UI shows Imgur upload configuration status
+- Fixed flaky history tests on Linux CI by serializing with a mutex
+
 ## [0.5.3] - 2026-03-25
 
 ### Security
