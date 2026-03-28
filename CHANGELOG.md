@@ -2,6 +2,15 @@
 
 All notable changes to HydroShot will be documented in this file.
 
+## [0.5.5] - 2026-03-27
+
+### Added
+- Self-installer: `hydroshot install` copies to %LocalAppData%\HydroShot, creates Start Menu shortcut, adds to PATH, and enables autostart
+- `hydroshot uninstall` command to cleanly remove the installation
+
+### Fixed
+- MSI installer no longer requires admin rights — installs to LocalAppData instead of Program Files
+
 ## [0.5.4] - 2026-03-25
 
 ### Fixed

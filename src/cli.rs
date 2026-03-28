@@ -23,4 +23,10 @@ pub enum Commands {
         #[arg(long, default_value_t = 0)]
         delay: u64,
     },
+
+    /// Install HydroShot to your system (copies to AppData, adds Start Menu shortcut and PATH)
+    Install,
+
+    /// Uninstall HydroShot from your system
+    Uninstall,
 }

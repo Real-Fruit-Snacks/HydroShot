@@ -3,12 +3,6 @@
   HydroShot Windows Installer
   Built with cargo-wix: https://github.com/volks73/cargo-wix
 -->
-<?if $(sys.BUILDARCH) = x64 or $(sys.BUILDARCH) = ia64 ?>
-    <?define PlatformProgramFilesFolder = "ProgramFiles64Folder" ?>
-<?else ?>
-    <?define PlatformProgramFilesFolder = "ProgramFilesFolder" ?>
-<?endif ?>
-
 <Wix xmlns='http://schemas.microsoft.com/wix/2006/wi'>
 
     <Product
@@ -41,7 +35,7 @@
         <Property Id='ARPHELPLINK' Value='https://github.com/Real-Fruit-Snacks/HydroShot' />
 
         <Directory Id='TARGETDIR' Name='SourceDir'>
-            <Directory Id='$(var.PlatformProgramFilesFolder)' Name='PFiles'>
+            <Directory Id='LocalAppDataFolder'>
                 <Directory Id='APPLICATIONFOLDER' Name='HydroShot'>
                     <Component Id='binary0' Guid='B1C2D3E4-F5A6-7890-BCDE-F12345678901'>
                         <File Id='exe0'

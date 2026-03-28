@@ -2645,7 +2645,7 @@ fn main() {
         use windows::core::w;
         use windows::Win32::UI::Shell::SetCurrentProcessExplicitAppUserModelID;
         unsafe {
-            let _ = SetCurrentProcessExplicitAppUserModelID(w!("HydroShot.HydroShot.0.5.4"));
+            let _ = SetCurrentProcessExplicitAppUserModelID(w!("HydroShot.HydroShot.0.5.5"));
         }
     }
 
@@ -2669,6 +2669,18 @@ fn main() {
             delay,
         }) => {
             run_cli_capture(clipboard, save, delay);
+        }
+        Some(Commands::Install) => {
+            if let Err(e) = hydroshot::installer::install() {
+                eprintln!("Install failed: {e}");
+                std::process::exit(1);
+            }
+        }
+        Some(Commands::Uninstall) => {
+            if let Err(e) = hydroshot::installer::uninstall() {
+                eprintln!("Uninstall failed: {e}");
+                std::process::exit(1);
+            }
         }
     }
 }

@@ -8,6 +8,7 @@ pub mod font;
 pub mod geometry;
 pub mod history;
 pub mod history_ui;
+pub mod installer;
 pub mod hotkey;
 pub mod icons;
 pub mod ocr;
