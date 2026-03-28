@@ -41,11 +41,12 @@
                         <File Id='exe0'
                             Name='hydroshot.exe'
                             DiskId='1'
-                            Source='target\release\hydroshot.exe'
-                            KeyPath='yes' />
+                            Source='target\release\hydroshot.exe' />
+                        <RegistryValue Root='HKCU' Key='Software\HydroShot' Name='exe_installed' Type='integer' Value='1' KeyPath='yes' />
+                        <RemoveFolder Id='CleanUpAppFolder' Directory='APPLICATIONFOLDER' On='uninstall' />
                     </Component>
 
-                    <Component Id='Path' Guid='D2E3F4A5-B6C7-8901-DEFA-345678901234' KeyPath='yes'>
+                    <Component Id='Path' Guid='D2E3F4A5-B6C7-8901-DEFA-345678901234'>
                         <Environment
                             Id='PATH'
                             Name='PATH'
@@ -54,6 +55,7 @@
                             Part='last'
                             Action='set'
                             System='no' />
+                        <RegistryValue Root='HKCU' Key='Software\HydroShot' Name='path_set' Type='integer' Value='1' KeyPath='yes' />
                     </Component>
                 </Directory>
             </Directory>

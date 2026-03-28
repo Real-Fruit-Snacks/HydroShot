@@ -43,8 +43,7 @@ pub fn install() -> Result<(), String> {
     // 1. Copy exe to install dir
     std::fs::create_dir_all(&dest_dir)
         .map_err(|e| format!("Failed to create {}: {e}", dest_dir.display()))?;
-    std::fs::copy(&source, &dest_exe)
-        .map_err(|e| format!("Failed to copy exe: {e}"))?;
+    std::fs::copy(&source, &dest_exe).map_err(|e| format!("Failed to copy exe: {e}"))?;
     println!("Installed to {}", dest_exe.display());
 
     // 2. Create Start Menu shortcut via PowerShell
@@ -157,12 +156,21 @@ fn add_to_path(dir: &std::path::Path) -> Result<(), String> {
 
         let current_path = if buf_size > 0 {
             let mut buf = vec![0u8; buf_size as usize];
-            RegQueryValueExW(key, name, None, None, Some(buf.as_mut_ptr()), Some(&mut buf_size))
-                .ok()
-                .map_err(|e| format!("Failed to read PATH: {e}"))?;
+            RegQueryValueExW(
+                key,
+                name,
+                None,
+                None,
+                Some(buf.as_mut_ptr()),
+                Some(&mut buf_size),
+            )
+            .ok()
+            .map_err(|e| format!("Failed to read PATH: {e}"))?;
             let wide: &[u16] =
                 std::slice::from_raw_parts(buf.as_ptr() as *const u16, buf.len() / 2);
-            String::from_utf16_lossy(wide).trim_end_matches('\0').to_string()
+            String::from_utf16_lossy(wide)
+                .trim_end_matches('\0')
+                .to_string()
         } else {
             String::new()
         };
@@ -185,8 +193,7 @@ fn add_to_path(dir: &std::path::Path) -> Result<(), String> {
         };
 
         let value: Vec<u16> = new_path.encode_utf16().chain(std::iter::once(0)).collect();
-        let bytes: &[u8] =
-            std::slice::from_raw_parts(value.as_ptr() as *const u8, value.len() * 2);
+        let bytes: &[u8] = std::slice::from_raw_parts(value.as_ptr() as *const u8, value.len() * 2);
         RegSetValueExW(key, name, 0, REG_EXPAND_SZ, Some(bytes))
             .ok()
             .map_err(|e| format!("Failed to update PATH: {e}"))?;
@@ -241,13 +248,21 @@ fn remove_from_path(dir: &std::path::Path) -> Result<(), String> {
         }
 
         let mut buf = vec![0u8; buf_size as usize];
-        RegQueryValueExW(key, name, None, None, Some(buf.as_mut_ptr()), Some(&mut buf_size))
-            .ok()
-            .map_err(|e| format!("Failed to read PATH: {e}"))?;
+        RegQueryValueExW(
+            key,
+            name,
+            None,
+            None,
+            Some(buf.as_mut_ptr()),
+            Some(&mut buf_size),
+        )
+        .ok()
+        .map_err(|e| format!("Failed to read PATH: {e}"))?;
 
-        let wide: &[u16] =
-            std::slice::from_raw_parts(buf.as_ptr() as *const u16, buf.len() / 2);
-        let current = String::from_utf16_lossy(wide).trim_end_matches('\0').to_string();
+        let wide: &[u16] = std::slice::from_raw_parts(buf.as_ptr() as *const u16, buf.len() / 2);
+        let current = String::from_utf16_lossy(wide)
+            .trim_end_matches('\0')
+            .to_string();
 
         let new_path: Vec<&str> = current
             .split(';')
@@ -256,8 +271,7 @@ fn remove_from_path(dir: &std::path::Path) -> Result<(), String> {
         let new_path = new_path.join(";");
 
         let value: Vec<u16> = new_path.encode_utf16().chain(std::iter::once(0)).collect();
-        let bytes: &[u8] =
-            std::slice::from_raw_parts(value.as_ptr() as *const u8, value.len() * 2);
+        let bytes: &[u8] = std::slice::from_raw_parts(value.as_ptr() as *const u8, value.len() * 2);
         RegSetValueExW(key, name, 0, REG_EXPAND_SZ, Some(bytes))
             .ok()
             .map_err(|e| format!("Failed to update PATH: {e}"))?;
