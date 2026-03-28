@@ -2,6 +2,16 @@
 
 All notable changes to HydroShot will be documented in this file.
 
+## [0.5.7] - 2026-03-27
+
+### Fixed
+- Self-installer autostart now registers the installed exe path, not the source/Downloads path
+- Upgrades no longer fail when HydroShot is already running (kills existing process, rename-replace fallback)
+- No more console window when running as tray app (windows_subsystem = "windows")
+- Install/uninstall now shows message box feedback instead of invisible println! output
+- CLI subcommands (capture, install, uninstall) attach to parent console for terminal output
+- MSI uninstall now cleans up autostart registry entry and HydroShot registry key
+
 ## [0.5.6] - 2026-03-27
 
 ### Changed

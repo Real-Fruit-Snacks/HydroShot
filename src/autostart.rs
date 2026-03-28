@@ -15,18 +15,34 @@ pub fn is_enabled() -> bool {
 }
 
 /// Enable or disable auto-start on login.
+///
+/// Uses `current_exe()` to determine which binary to register.
+/// If you need to register a *different* path (e.g. during install),
+/// use [`set_enabled_for`] instead.
 pub fn set_enabled(enabled: bool) -> Result<(), String> {
+    let exe = if enabled {
+        Some(std::env::current_exe().map_err(|e| format!("Failed to find current exe: {e}"))?)
+    } else {
+        None
+    };
+    set_enabled_for(enabled, exe.as_deref())
+}
+
+/// Enable or disable auto-start, registering a specific exe path.
+///
+/// When `enabled` is true, `exe_path` must be `Some`.
+pub fn set_enabled_for(enabled: bool, exe_path: Option<&std::path::Path>) -> Result<(), String> {
     #[cfg(target_os = "windows")]
     {
-        set_enabled_windows(enabled)
+        set_enabled_windows(enabled, exe_path)
     }
     #[cfg(target_os = "linux")]
     {
-        set_enabled_linux(enabled)
+        set_enabled_linux(enabled, exe_path)
     }
     #[cfg(not(any(target_os = "windows", target_os = "linux")))]
     {
-        let _ = enabled;
+        let _ = (enabled, exe_path);
         Err("Auto-start is not supported on this platform".into())
     }
 }
@@ -51,7 +67,7 @@ fn is_enabled_windows() -> bool {
 }
 
 #[cfg(target_os = "windows")]
-fn set_enabled_windows(enabled: bool) -> Result<(), String> {
+fn set_enabled_windows(enabled: bool, exe_path: Option<&std::path::Path>) -> Result<(), String> {
     use windows::core::*;
     use windows::Win32::System::Registry::*;
 
@@ -63,7 +79,7 @@ fn set_enabled_windows(enabled: bool) -> Result<(), String> {
             .map_err(|e| e.to_string())?;
 
         if enabled {
-            let exe = std::env::current_exe().map_err(|e| e.to_string())?;
+            let exe = exe_path.ok_or("exe_path required when enabling autostart")?;
             let exe_str = exe.to_string_lossy();
             let value: Vec<u16> = exe_str.encode_utf16().chain(std::iter::once(0)).collect();
             let bytes: &[u8] =
@@ -87,14 +103,14 @@ fn is_enabled_linux() -> bool {
 }
 
 #[cfg(target_os = "linux")]
-fn set_enabled_linux(enabled: bool) -> Result<(), String> {
+fn set_enabled_linux(enabled: bool, exe_path: Option<&std::path::Path>) -> Result<(), String> {
     let path = autostart_desktop_path().ok_or("Could not determine config directory")?;
 
     if enabled {
+        let exe = exe_path.ok_or("exe_path required when enabling autostart")?;
         if let Some(parent) = path.parent() {
             std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
         }
-        let exe = std::env::current_exe().map_err(|e| e.to_string())?;
         let content = format!(
             "[Desktop Entry]\nType=Application\nName=HydroShot\nExec={}\nX-GNOME-Autostart-enabled=true\n",
             exe.display()

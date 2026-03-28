@@ -1,6 +1,6 @@
 [package]
 name = "hydroshot"
-version = "0.5.6"
+version = "0.5.7"
 description = "Screenshot capture and annotation tool"
 license = "MIT"
 edition = "2021"
@@ -50,4 +50,5 @@ windows = { version = "0.58", features = [
     "Win32_UI_Controls_Dialogs",
     "Win32_UI_Shell",
     "Win32_Storage_FileSystem",
+    "Win32_System_Console",
 ] }

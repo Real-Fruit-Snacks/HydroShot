@@ -1,5 +1,37 @@
 use std::path::PathBuf;
 
+/// Show a Windows message box (no-op on other platforms).
+#[cfg(target_os = "windows")]
+fn message_box(title: &str, msg: &str, error: bool) {
+    use windows::core::*;
+    use windows::Win32::UI::WindowsAndMessaging::*;
+
+    let wide_title: Vec<u16> = title.encode_utf16().chain(std::iter::once(0)).collect();
+    let wide_msg: Vec<u16> = msg.encode_utf16().chain(std::iter::once(0)).collect();
+    let flags = if error {
+        MB_OK | MB_ICONERROR
+    } else {
+        MB_OK | MB_ICONINFORMATION
+    };
+    unsafe {
+        let _ = MessageBoxW(
+            None,
+            PCWSTR(wide_msg.as_ptr()),
+            PCWSTR(wide_title.as_ptr()),
+            flags,
+        );
+    }
+}
+
+#[cfg(not(target_os = "windows"))]
+fn message_box(_title: &str, _msg: &str, _error: bool) {}
+
+/// Show an error message box (public so main.rs can use it for install/uninstall errors).
+pub fn show_error(msg: &str) {
+    eprintln!("{msg}");
+    message_box("HydroShot - Error", msg, true);
+}
+
 /// Return the install directory: %LocalAppData%\HydroShot
 fn install_dir() -> Result<PathBuf, String> {
     dirs::data_local_dir()
@@ -39,6 +71,22 @@ pub fn needs_install() -> bool {
     canonical_current != canonical_dest
 }
 
+/// Terminate any running HydroShot processes so we can overwrite the installed exe.
+#[cfg(target_os = "windows")]
+fn kill_running_instances() {
+    use std::os::windows::process::CommandExt;
+    const CREATE_NO_WINDOW: u32 = 0x08000000;
+    let _ = std::process::Command::new("taskkill")
+        .args(["/F", "/IM", "hydroshot.exe"])
+        .creation_flags(CREATE_NO_WINDOW)
+        .output();
+    // Give the OS a moment to release file locks
+    std::thread::sleep(std::time::Duration::from_millis(500));
+}
+
+#[cfg(not(target_os = "windows"))]
+fn kill_running_instances() {}
+
 pub fn install() -> Result<(), String> {
     let source = std::env::current_exe().map_err(|e| format!("Failed to find current exe: {e}"))?;
     let dest_dir = install_dir()?;
@@ -57,7 +105,24 @@ pub fn install() -> Result<(), String> {
     // 1. Copy exe to install dir
     std::fs::create_dir_all(&dest_dir)
         .map_err(|e| format!("Failed to create {}: {e}", dest_dir.display()))?;
-    std::fs::copy(&source, &dest_exe).map_err(|e| format!("Failed to copy exe: {e}"))?;
+
+    // Kill any running HydroShot so we can overwrite the exe
+    kill_running_instances();
+
+    // Try direct copy first; if it fails (exe still locked), rename old and copy
+    if std::fs::copy(&source, &dest_exe).is_err() {
+        let old = dest_dir.join("hydroshot.old.exe");
+        let _ = std::fs::remove_file(&old);
+        if dest_exe.exists() {
+            std::fs::rename(&dest_exe, &old)
+                .map_err(|e| format!("Failed to replace running exe: {e}"))?;
+        }
+        std::fs::copy(&source, &dest_exe).map_err(|e| format!("Failed to copy exe: {e}"))?;
+        // Clean up old exe (schedule for reboot if still locked)
+        if std::fs::remove_file(&old).is_err() {
+            schedule_delete_on_reboot(&old);
+        }
+    }
     println!("Installed to {}", dest_exe.display());
 
     // 2. Create Start Menu shortcut via PowerShell
@@ -66,15 +131,20 @@ pub fn install() -> Result<(), String> {
     // 3. Add to user PATH via registry
     add_to_path(&dest_dir)?;
 
-    // 4. Register autostart
-    crate::autostart::set_enabled(true)
+    // 4. Register autostart (use the *installed* path, not current_exe)
+    crate::autostart::set_enabled_for(true, Some(&dest_exe))
         .unwrap_or_else(|e| eprintln!("Warning: could not set autostart: {e}"));
 
-    println!("HydroShot installed successfully!");
-    println!("  Location:   {}", dest_exe.display());
-    println!("  Start Menu: HydroShot shortcut created");
-    println!("  PATH:       added (restart terminal to use 'hydroshot' command)");
-    println!("  Autostart:  enabled");
+    let msg = format!(
+        "HydroShot installed successfully!\n\n\
+         Location:   {}\n\
+         Start Menu: shortcut created\n\
+         PATH:       added (restart terminal to use 'hydroshot' command)\n\
+         Autostart:  enabled",
+        dest_exe.display()
+    );
+    println!("{msg}");
+    message_box("HydroShot", &msg, false);
 
     // 5. Launch the installed copy
     let _ = std::process::Command::new(&dest_exe).spawn();
@@ -112,7 +182,9 @@ pub fn uninstall() -> Result<(), String> {
     // Try to remove the install dir if empty
     let _ = std::fs::remove_dir(&dest_dir);
 
-    println!("HydroShot has been uninstalled.");
+    let msg = "HydroShot has been uninstalled.";
+    println!("{msg}");
+    message_box("HydroShot", msg, false);
     Ok(())
 }
 

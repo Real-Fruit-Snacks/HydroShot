@@ -1,3 +1,5 @@
+#![cfg_attr(target_os = "windows", windows_subsystem = "windows")]
+
 use std::num::NonZeroU32;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -2645,11 +2647,21 @@ fn main() {
         use windows::core::w;
         use windows::Win32::UI::Shell::SetCurrentProcessExplicitAppUserModelID;
         unsafe {
-            let _ = SetCurrentProcessExplicitAppUserModelID(w!("HydroShot.HydroShot.0.5.6"));
+            let _ = SetCurrentProcessExplicitAppUserModelID(w!("HydroShot.HydroShot.0.5.7"));
         }
     }
 
     let cli = Cli::parse();
+
+    // For CLI subcommands, attach to the parent console so println!/eprintln!
+    // produce visible output (windows_subsystem = "windows" detaches stdout).
+    #[cfg(target_os = "windows")]
+    if cli.command.is_some() {
+        use windows::Win32::System::Console::{AttachConsole, ATTACH_PARENT_PROCESS};
+        unsafe {
+            let _ = AttachConsole(ATTACH_PARENT_PROCESS);
+        }
+    }
 
     match cli.command {
         None => {
@@ -2657,7 +2669,7 @@ fn main() {
             // installer spawns the installed copy and we exit).
             if hydroshot::installer::needs_install() {
                 if let Err(e) = hydroshot::installer::install() {
-                    eprintln!("Install failed: {e}");
+                    hydroshot::installer::show_error(&format!("Install failed: {e}"));
                     std::process::exit(1);
                 }
                 return;
@@ -2681,13 +2693,13 @@ fn main() {
         }
         Some(Commands::Install) => {
             if let Err(e) = hydroshot::installer::install() {
-                eprintln!("Install failed: {e}");
+                hydroshot::installer::show_error(&format!("Install failed: {e}"));
                 std::process::exit(1);
             }
         }
         Some(Commands::Uninstall) => {
             if let Err(e) = hydroshot::installer::uninstall() {
-                eprintln!("Uninstall failed: {e}");
+                hydroshot::installer::show_error(&format!("Uninstall failed: {e}"));
                 std::process::exit(1);
             }
         }
