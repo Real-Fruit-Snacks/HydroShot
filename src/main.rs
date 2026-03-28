@@ -230,7 +230,7 @@ impl App {
 
         let mut attrs = WindowAttributes::default()
             .with_title("HydroShot Settings")
-            .with_inner_size(winit::dpi::PhysicalSize::new(
+            .with_inner_size(winit::dpi::LogicalSize::new(
                 hydroshot::settings_ui::WIN_W,
                 hydroshot::settings_ui::WIN_H,
             ))
@@ -2576,6 +2576,30 @@ impl ApplicationHandler for App {
 }
 
 fn run_tray_app(config: Config) {
+    // Single-instance enforcement: only one tray app at a time
+    #[cfg(target_os = "windows")]
+    {
+        use windows::core::w;
+        use windows::Win32::Foundation::GetLastError;
+        use windows::Win32::Foundation::ERROR_ALREADY_EXISTS;
+        use windows::Win32::System::Threading::CreateMutexW;
+        unsafe {
+            if let Ok(m) = CreateMutexW(None, false, w!("HydroShot.SingleInstance")) {
+                if GetLastError() == ERROR_ALREADY_EXISTS {
+                    let _ = windows::Win32::Foundation::CloseHandle(m);
+                    let _ = notify_rust::Notification::new()
+                        .summary("HydroShot")
+                        .body("HydroShot is already running in the system tray")
+                        .timeout(3000)
+                        .show();
+                    return;
+                }
+                // Mutex handle is Copy — kernel keeps it alive for the process lifetime
+                let _ = m;
+            }
+        }
+    }
+
     let event_loop = match EventLoop::new() {
         Ok(el) => el,
         Err(e) => {

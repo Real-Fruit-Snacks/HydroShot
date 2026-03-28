@@ -2,7 +2,7 @@
 //!
 //! Enumerates all visible, non-minimised windows and returns their screen-space
 //! rectangles in front-to-back Z-order.  The overlay window is excluded by
-//! filtering out windows whose title is "HydroShot".
+//! filtering out windows whose title starts with "HydroShot".
 
 /// A screen-space rectangle: (x, y, width, height).
 pub type WinRect = (i32, i32, i32, i32);
@@ -29,7 +29,7 @@ pub fn enumerate_window_rects() -> Vec<WinRect> {
             let len = GetWindowTextW(hwnd, &mut buf) as usize;
             if len > 0 {
                 let title = String::from_utf16_lossy(&buf[..len]);
-                if title == "HydroShot" {
+                if title.starts_with("HydroShot") {
                     return BOOL(1);
                 }
             }

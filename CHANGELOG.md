@@ -2,6 +2,14 @@
 
 All notable changes to HydroShot will be documented in this file.
 
+## [0.5.9] - 2026-03-28
+
+### Fixed
+- Window capture mode now filters all HydroShot windows (Settings, History, Pin) not just the overlay
+- Installer path comparison no longer fails due to Windows `\\?\` UNC prefix mismatch
+- Settings window now scales correctly on high-DPI displays (LogicalSize + nearest-neighbor scaling)
+- Single-instance enforcement prevents duplicate tray icons when launched twice
+
 ## [0.5.8] - 2026-03-28
 
 ### Fixed

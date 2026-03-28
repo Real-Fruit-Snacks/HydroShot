@@ -65,10 +65,18 @@ pub fn needs_install() -> bool {
     let Ok(dest) = installed_exe() else {
         return false;
     };
-    // Compare canonical paths — if they match, we're already installed
+    // Compare canonical paths — if they match, we're already installed.
+    // Strip \\?\ UNC prefix that canonicalize adds on Windows for consistent comparison.
     let canonical_current = std::fs::canonicalize(&current).unwrap_or(current);
     let canonical_dest = std::fs::canonicalize(&dest).unwrap_or(dest);
-    canonical_current != canonical_dest
+    let strip_prefix = |p: PathBuf| -> PathBuf {
+        let s = p.to_string_lossy();
+        match s.strip_prefix(r"\\?\") {
+            Some(stripped) => PathBuf::from(stripped),
+            None => p,
+        }
+    };
+    strip_prefix(canonical_current) != strip_prefix(canonical_dest)
 }
 
 /// Terminate any running HydroShot processes so we can overwrite the installed exe.

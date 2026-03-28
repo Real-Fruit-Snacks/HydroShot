@@ -183,8 +183,11 @@ impl SettingsWindow {
             action: Action::SaveClose,
         });
 
-        // ── Present to softbuffer surface ──
-        if let (Some(nz_w), Some(nz_h)) = (NonZeroU32::new(WIN_W), NonZeroU32::new(WIN_H)) {
+        // ── Present to softbuffer surface (DPI-aware: scale logical pixmap to physical surface) ──
+        let phys = self.window.inner_size();
+        let pw = phys.width.max(1);
+        let ph = phys.height.max(1);
+        if let (Some(nz_w), Some(nz_h)) = (NonZeroU32::new(pw), NonZeroU32::new(ph)) {
             if let Err(e) = self.surface.resize(nz_w, nz_h) {
                 tracing::error!("Settings surface resize failed: {e}");
                 return;
@@ -193,10 +196,18 @@ impl SettingsWindow {
 
         if let Ok(mut buffer) = self.surface.buffer_mut() {
             let src = pixmap.data();
-            let pixel_count = (WIN_W * WIN_H) as usize;
-            for (i, chunk) in src.chunks_exact(4).take(pixel_count).enumerate() {
-                buffer[i] =
-                    ((chunk[0] as u32) << 16) | ((chunk[1] as u32) << 8) | (chunk[2] as u32);
+            let src_w = WIN_W as usize;
+            let src_h = WIN_H as usize;
+            // Nearest-neighbor scale from logical (WIN_W x WIN_H) to physical (pw x ph)
+            for y in 0..ph as usize {
+                let sy = (y * src_h / ph as usize).min(src_h - 1);
+                for x in 0..pw as usize {
+                    let sx = (x * src_w / pw as usize).min(src_w - 1);
+                    let si = (sy * src_w + sx) * 4;
+                    buffer[y * pw as usize + x] = ((src[si] as u32) << 16)
+                        | ((src[si + 1] as u32) << 8)
+                        | (src[si + 2] as u32);
+                }
             }
             let _ = buffer.present();
         }
@@ -486,6 +497,10 @@ impl SettingsWindow {
 
     /// Update cursor position and return whether a redraw is needed.
     pub fn on_cursor_moved(&mut self, x: f32, y: f32) -> bool {
+        // Scale physical cursor position to logical coordinates for hit testing
+        let scale = self.window.scale_factor() as f32;
+        let x = x / scale;
+        let y = y / scale;
         self.cursor_pos = (x, y);
         // Only redraw when the hovered element actually changes
         let old_hovered = self.hovered;
