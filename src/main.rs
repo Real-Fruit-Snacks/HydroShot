@@ -606,34 +606,36 @@ impl App {
             None
         };
 
-        // Run OCR and show toast (mutable borrow of state)
         if let Some((cropped, w, h)) = ocr_data {
-            let toast_msg = match hydroshot::ocr::extract_text(&cropped, w, h) {
-                Ok(text) => {
-                    if let Ok(mut clipboard) = arboard::Clipboard::new() {
-                        let _ = clipboard.set_text(&text);
+            self.close_overlay();
+            std::thread::spawn(move || {
+                let toast_msg = match hydroshot::ocr::extract_text(&cropped, w, h) {
+                    Ok(text) => {
+                        if let Ok(mut clipboard) = arboard::Clipboard::new() {
+                            let _ = clipboard.set_text(&text);
+                        }
+                        tracing::info!("OCR extracted {} chars", text.len());
+                        if text.len() > 80 {
+                            format!(
+                                "Copied {} chars: {}...",
+                                text.len(),
+                                text.chars().take(80).collect::<String>()
+                            )
+                        } else {
+                            format!("Copied: {}", text)
+                        }
                     }
-                    tracing::info!("OCR extracted {} chars", text.len());
-                    if text.len() > 80 {
-                        format!(
-                            "Copied {} chars: {}...",
-                            text.len(),
-                            text.chars().take(80).collect::<String>()
-                        )
-                    } else {
-                        format!("Copied: {}", text)
+                    Err(e) => {
+                        tracing::error!("OCR failed: {e}");
+                        format!("OCR failed: {e}")
                     }
-                }
-                Err(e) => {
-                    tracing::error!("OCR failed: {e}");
-                    format!("OCR failed: {e}")
-                }
-            };
-
-            if let AppState::Capturing(ref mut o) = self.state {
-                o.show_toast(toast_msg, 3000);
-            }
-            self.needs_redraw = true;
+                };
+                let _ = notify_rust::Notification::new()
+                    .summary("HydroShot")
+                    .body(&toast_msg)
+                    .timeout(3000)
+                    .show();
+            });
         }
     }
 
@@ -998,6 +1000,7 @@ impl App {
                             "Auto-start {}",
                             if new_state { "enabled" } else { "disabled" }
                         );
+                        tray.autostart_check.set_checked(new_state);
                     }
                 } else if event.id == tray.history_id {
                     tracing::info!("History menu item clicked");
@@ -1371,12 +1374,21 @@ impl ApplicationHandler for App {
                     ..
                 } => {
                     let pin = &self.pinned_windows[pin_idx];
-                    let _ = export::copy_to_clipboard(&pin.pixels, pin.width, pin.height);
-                    let _ = Notification::new()
-                        .summary("HydroShot")
-                        .body("Pin image copied to clipboard")
-                        .timeout(2000)
-                        .show();
+                    let pixels = pin.pixels.clone();
+                    let w = pin.width;
+                    let h = pin.height;
+                    std::thread::spawn(move || match export::copy_to_clipboard(&pixels, w, h) {
+                        Ok(()) => {
+                            let _ = Notification::new()
+                                .summary("HydroShot")
+                                .body("Pin image copied to clipboard")
+                                .timeout(2000)
+                                .show();
+                        }
+                        Err(e) => {
+                            tracing::error!("Pin clipboard copy failed: {e}");
+                        }
+                    });
                 }
                 WindowEvent::CursorMoved { position, .. } => {
                     let pin = &mut self.pinned_windows[pin_idx];
@@ -2410,9 +2422,14 @@ impl ApplicationHandler for App {
                             if (14..=18).contains(&btn) {
                                 let swatch_idx = btn - 14;
                                 let current = Color::presets()[swatch_idx];
-                                if let Some(new_color) =
-                                    hydroshot::color_picker::pick_color(&current)
-                                {
+                                if let Some(ref w) = self.overlay_window {
+                                    w.set_visible(false);
+                                }
+                                let picked = hydroshot::color_picker::pick_color(&current);
+                                if let Some(ref w) = self.overlay_window {
+                                    w.set_visible(true);
+                                }
+                                if let Some(new_color) = picked {
                                     overlay.current_color = new_color;
                                     overlay.arrow_tool.set_color(new_color);
                                     overlay.rectangle_tool.set_color(new_color);
@@ -2443,6 +2460,11 @@ impl ApplicationHandler for App {
                                 return;
                             }
                         }
+                    }
+                }
+                if let AppState::Capturing(ref overlay) = self.state {
+                    if overlay.selection.is_some() {
+                        return;
                     }
                 }
                 self.close_overlay();
@@ -2554,17 +2576,35 @@ impl ApplicationHandler for App {
 }
 
 fn run_tray_app(config: Config) {
-    let event_loop = EventLoop::new().expect("Failed to create event loop");
+    let event_loop = match EventLoop::new() {
+        Ok(el) => el,
+        Err(e) => {
+            hydroshot::installer::show_error(&format!("Failed to start: {e}"));
+            std::process::exit(1);
+        }
+    };
     let mut app = App::new(config);
-    event_loop.run_app(&mut app).expect("Event loop error");
+    if let Err(e) = event_loop.run_app(&mut app) {
+        hydroshot::installer::show_error(&format!("Event loop error: {e}"));
+        std::process::exit(1);
+    }
 }
 
 fn run_tray_app_with_immediate_capture(config: Config) {
-    let event_loop = EventLoop::new().expect("Failed to create event loop");
+    let event_loop = match EventLoop::new() {
+        Ok(el) => el,
+        Err(e) => {
+            hydroshot::installer::show_error(&format!("Failed to start: {e}"));
+            std::process::exit(1);
+        }
+    };
     let mut app = App::new(config);
     app.immediate_capture = true;
     app.cli_only = true;
-    event_loop.run_app(&mut app).expect("Event loop error");
+    if let Err(e) = event_loop.run_app(&mut app) {
+        hydroshot::installer::show_error(&format!("Event loop error: {e}"));
+        std::process::exit(1);
+    }
 }
 
 fn run_cli_capture(clipboard: bool, save: Option<String>, delay: u64) {
@@ -2647,7 +2687,7 @@ fn main() {
         use windows::core::w;
         use windows::Win32::UI::Shell::SetCurrentProcessExplicitAppUserModelID;
         unsafe {
-            let _ = SetCurrentProcessExplicitAppUserModelID(w!("HydroShot.HydroShot.0.5.7"));
+            let _ = SetCurrentProcessExplicitAppUserModelID(w!("HydroShot.HydroShot"));
         }
     }
 

@@ -1,4 +1,5 @@
 fn main() {
+    println!("cargo:rerun-if-changed=assets/icon.png");
     #[cfg(target_os = "windows")]
     {
         // Generate .ico from .png (ICO is just a small header + embedded PNG data)
@@ -23,8 +24,6 @@ fn main() {
         res.set("ProductName", "HydroShot");
         res.set("FileDescription", "Screenshot capture and annotation tool");
         res.set("LegalCopyright", "Copyright 2026 Matt");
-        if let Err(e) = res.compile() {
-            eprintln!("winres compile error: {}", e);
-        }
+        res.compile().expect("winres resource compile failed");
     }
 }

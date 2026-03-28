@@ -81,7 +81,7 @@
             </Component>
         </DirectoryRef>
 
-        <Feature Id='Binaries' Title='Application' Description='Installs the HydroShot executable.' Level='1' ConfigurableDirectory='APPLICATIONFOLDER' AllowAdvertise='no' Display='expand'>
+        <Feature Id='Binaries' Title='Application' Description='Installs the HydroShot executable.' Level='1' AllowAdvertise='no' Display='expand'>
             <ComponentRef Id='binary0' />
         </Feature>
 
@@ -96,7 +96,7 @@
         <SetProperty Id='ARPINSTALLLOCATION' Value='[APPLICATIONFOLDER]' After='CostFinalize' />
 
         <UI>
-            <UIRef Id='WixUI_FeatureTree' />
+            <UIRef Id='WixUI_Minimal' />
         </UI>
 
         <WixVariable Id='WixUILicenseRtf' Value='wix\License.rtf' />

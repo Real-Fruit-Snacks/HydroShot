@@ -159,7 +159,7 @@ cargo build --release
 | `Ctrl+C` | Copy to clipboard |
 | `Ctrl+S` | Save to file |
 | `Ctrl+Z` | Undo |
-| `Ctrl+Y` | Redo |
+| `Ctrl+Shift+Z` | Redo |
 | `Escape` | Cancel capture |
 | `Scroll Wheel` | Adjust tool size |
 | `Right-click color` | Open native color picker |
@@ -175,7 +175,7 @@ HydroShot includes a command-line interface for scripting and automation. Runnin
 hydroshot capture --clipboard
 
 # Capture and save to file
-hydroshot capture --save
+hydroshot capture --save screenshot.png
 
 # Capture with a 3-second delay
 hydroshot capture --delay 3
@@ -208,7 +208,7 @@ select = "v"
 arrow = "a"
 rectangle = "r"
 circle = "c"
-rounded_rectangle = "o"
+rounded_rect = "o"
 line = "l"
 pencil = "p"
 highlight = "h"

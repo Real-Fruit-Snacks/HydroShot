@@ -2,6 +2,25 @@
 
 All notable changes to HydroShot will be documented in this file.
 
+## [0.5.8] - 2026-03-28
+
+### Fixed
+- Self-installer no longer kills itself during install (excluded current PID from taskkill)
+- Color picker dialog no longer freezes the app (overlay hides while dialog is open)
+- SendMessageTimeoutW replaced with non-blocking PostMessageW in PATH registration
+- WiX MSI installer switched to WixUI_Minimal to prevent UI deadlock on per-user install
+- PowerShell command injection in shortcut creation (now uses -EncodedCommand)
+- Registry handle leak on error paths in add_to_path/remove_from_path
+- OCR and pin clipboard operations moved to background threads (no more UI freezing)
+- Event loop panics now show user-friendly error dialog instead of silent crash
+- Right-click no longer closes overlay when a selection exists
+- Autostart checkbox in tray menu now updates immediately after toggling
+- build.rs winres compile error is now fatal instead of silently swallowed
+- Fixed README: corrected config key (rounded_rect), redo shortcut (Ctrl+Shift+Z), --save usage
+- Fixed docs/index.html version badge (v0.5.4 → v0.5.8)
+- Added cargo:rerun-if-changed for icon.png in build.rs
+- Removed hardcoded version from AppUserModelID
+
 ## [0.5.7] - 2026-03-27
 
 ### Fixed

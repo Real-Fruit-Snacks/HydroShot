@@ -76,8 +76,15 @@ pub fn needs_install() -> bool {
 fn kill_running_instances() {
     use std::os::windows::process::CommandExt;
     const CREATE_NO_WINDOW: u32 = 0x08000000;
+    let current_pid = std::process::id();
     let _ = std::process::Command::new("taskkill")
-        .args(["/F", "/IM", "hydroshot.exe"])
+        .args([
+            "/F",
+            "/IM",
+            "hydroshot.exe",
+            "/FI",
+            &format!("PID ne {}", current_pid),
+        ])
         .creation_flags(CREATE_NO_WINDOW)
         .output();
     // Give the OS a moment to release file locks
@@ -207,8 +214,18 @@ fn create_shortcut(exe_path: &std::path::Path) -> Result<(), String> {
         exe_str.replace('\'', "''"),
     );
 
+    // Use -EncodedCommand to avoid shell metacharacter injection
+    let utf16: Vec<u8> = ps_script
+        .encode_utf16()
+        .flat_map(|c| c.to_le_bytes())
+        .collect();
+    let encoded = {
+        use base64::Engine;
+        base64::engine::general_purpose::STANDARD.encode(&utf16)
+    };
+
     let status = std::process::Command::new("powershell")
-        .args(["-NoProfile", "-Command", &ps_script])
+        .args(["-NoProfile", "-EncodedCommand", &encoded])
         .output()
         .map_err(|e| format!("Failed to run PowerShell: {e}"))?;
 
@@ -242,7 +259,7 @@ fn add_to_path(dir: &std::path::Path) -> Result<(), String> {
 
         let current_path = if buf_size > 0 {
             let mut buf = vec![0u8; buf_size as usize];
-            RegQueryValueExW(
+            if let Err(e) = RegQueryValueExW(
                 key,
                 name,
                 None,
@@ -251,7 +268,10 @@ fn add_to_path(dir: &std::path::Path) -> Result<(), String> {
                 Some(&mut buf_size),
             )
             .ok()
-            .map_err(|e| format!("Failed to read PATH: {e}"))?;
+            {
+                let _ = RegCloseKey(key);
+                return Err(format!("Failed to read PATH: {e}"));
+            }
             let wide: &[u16] =
                 std::slice::from_raw_parts(buf.as_ptr() as *const u16, buf.len() / 2);
             String::from_utf16_lossy(wide)
@@ -280,9 +300,10 @@ fn add_to_path(dir: &std::path::Path) -> Result<(), String> {
 
         let value: Vec<u16> = new_path.encode_utf16().chain(std::iter::once(0)).collect();
         let bytes: &[u8] = std::slice::from_raw_parts(value.as_ptr() as *const u8, value.len() * 2);
-        RegSetValueExW(key, name, 0, REG_EXPAND_SZ, Some(bytes))
-            .ok()
-            .map_err(|e| format!("Failed to update PATH: {e}"))?;
+        if let Err(e) = RegSetValueExW(key, name, 0, REG_EXPAND_SZ, Some(bytes)).ok() {
+            let _ = RegCloseKey(key);
+            return Err(format!("Failed to update PATH: {e}"));
+        }
 
         let _ = RegCloseKey(key);
 
@@ -290,14 +311,11 @@ fn add_to_path(dir: &std::path::Path) -> Result<(), String> {
         use windows::Win32::Foundation::{LPARAM, WPARAM};
         use windows::Win32::UI::WindowsAndMessaging::*;
         let param = w!("Environment");
-        let _ = SendMessageTimeoutW(
+        let _ = PostMessageW(
             HWND_BROADCAST,
             WM_SETTINGCHANGE,
             WPARAM(0),
             LPARAM(param.as_ptr() as isize),
-            SMTO_ABORTIFHUNG,
-            5000,
-            None,
         );
     }
 
@@ -334,7 +352,7 @@ fn remove_from_path(dir: &std::path::Path) -> Result<(), String> {
         }
 
         let mut buf = vec![0u8; buf_size as usize];
-        RegQueryValueExW(
+        if let Err(e) = RegQueryValueExW(
             key,
             name,
             None,
@@ -343,7 +361,10 @@ fn remove_from_path(dir: &std::path::Path) -> Result<(), String> {
             Some(&mut buf_size),
         )
         .ok()
-        .map_err(|e| format!("Failed to read PATH: {e}"))?;
+        {
+            let _ = RegCloseKey(key);
+            return Err(format!("Failed to read PATH: {e}"));
+        }
 
         let wide: &[u16] = std::slice::from_raw_parts(buf.as_ptr() as *const u16, buf.len() / 2);
         let current = String::from_utf16_lossy(wide)
@@ -358,23 +379,21 @@ fn remove_from_path(dir: &std::path::Path) -> Result<(), String> {
 
         let value: Vec<u16> = new_path.encode_utf16().chain(std::iter::once(0)).collect();
         let bytes: &[u8] = std::slice::from_raw_parts(value.as_ptr() as *const u8, value.len() * 2);
-        RegSetValueExW(key, name, 0, REG_EXPAND_SZ, Some(bytes))
-            .ok()
-            .map_err(|e| format!("Failed to update PATH: {e}"))?;
+        if let Err(e) = RegSetValueExW(key, name, 0, REG_EXPAND_SZ, Some(bytes)).ok() {
+            let _ = RegCloseKey(key);
+            return Err(format!("Failed to update PATH: {e}"));
+        }
 
         let _ = RegCloseKey(key);
 
         use windows::Win32::Foundation::{LPARAM, WPARAM};
         use windows::Win32::UI::WindowsAndMessaging::*;
         let param = w!("Environment");
-        let _ = SendMessageTimeoutW(
+        let _ = PostMessageW(
             HWND_BROADCAST,
             WM_SETTINGCHANGE,
             WPARAM(0),
             LPARAM(param.as_ptr() as isize),
-            SMTO_ABORTIFHUNG,
-            5000,
-            None,
         );
     }
 
@@ -398,11 +417,17 @@ fn schedule_delete_on_reboot(path: &std::path::Path) {
         .chain(std::iter::once(0))
         .collect();
     unsafe {
-        let _ = MoveFileExW(
+        let result = MoveFileExW(
             PCWSTR(wide.as_ptr()),
             PCWSTR::null(),
             MOVEFILE_DELAY_UNTIL_REBOOT,
         );
+        if result.is_err() {
+            eprintln!(
+                "Warning: could not schedule {} for deletion on reboot (requires admin)",
+                path.display()
+            );
+        }
     }
 }
 
