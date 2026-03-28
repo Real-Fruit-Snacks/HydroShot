@@ -1,11 +1,18 @@
 <div align="center">
 
-<img src="docs/icon_256.png" alt="HydroShot" width="128">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="assets/banner.svg">
+  <source media="(prefers-color-scheme: light)" srcset="assets/banner.svg">
+  <img alt="HydroShot" src="assets/banner.svg" width="800">
+</picture>
 
-# HydroShot
+<br>
 
-A fast, lightweight screenshot capture and annotation tool.
-Built with Rust, winit, and tiny-skia.
+**Fast, lightweight screenshot capture and annotation tool built with Rust**
+
+[![Rust](https://img.shields.io/badge/Rust-1.80+-DEA584?style=flat-square&logo=rust&logoColor=white)](https://www.rust-lang.org)
+[![Platform](https://img.shields.io/badge/Platform-Windows-0078D6?style=flat-square&logo=windows&logoColor=white)](.)
+[![License](https://img.shields.io/badge/License-MIT-a6e3a1?style=flat-square)](LICENSE)
 
 <p>
   <a href="#features">Features</a> &bull;

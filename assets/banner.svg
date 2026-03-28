@@ -1,0 +1,87 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 200" fill="none">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="800" y2="200" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#1e1e2e"/>
+      <stop offset="100%" stop-color="#11111b"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#89b4fa"/>
+      <stop offset="100%" stop-color="#b4befe"/>
+    </linearGradient>
+    <linearGradient id="icon-grad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#89b4fa"/>
+      <stop offset="50%" stop-color="#cba6f7"/>
+      <stop offset="100%" stop-color="#f38ba8"/>
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="3" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="800" height="200" rx="12" fill="url(#bg)"/>
+
+  <!-- Subtle grid pattern -->
+  <g opacity="0.03">
+    <line x1="0" y1="40" x2="800" y2="40" stroke="#cdd6f4" stroke-width="1"/>
+    <line x1="0" y1="80" x2="800" y2="80" stroke="#cdd6f4" stroke-width="1"/>
+    <line x1="0" y1="120" x2="800" y2="120" stroke="#cdd6f4" stroke-width="1"/>
+    <line x1="0" y1="160" x2="800" y2="160" stroke="#cdd6f4" stroke-width="1"/>
+    <line x1="160" y1="0" x2="160" y2="200" stroke="#cdd6f4" stroke-width="1"/>
+    <line x1="320" y1="0" x2="320" y2="200" stroke="#cdd6f4" stroke-width="1"/>
+    <line x1="480" y1="0" x2="480" y2="200" stroke="#cdd6f4" stroke-width="1"/>
+    <line x1="640" y1="0" x2="640" y2="200" stroke="#cdd6f4" stroke-width="1"/>
+  </g>
+
+  <!-- Crosshair icon (screenshot capture metaphor) -->
+  <g transform="translate(180, 100)" filter="url(#glow)">
+    <!-- Outer circle -->
+    <circle cx="0" cy="0" r="36" stroke="url(#icon-grad)" stroke-width="2.5" fill="none" opacity="0.8"/>
+    <!-- Inner circle -->
+    <circle cx="0" cy="0" r="12" stroke="url(#icon-grad)" stroke-width="2" fill="none" opacity="0.6"/>
+    <!-- Crosshair lines -->
+    <line x1="0" y1="-44" x2="0" y2="-20" stroke="url(#accent)" stroke-width="2.5" stroke-linecap="round"/>
+    <line x1="0" y1="20" x2="0" y2="44" stroke="url(#accent)" stroke-width="2.5" stroke-linecap="round"/>
+    <line x1="-44" y1="0" x2="-20" y2="0" stroke="url(#accent)" stroke-width="2.5" stroke-linecap="round"/>
+    <line x1="20" y1="0" x2="44" y2="0" stroke="url(#accent)" stroke-width="2.5" stroke-linecap="round"/>
+    <!-- Selection corner brackets -->
+    <path d="M-28,-28 L-28,-18 M-28,-28 L-18,-28" stroke="#cba6f7" stroke-width="2" stroke-linecap="round" fill="none" opacity="0.5"/>
+    <path d="M28,-28 L28,-18 M28,-28 L18,-28" stroke="#cba6f7" stroke-width="2" stroke-linecap="round" fill="none" opacity="0.5"/>
+    <path d="M-28,28 L-28,18 M-28,28 L-18,28" stroke="#cba6f7" stroke-width="2" stroke-linecap="round" fill="none" opacity="0.5"/>
+    <path d="M28,28 L28,18 M28,28 L18,28" stroke="#cba6f7" stroke-width="2" stroke-linecap="round" fill="none" opacity="0.5"/>
+    <!-- Center dot -->
+    <circle cx="0" cy="0" r="3" fill="#f38ba8" opacity="0.9"/>
+  </g>
+
+  <!-- Title -->
+  <text x="280" y="92" font-family="'Segoe UI', system-ui, -apple-system, sans-serif" font-size="52" font-weight="700" fill="#cdd6f4" letter-spacing="-1">
+    Hydro<tspan fill="url(#accent)">Shot</tspan>
+  </text>
+
+  <!-- Tagline -->
+  <text x="282" y="126" font-family="'Segoe UI', system-ui, -apple-system, sans-serif" font-size="16" fill="#a6adc8" letter-spacing="0.5">
+    Screenshot capture &amp; annotation tool
+  </text>
+
+  <!-- Tech badges -->
+  <g transform="translate(282, 142)">
+    <rect x="0" y="0" width="52" height="22" rx="4" fill="#313244"/>
+    <text x="26" y="15" font-family="'Segoe UI', monospace" font-size="11" fill="#fab387" text-anchor="middle">Rust</text>
+
+    <rect x="60" y="0" width="56" height="22" rx="4" fill="#313244"/>
+    <text x="88" y="15" font-family="'Segoe UI', monospace" font-size="11" fill="#89b4fa" text-anchor="middle">winit</text>
+
+    <rect x="124" y="0" width="76" height="22" rx="4" fill="#313244"/>
+    <text x="162" y="15" font-family="'Segoe UI', monospace" font-size="11" fill="#a6e3a1" text-anchor="middle">tiny-skia</text>
+  </g>
+
+  <!-- Decorative accent line -->
+  <rect x="280" y="170" width="120" height="2" rx="1" fill="url(#accent)" opacity="0.4"/>
+
+  <!-- Border -->
+  <rect width="800" height="200" rx="12" stroke="#313244" stroke-width="1" fill="none"/>
+</svg>
