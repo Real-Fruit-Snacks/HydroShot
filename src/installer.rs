@@ -25,6 +25,20 @@ fn start_menu_dir() -> Result<PathBuf, String> {
         .ok_or_else(|| "Could not determine Start Menu directory".into())
 }
 
+/// Returns true if the current exe is NOT running from the install location.
+pub fn needs_install() -> bool {
+    let Ok(current) = std::env::current_exe() else {
+        return false;
+    };
+    let Ok(dest) = installed_exe() else {
+        return false;
+    };
+    // Compare canonical paths — if they match, we're already installed
+    let canonical_current = std::fs::canonicalize(&current).unwrap_or(current);
+    let canonical_dest = std::fs::canonicalize(&dest).unwrap_or(dest);
+    canonical_current != canonical_dest
+}
+
 pub fn install() -> Result<(), String> {
     let source = std::env::current_exe().map_err(|e| format!("Failed to find current exe: {e}"))?;
     let dest_dir = install_dir()?;

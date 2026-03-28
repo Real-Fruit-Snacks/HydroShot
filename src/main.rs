@@ -2645,7 +2645,7 @@ fn main() {
         use windows::core::w;
         use windows::Win32::UI::Shell::SetCurrentProcessExplicitAppUserModelID;
         unsafe {
-            let _ = SetCurrentProcessExplicitAppUserModelID(w!("HydroShot.HydroShot.0.5.5"));
+            let _ = SetCurrentProcessExplicitAppUserModelID(w!("HydroShot.HydroShot.0.5.6"));
         }
     }
 
@@ -2653,7 +2653,16 @@ fn main() {
 
     match cli.command {
         None => {
-            // No subcommand: run as tray app (current behavior)
+            // If not running from the install location, install first (then the
+            // installer spawns the installed copy and we exit).
+            if hydroshot::installer::needs_install() {
+                if let Err(e) = hydroshot::installer::install() {
+                    eprintln!("Install failed: {e}");
+                    std::process::exit(1);
+                }
+                return;
+            }
+
             let config = Config::load();
             tracing::info!(
                 "Config loaded: hotkey={}, color={}, thickness={}",

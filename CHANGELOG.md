@@ -2,6 +2,11 @@
 
 All notable changes to HydroShot will be documented in this file.
 
+## [0.5.6] - 2026-03-27
+
+### Changed
+- EXE now auto-installs when double-clicked from outside the install location
+
 ## [0.5.5] - 2026-03-27
 
 ### Added
