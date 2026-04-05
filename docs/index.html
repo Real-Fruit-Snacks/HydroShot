@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>HydroShot — Screenshot Capture & Annotation</title>
-  <meta name="description" content="A fast, lightweight screenshot capture and annotation tool built with Rust, winit, and tiny-skia.">
+  <meta name="description" content="Fast, lightweight screenshot capture and annotation tool built with Rust, winit, and tiny-skia.">
   <link rel="icon" type="image/png" href="icon_256.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -25,6 +25,7 @@
       --blue: #89b4fa;
       --lavender: #b4befe;
       --mauve: #cba6f7;
+      --pink: #f5c2e7;
       --green: #a6e3a1;
       --red: #f38ba8;
       --peach: #fab387;
@@ -45,8 +46,8 @@
       -moz-osx-font-smoothing: grayscale;
     }
 
-    a { color: var(--blue); text-decoration: none; transition: color 0.2s; }
-    a:hover { color: var(--lavender); }
+    a { color: var(--mauve); text-decoration: none; transition: color 0.2s; }
+    a:hover { color: var(--pink); }
 
     code, .mono {
       font-family: 'JetBrains Mono', 'Fira Code', monospace;
@@ -54,7 +55,7 @@
 
     .container { max-width: 1120px; margin: 0 auto; padding: 0 24px; }
 
-    /* ── Nav ─────────────────────────────────────────── */
+    /* -- Nav -------------------------------------------------- */
     nav {
       position: fixed; top: 0; left: 0; right: 0; z-index: 100;
       height: 64px;
@@ -75,7 +76,7 @@
       font-weight: 700; font-size: 1.15rem; color: var(--text);
     }
 
-    .nav-brand img { width: 32px; height: 32px; border-radius: 6px; }
+    .nav-brand svg { width: 32px; height: 32px; }
 
     .nav-links { display: flex; align-items: center; gap: 28px; list-style: none; }
     .nav-links a { color: var(--subtext); font-size: 0.9rem; font-weight: 500; }
@@ -91,7 +92,7 @@
     .nav-github:hover { background: var(--surface1); }
     .nav-github svg { width: 18px; height: 18px; }
 
-    /* ── Hero ─────────────────────────────────────────── */
+    /* -- Hero -------------------------------------------------- */
     .hero {
       padding: 160px 0 100px;
       text-align: center;
@@ -103,16 +104,21 @@
       content: '';
       position: absolute; top: -200px; left: 50%; transform: translateX(-50%);
       width: 800px; height: 800px;
-      background: radial-gradient(circle, rgba(137, 180, 250, 0.08) 0%, transparent 70%);
+      background: radial-gradient(circle, rgba(203, 166, 247, 0.08) 0%, rgba(245, 194, 231, 0.04) 40%, transparent 70%);
       pointer-events: none;
     }
+
+    .hero-logo {
+      margin-bottom: 28px;
+    }
+    .hero-logo svg { width: 80px; height: 80px; }
 
     .hero-badge {
       display: inline-flex; align-items: center; gap: 8px;
       padding: 6px 16px; border-radius: 100px;
-      background: rgba(137, 180, 250, 0.1);
-      border: 1px solid rgba(137, 180, 250, 0.2);
-      color: var(--blue); font-size: 0.8rem; font-weight: 600;
+      background: rgba(203, 166, 247, 0.1);
+      border: 1px solid rgba(203, 166, 247, 0.2);
+      color: var(--mauve); font-size: 0.8rem; font-weight: 600;
       margin-bottom: 28px; letter-spacing: 0.02em;
     }
 
@@ -123,7 +129,7 @@
     }
 
     .hero h1 .gradient {
-      background: linear-gradient(135deg, var(--blue) 0%, var(--mauve) 50%, var(--teal) 100%);
+      background: linear-gradient(135deg, var(--mauve) 0%, var(--pink) 50%, var(--lavender) 100%);
       -webkit-background-clip: text; background-clip: text;
       -webkit-text-fill-color: transparent;
     }
@@ -143,9 +149,9 @@
     }
 
     .btn-primary {
-      background: var(--blue); color: var(--crust);
+      background: var(--mauve); color: var(--crust);
     }
-    .btn-primary:hover { background: var(--lavender); color: var(--crust); transform: translateY(-1px); }
+    .btn-primary:hover { background: var(--pink); color: var(--crust); transform: translateY(-1px); }
 
     .btn-secondary {
       background: var(--surface0); color: var(--text);
@@ -165,17 +171,17 @@
       padding: 40px; min-height: 360px;
       display: flex; align-items: center; justify-content: center;
       color: var(--subtext0); font-size: 0.9rem;
-      box-shadow: 0 24px 80px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(137, 180, 250, 0.05);
+      box-shadow: 0 24px 80px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(203, 166, 247, 0.05);
     }
 
-    /* ── Section ──────────────────────────────────────── */
+    /* -- Section ----------------------------------------------- */
     section { padding: 100px 0; }
 
     .section-label {
       display: inline-block;
       font-size: 0.75rem; font-weight: 700;
       text-transform: uppercase; letter-spacing: 0.1em;
-      color: var(--blue); margin-bottom: 12px;
+      color: var(--mauve); margin-bottom: 12px;
     }
 
     .section-title {
@@ -192,7 +198,7 @@
     .section-center { text-align: center; }
     .section-center .section-desc { margin-left: auto; margin-right: auto; }
 
-    /* ── Feature Cards ────────────────────────────────── */
+    /* -- Feature Cards ----------------------------------------- */
     .features-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
@@ -229,14 +235,14 @@
       color: var(--subtext); font-size: 0.9rem; line-height: 1.6;
     }
 
-    .icon-capture { background: rgba(137, 180, 250, 0.12); color: var(--blue); }
-    .icon-annotate { background: rgba(203, 166, 247, 0.12); color: var(--mauve); }
+    .icon-capture { background: rgba(203, 166, 247, 0.12); color: var(--mauve); }
+    .icon-annotate { background: rgba(245, 194, 231, 0.12); color: var(--pink); }
     .icon-export { background: rgba(166, 227, 161, 0.12); color: var(--green); }
     .icon-customize { background: rgba(250, 179, 135, 0.12); color: var(--peach); }
     .icon-window { background: rgba(148, 226, 213, 0.12); color: var(--teal); }
     .icon-interface { background: rgba(249, 226, 175, 0.12); color: var(--yellow); }
 
-    /* ── Tools Section ────────────────────────────────── */
+    /* -- Tools Section ----------------------------------------- */
     .tools-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -270,7 +276,7 @@
       color: var(--subtext0); font-size: 0.78rem;
     }
 
-    /* ── CLI Section ──────────────────────────────────── */
+    /* -- CLI Section ------------------------------------------- */
     .cli-section { background: var(--mantle); border-top: 1px solid var(--surface0); border-bottom: 1px solid var(--surface0); }
 
     .terminal {
@@ -315,10 +321,10 @@
     .terminal-body .comment { color: var(--subtext0); }
     .terminal-body .prompt { color: var(--green); }
     .terminal-body .cmd { color: var(--text); }
-    .terminal-body .flag { color: var(--blue); }
+    .terminal-body .flag { color: var(--mauve); }
     .terminal-body .arg { color: var(--peach); }
 
-    /* ── Tech Stack ───────────────────────────────────── */
+    /* -- Tech Stack -------------------------------------------- */
     .tech-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
@@ -340,7 +346,7 @@
     .tech-item:hover { transform: translateY(-2px); border-color: var(--surface1); }
     .tech-item span { display: block; font-size: 1.6rem; margin-bottom: 6px; }
 
-    /* ── Install Section ──────────────────────────────── */
+    /* -- Install Section --------------------------------------- */
     .install-cards {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
@@ -379,7 +385,7 @@
 
     .build-source .terminal { text-align: left; }
 
-    /* ── Footer ───────────────────────────────────────── */
+    /* -- Footer ------------------------------------------------ */
     footer {
       padding: 40px 0;
       border-top: 1px solid var(--surface0);
@@ -395,7 +401,7 @@
       font-weight: 700; font-size: 1rem; color: var(--text);
     }
 
-    .footer-brand img { width: 24px; height: 24px; border-radius: 4px; }
+    .footer-brand svg { width: 24px; height: 24px; }
 
     .footer-links { display: flex; gap: 24px; list-style: none; }
     .footer-links a { color: var(--subtext0); font-size: 0.85rem; }
@@ -408,7 +414,7 @@
 
     .footer-note .rust-color { color: var(--peach); }
 
-    /* ── Scroll Animations ────────────────────────────── */
+    /* -- Scroll Animations ------------------------------------- */
     .fade-in {
       opacity: 0; transform: translateY(24px);
       transition: opacity 0.6s ease, transform 0.6s ease;
@@ -418,7 +424,7 @@
       opacity: 1; transform: translateY(0);
     }
 
-    /* ── Responsive ───────────────────────────────────── */
+    /* -- Responsive -------------------------------------------- */
     @media (max-width: 768px) {
       .nav-links { display: none; }
       .hero { padding: 120px 0 60px; }
@@ -442,7 +448,18 @@
   <nav>
     <div class="nav-inner">
       <a href="#" class="nav-brand">
-        <img src="icon_256.png" alt="HydroShot">
+        <svg viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect x="20" y="20" width="80" height="80" rx="4" stroke="#cba6f7" stroke-width="2" stroke-dasharray="8 4" fill="none" opacity="0.85"/>
+          <path d="M16,30 L16,16 L30,16" stroke="#cba6f7" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+          <path d="M90,16 L104,16 L104,30" stroke="#cba6f7" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+          <path d="M16,90 L16,104 L30,104" stroke="#cba6f7" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+          <path d="M90,104 L104,104 L104,90" stroke="#cba6f7" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+          <line x1="60" y1="28" x2="60" y2="50" stroke="#f5c2e7" stroke-width="2" stroke-linecap="round"/>
+          <line x1="60" y1="70" x2="60" y2="92" stroke="#f5c2e7" stroke-width="2" stroke-linecap="round"/>
+          <line x1="28" y1="60" x2="50" y2="60" stroke="#f5c2e7" stroke-width="2" stroke-linecap="round"/>
+          <line x1="70" y1="60" x2="92" y2="60" stroke="#f5c2e7" stroke-width="2" stroke-linecap="round"/>
+          <circle cx="60" cy="60" r="4" fill="#cba6f7" opacity="0.95"/>
+        </svg>
         HydroShot
       </a>
       <ul class="nav-links">
@@ -461,6 +478,23 @@
   <!-- Hero -->
   <section class="hero">
     <div class="container">
+      <div class="hero-logo">
+        <svg viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <filter id="hero-glow"><feGaussianBlur stdDeviation="3" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+          </defs>
+          <rect x="20" y="20" width="80" height="80" rx="4" stroke="#cba6f7" stroke-width="2" stroke-dasharray="8 4" fill="none" opacity="0.85"/>
+          <path d="M16,30 L16,16 L30,16" stroke="#cba6f7" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+          <path d="M90,16 L104,16 L104,30" stroke="#cba6f7" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+          <path d="M16,90 L16,104 L30,104" stroke="#cba6f7" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+          <path d="M90,104 L104,104 L104,90" stroke="#cba6f7" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+          <line x1="60" y1="28" x2="60" y2="50" stroke="#f5c2e7" stroke-width="2" stroke-linecap="round"/>
+          <line x1="60" y1="70" x2="60" y2="92" stroke="#f5c2e7" stroke-width="2" stroke-linecap="round"/>
+          <line x1="28" y1="60" x2="50" y2="60" stroke="#f5c2e7" stroke-width="2" stroke-linecap="round"/>
+          <line x1="70" y1="60" x2="92" y2="60" stroke="#f5c2e7" stroke-width="2" stroke-linecap="round"/>
+          <circle cx="60" cy="60" r="4" fill="#cba6f7" filter="url(#hero-glow)" opacity="0.95"/>
+        </svg>
+      </div>
       <div class="hero-badge">v0.5.9 &bull; Open Source</div>
       <h1>
         Screenshot capture,<br>
@@ -511,7 +545,7 @@
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.586 7.586"/><circle cx="11" cy="11" r="2"/></svg>
           </div>
           <h3>14 Annotation Tools</h3>
-          <p>Arrows, rectangles, rounded rects, circles, lines, pencil, highlighter, spotlight, text, pixelation, step markers, eyedropper, and measurement. Adjust size with the scroll wheel.</p>
+          <p>Arrows, rectangles, rounded rects, circles, lines, pencil, highlighter, spotlight, text, pixelation, step markers, eyedropper, and measurement.</p>
         </div>
         <div class="feature-card fade-in">
           <div class="feature-icon icon-export">
@@ -525,7 +559,7 @@
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
           </div>
           <h3>Catppuccin Theming</h3>
-          <p>Beautiful Catppuccin Mocha dark theme with 5 color presets. Right-click any color for a native color picker. Customizable keyboard shortcuts and configurable toolbar.</p>
+          <p>Beautiful Catppuccin Mocha dark theme with 5 color presets. Customizable keyboard shortcuts and configurable toolbar.</p>
         </div>
         <div class="feature-card fade-in">
           <div class="feature-icon icon-window">
@@ -558,14 +592,14 @@
       <div class="tools-grid">
         <div class="tool-card fade-in">
           <span class="tool-icon">
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--blue)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 9l4-4 11 11-4 4L5 9z"/><path d="M3 3l2 2"/></svg>
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--mauve)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 9l4-4 11 11-4 4L5 9z"/><path d="M3 3l2 2"/></svg>
           </span>
           <h4>Select / Move</h4>
           <p>Reposition annotations</p>
         </div>
         <div class="tool-card fade-in">
           <span class="tool-icon">
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--mauve)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--pink)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
           </span>
           <h4>Arrow</h4>
           <p>Point to areas of interest</p>
@@ -730,7 +764,7 @@
       <div class="install-cards">
         <div class="install-card fade-in">
           <span class="platform-icon">
-            <svg width="36" height="36" viewBox="0 0 24 24" fill="var(--blue)" xmlns="http://www.w3.org/2000/svg"><path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.4H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.9-1.801"/></svg>
+            <svg width="36" height="36" viewBox="0 0 24 24" fill="var(--mauve)" xmlns="http://www.w3.org/2000/svg"><path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.4H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.9-1.801"/></svg>
           </span>
           <h3>Windows</h3>
           <p>Windows 10 or later (x64) &mdash; exe or MSI installer</p>
@@ -769,7 +803,18 @@
     <div class="container">
       <div class="footer-content">
         <div class="footer-brand">
-          <img src="icon_256.png" alt="HydroShot">
+          <svg width="24" height="24" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect x="20" y="20" width="80" height="80" rx="4" stroke="#cba6f7" stroke-width="2" stroke-dasharray="8 4" fill="none" opacity="0.85"/>
+            <path d="M16,30 L16,16 L30,16" stroke="#cba6f7" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+            <path d="M90,16 L104,16 L104,30" stroke="#cba6f7" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+            <path d="M16,90 L16,104 L30,104" stroke="#cba6f7" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+            <path d="M90,104 L104,104 L104,90" stroke="#cba6f7" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+            <line x1="60" y1="28" x2="60" y2="50" stroke="#f5c2e7" stroke-width="2" stroke-linecap="round"/>
+            <line x1="60" y1="70" x2="60" y2="92" stroke="#f5c2e7" stroke-width="2" stroke-linecap="round"/>
+            <line x1="28" y1="60" x2="50" y2="60" stroke="#f5c2e7" stroke-width="2" stroke-linecap="round"/>
+            <line x1="70" y1="60" x2="92" y2="60" stroke="#f5c2e7" stroke-width="2" stroke-linecap="round"/>
+            <circle cx="60" cy="60" r="4" fill="#cba6f7" opacity="0.95"/>
+          </svg>
           HydroShot
         </div>
         <ul class="footer-links">

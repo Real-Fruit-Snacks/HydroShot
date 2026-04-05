@@ -1,6 +1,14 @@
 <div align="center">
 
 <picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/logo-dark.svg">
+  <source media="(prefers-color-scheme: light)" srcset="docs/assets/logo-light.svg">
+  <img alt="HydroShot" src="docs/assets/logo-dark.svg" width="120" height="120">
+</picture>
+
+<br><br>
+
+<picture>
   <source media="(prefers-color-scheme: dark)" srcset="assets/banner.svg">
   <source media="(prefers-color-scheme: light)" srcset="assets/banner.svg">
   <img alt="HydroShot" src="assets/banner.svg" width="800">
@@ -8,11 +16,12 @@
 
 <br>
 
-**Fast, lightweight screenshot capture and annotation tool built with Rust**
+**Fast, lightweight screenshot capture and annotation tool -- built with Rust, winit, and tiny-skia.**
 
 [![Rust](https://img.shields.io/badge/Rust-1.80+-DEA584?style=flat-square&logo=rust&logoColor=white)](https://www.rust-lang.org)
 [![Platform](https://img.shields.io/badge/Platform-Windows-0078D6?style=flat-square&logo=windows&logoColor=white)](.)
 [![License](https://img.shields.io/badge/License-MIT-a6e3a1?style=flat-square)](LICENSE)
+[![Release](https://img.shields.io/github/v/release/Real-Fruit-Snacks/HydroShot?style=flat-square&color=cba6f7&label=Latest)](https://github.com/Real-Fruit-Snacks/HydroShot/releases/latest)
 
 <p>
   <a href="#features">Features</a> &bull;
@@ -20,6 +29,7 @@
   <a href="#usage">Usage</a> &bull;
   <a href="#configuration">Configuration</a> &bull;
   <a href="#development">Development</a> &bull;
+  <a href="#contributing">Contributing</a> &bull;
   <a href="#license">License</a>
 </p>
 
@@ -31,75 +41,67 @@
 
 ### Capture
 
-- **Region selection** — Click and drag to capture any area of your screen. Resize and reposition selections before committing.
-- **Window capture** — Highlight and click any window to capture it instantly.
-- **Delay capture** — Timed captures (3s, 5s, 10s) with a visible countdown overlay, giving you time to set up the shot.
-- **Multi-monitor support** — Captures the entire virtual desktop across all connected monitors.
-- **Fullscreen overlay** — Semi-transparent overlay dims inactive areas for precise region selection.
+- **Region selection** -- Click and drag to capture any area of your screen. Resize and reposition selections before committing.
+- **Window capture** -- Highlight and click any window to capture it instantly.
+- **Delay capture** -- Timed captures (3s, 5s, 10s) with a visible countdown overlay, giving you time to set up the shot.
+- **Multi-monitor support** -- Captures the entire virtual desktop across all connected monitors.
+- **Fullscreen overlay** -- Semi-transparent overlay dims inactive areas for precise region selection.
 
 ### Annotation Tools (14 tools)
 
-- **Select/Move** (V) — Reposition and resize annotations after placement. Drag corner handles to resize.
-- **Arrow** (A) — Draw directional arrows to highlight points of interest.
-- **Rectangle** (R) — Draw outlined or filled rectangles for emphasis.
-- **Circle** (C) — Draw outlined or filled circles and ellipses.
-- **Rounded Rectangle** (O) — Rectangle with adjustable corner radius.
-- **Line** (L) — Draw straight lines between two points.
-- **Pencil** (P) — Freehand drawing for quick marks and sketches.
-- **Highlight** (H) — Semi-transparent marker for emphasizing text or regions.
-- **Spotlight** (F) — Draw rectangles that dim everything outside them, focusing attention on what matters.
-- **Text** (T) — Add text labels with configurable size.
-- **Pixelate** (B) — Blur sensitive information with a pixelation effect.
-- **Step Markers** (N) — Numbered markers for sequential instructions.
-- **Eyedropper** (I) — Pick any color from the screenshot.
-- **Measurement** (M) — Click two points to measure pixel distance.
+| Shortcut | Tool | Description |
+|----------|------|-------------|
+| `V` | **Select / Move** | Reposition and resize annotations after placement |
+| `A` | **Arrow** | Draw directional arrows to highlight points of interest |
+| `R` | **Rectangle** | Draw outlined or filled rectangles for emphasis |
+| `C` | **Circle** | Draw outlined or filled circles and ellipses |
+| `O` | **Rounded Rectangle** | Rectangle with adjustable corner radius |
+| `L` | **Line** | Draw straight lines between two points |
+| `P` | **Pencil** | Freehand drawing for quick marks and sketches |
+| `H` | **Highlight** | Semi-transparent marker for emphasizing text or regions |
+| `F` | **Spotlight** | Dim everything outside a region, focusing attention |
+| `T` | **Text** | Add text labels with configurable size |
+| `B` | **Pixelate** | Blur sensitive information with a pixelation effect |
+| `N` | **Step Markers** | Numbered markers for sequential instructions |
+| `I` | **Eyedropper** | Pick any color from the screenshot |
+| `M` | **Measurement** | Click two points to measure pixel distance |
 
 ### Export & Sharing
 
-- **Clipboard copy** — `Ctrl+C` to copy directly to clipboard for instant pasting.
-- **File save** — `Ctrl+S` to save with a file picker dialog.
-- **Quick crop** — Press `Enter` to crop and export immediately.
-- **Pin to screen** — Float captures as always-on-top windows for reference. Right-click to reveal in Explorer, middle-click to copy, draggable.
-- **Imgur upload** — Upload screenshots directly via the toolbar Upload button with confirmation click. Set your Imgur client ID in Settings or `config.toml`.
-- **OCR text extraction** — Extract text from a selected region using Windows OCR.
-- **Recent captures history** — Access previous captures from the tray History menu with thumbnails; click to re-copy.
-- **In-overlay toast notifications** — Visual feedback shown directly on the overlay.
+- **Clipboard copy** -- `Ctrl+C` to copy directly to clipboard for instant pasting.
+- **File save** -- `Ctrl+S` to save with a file picker dialog.
+- **Quick crop** -- Press `Enter` to crop and export immediately.
+- **Pin to screen** -- Float captures as always-on-top windows for reference. Right-click to reveal in Explorer, middle-click to copy.
+- **Imgur upload** -- Upload screenshots directly via the toolbar. Set your Imgur client ID in Settings or `config.toml`.
+- **OCR text extraction** -- Extract text from a selected region using Windows OCR.
+- **Recent captures history** -- Access previous captures from the tray History menu with thumbnails.
+- **Toast notifications** -- Visual feedback shown directly on the overlay.
 
 ### Window Management
 
-- **System tray** — Lives in your system tray; left-click to start a capture.
-- **Global hotkey** — `Ctrl+Shift+S` triggers capture from anywhere.
-- **Pin windows** — Pin captures as floating always-on-top windows. Right-click to reveal in Explorer, middle-click to copy.
-- **Auto-start** — Optionally launch HydroShot on login.
+- **System tray** -- Lives in your system tray; left-click to start a capture.
+- **Global hotkey** -- `Ctrl+Shift+S` triggers capture from anywhere.
+- **Pin windows** -- Pin captures as floating always-on-top windows.
+- **Auto-start** -- Optionally launch HydroShot on login.
 
 ### Interface
 
-- **Catppuccin Mocha theme** — Beautiful dark theme with consistent styling throughout.
-- **5 color presets** — Catppuccin Mocha palette colors, plus right-click for a native color picker.
-- **Scroll wheel sizing** — Adjust tool thickness and size with the scroll wheel.
-- **Command-pattern undo/redo** — Full undo and redo covering all operations: add, delete, move, resize, and recolor.
-- **Annotation resize** — Drag corner handles on selected annotations to resize them.
-- **Lucide SVG icons** — Professional vector icons rendered via resvg.
-- **Tooltips** — Contextual tooltips for all toolbar actions.
-- **Selection size overlay** — Live dimensions shown while selecting a region.
-- **Cursor feedback** — Context-appropriate cursor changes.
-- **In-overlay toast notifications** — Feedback messages displayed directly on the capture overlay.
+- **Catppuccin Mocha theme** -- Beautiful dark theme with consistent styling throughout.
+- **5 color presets** -- Catppuccin palette colors, plus right-click for a native color picker.
+- **Scroll wheel sizing** -- Adjust tool thickness and size with the scroll wheel.
+- **Command-pattern undo/redo** -- Full undo and redo covering all operations: add, delete, move, resize, and recolor.
+- **Annotation resize** -- Drag corner handles on selected annotations.
+- **Lucide SVG icons** -- Professional vector icons rendered via resvg.
+- **Tooltips** -- Contextual tooltips for all toolbar actions.
+- **Selection size overlay** -- Live dimensions shown while selecting a region.
 
 ### Configuration
 
-- **Tabbed Settings UI** — In-app settings window with General, Shortcuts, and Toolbar tabs.
-- **Customizable keyboard shortcuts** — Rebind all tool shortcuts in the Settings Shortcuts tab.
-- **Configurable toolbar** — Hide or show individual tools in Settings Toolbar tab.
-- **TOML config** — Human-readable settings file with sensible defaults.
-- **Persistent preferences** — Colors, thickness, save paths, and more are remembered between sessions.
-
-### Performance & Build
-
-- **Cached font and pixmaps** — Optimized rendering with cached resources.
-- **60fps cap** — Smooth rendering with controlled frame rate.
-- **Embedded exe icon** — HydroShot icon displayed in Windows Explorer and taskbar.
-- **Windows MSI installer** — Proper installer available via CI.
-- **GitHub Actions CI** — Automated builds, tests, and releases.
+- **Tabbed Settings UI** -- In-app settings with General, Shortcuts, and Toolbar tabs.
+- **Customizable keyboard shortcuts** -- Rebind all tool shortcuts in the Settings Shortcuts tab.
+- **Configurable toolbar** -- Hide or show individual tools.
+- **TOML config** -- Human-readable settings file with sensible defaults.
+- **Persistent preferences** -- Colors, thickness, save paths, and more are remembered between sessions.
 
 ## Installation
 
@@ -116,48 +118,23 @@ Download the latest release from the [Releases](https://github.com/Real-Fruit-Sn
 ### Build from Source
 
 ```bash
-# Clone the repository
 git clone https://github.com/Real-Fruit-Snacks/HydroShot.git
 cd HydroShot
-
-# Build in release mode
 cargo build --release
-
-# The binary will be at target/release/hydroshot(.exe)
+# Binary: target/release/hydroshot(.exe)
 ```
 
 ## Usage
 
 ### Quick Start
 
-1. Launch HydroShot — it sits in your system tray.
+1. Launch HydroShot -- it sits in your system tray.
 2. **Left-click** the tray icon or press **Ctrl+Shift+S** to start a capture.
 3. **Click and drag** to select a region.
 4. Use the toolbar to annotate your screenshot.
 5. Press **Enter** to crop, **Ctrl+C** to copy, or **Ctrl+S** to save.
 
 ### Keyboard Shortcuts
-
-#### Tool Shortcuts
-
-| Shortcut | Tool |
-|----------|------|
-| `V` | Select / Move |
-| `A` | Arrow |
-| `R` | Rectangle |
-| `C` | Circle |
-| `O` | Rounded Rectangle |
-| `L` | Line |
-| `P` | Pencil |
-| `H` | Highlight |
-| `F` | Spotlight |
-| `T` | Text |
-| `B` | Pixelate |
-| `N` | Step Marker |
-| `I` | Eyedropper |
-| `M` | Measurement |
-
-#### Action Shortcuts
 
 | Shortcut | Action |
 |----------|--------|
@@ -205,7 +182,7 @@ HydroShot stores its configuration in a TOML file:
 default_color = "blue"
 default_thickness = 3.0
 save_directory = ""
-imgur_client_id = ""  # Get one at https://api.imgur.com/oauth2/addclient
+imgur_client_id = ""
 
 [hotkey]
 capture = "Ctrl+Shift+S"
@@ -233,7 +210,7 @@ circle = true
 # ... all tools default to true
 ```
 
-Settings can also be changed through the in-app Settings UI (General, Shortcuts, and Toolbar tabs) accessible from the tray menu.
+Settings can also be changed through the in-app Settings UI accessible from the tray menu.
 
 ## Development
 
@@ -247,14 +224,11 @@ Settings can also be changed through the in-app Settings UI (General, Shortcuts,
 ### Building
 
 ```bash
-# Debug build (with optimized dependencies for GUI responsiveness)
-cargo build
-
-# Release build
-cargo build --release
-
-# Run tests
-cargo test
+cargo build            # Debug build
+cargo build --release  # Release build
+cargo test             # Run tests
+cargo clippy           # Lint
+cargo fmt --check      # Format check
 ```
 
 ### Project Structure
@@ -310,6 +284,14 @@ hydroshot/
 ├── docs/                    # GitHub Pages site
 └── Cargo.toml
 ```
+
+## Contributing
+
+Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+
+## Security
+
+To report a vulnerability, please see our [Security Policy](SECURITY.md).
 
 ## License
 
