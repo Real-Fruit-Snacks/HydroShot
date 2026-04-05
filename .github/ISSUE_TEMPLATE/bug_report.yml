@@ -1,0 +1,64 @@
+name: Bug Report
+description: Report a bug in HydroShot
+labels: ["bug"]
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for reporting a bug. Please fill out the information below to help us investigate.
+
+  - type: input
+    id: version
+    attributes:
+      label: HydroShot Version
+      description: "Output of `hydroshot --version` or the release tag"
+      placeholder: "0.1.0"
+    validations:
+      required: true
+
+  - type: input
+    id: os
+    attributes:
+      label: OS / Platform
+      description: "Operating system and architecture"
+      placeholder: "Windows 11 / Ubuntu 24.04 x86_64"
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to Reproduce
+      description: "Provide the exact steps to reproduce the bug"
+      placeholder: |
+        1. Launch HydroShot
+        2. Start a capture with Ctrl+Shift+S
+        3. ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Behavior
+      description: "What did you expect to happen?"
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual Behavior
+      description: "What actually happened?"
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs / Output
+      description: "Paste any relevant logs, error messages, or terminal output"
+      render: shell
+    validations:
+      required: false
