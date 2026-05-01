@@ -1,351 +1,251 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HydroShot — Capture, Annotate, Share</title>
-    <meta name="description" content="Screenshot capture and annotation tool built in Rust. GPU-accelerated rendering with tiny-skia. Region selection, 14 annotation tools, OCR, Imgur upload.">
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ctext x='16' y='24' text-anchor='middle' font-family='Inter,sans-serif' font-size='24' font-weight='800' fill='%23cba6f7'%3EH%3C/text%3E%3C/svg%3E">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <style>
-        *{margin:0;padding:0;box-sizing:border-box}
-        :root{
-            --accent1:#cba6f7;--accent2:#f5c2e7;--accentmid:#b4befe;
-            --accentrgb:203,166,247;
-            --text:#cdd6f4;--sub1:#bac2de;--sub0:#a6adc8;
-            --ov2:#9399b2;--ov1:#7f849c;--ov0:#6c7086;
-            --sf2:#585b70;--sf1:#45475a;--sf0:#313244;
-            --base:#1e1e2e;--mantle:#181825;--crust:#11111b;
-            --green:#a6e3a1;--yellow:#f9e2af;--red:#f38ba8;
-            --peach:#fab387;--mauve:#cba6f7;--teal:#94e2d5;
-        }
-        body{font-family:'Inter',system-ui,sans-serif;background:var(--crust);color:var(--text);line-height:1.7;overflow-x:hidden}
-        ::selection{background:rgba(var(--accentrgb),0.3);color:var(--text)}
-        .container{max-width:1140px;margin:0 auto;padding:0 28px}
-        code{font-family:'JetBrains Mono',monospace;background:var(--mantle);padding:2px 7px;border-radius:3px;font-size:.88em;color:var(--green)}
-
-        /* ── Nav ── */
-        .nav{position:fixed;top:0;left:0;right:0;height:56px;background:rgba(17,17,27,0.8);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-bottom:1px solid rgba(49,50,68,0.5);z-index:1000;display:flex;align-items:center;justify-content:center}
-        .nav-inner{max-width:1140px;width:100%;padding:0 28px;display:flex;align-items:center;justify-content:space-between}
-        .nav-logo{font-family:'Inter',sans-serif;font-size:16px;font-weight:700;color:var(--text);text-decoration:none}
-        .nav-links{display:flex;align-items:center;gap:28px}
-        .nav-links a{font-size:13px;font-weight:500;color:var(--ov0);text-decoration:none;transition:color .2s}
-        .nav-links a:hover{color:var(--text)}
-        .nav-cta{background:linear-gradient(135deg,var(--accent1),var(--accentmid));color:var(--crust);padding:7px 18px;border-radius:8px;font-size:13px;font-weight:600;text-decoration:none;transition:box-shadow .2s,transform .2s}
-        .nav-cta:hover{box-shadow:0 0 20px rgba(var(--accentrgb),0.3);transform:translateY(-1px)}
-
-        /* ── Hero ── */
-        .hero{padding:140px 0 80px;text-align:center;position:relative}
-        .hero::before{content:'';position:absolute;top:60px;left:50%;transform:translateX(-50%);width:800px;height:400px;background:radial-gradient(ellipse,rgba(var(--accentrgb),0.08) 0%,transparent 60%);pointer-events:none}
-        .hero-logo{position:relative;max-width:600px;margin:0 auto 32px}
-        .hero-logo img{width:100%;height:auto}
-        .hero-tagline{position:relative;font-size:clamp(24px,3.5vw,38px);font-weight:700;line-height:1.2;margin-bottom:16px;background:linear-gradient(135deg,var(--accent1),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
-        .hero-desc{position:relative;font-size:16px;color:var(--ov0);max-width:560px;margin:0 auto 32px}
-        .hero-ctas{position:relative;display:flex;gap:12px;justify-content:center;margin-bottom:48px}
-        .btn-primary{background:linear-gradient(135deg,var(--accent1),var(--accentmid));color:var(--crust);padding:12px 28px;border-radius:8px;font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:600;text-decoration:none;transition:box-shadow .2s,transform .2s}
-        .btn-primary:hover{box-shadow:0 0 24px rgba(var(--accentrgb),0.35);transform:translateY(-2px)}
-        .btn-secondary{background:var(--sf0);color:var(--text);padding:12px 28px;border-radius:8px;border:1px solid var(--sf1);font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:500;text-decoration:none;transition:all .2s}
-        .btn-secondary:hover{background:var(--sf1);border-color:var(--sf2)}
-
-        /* ── Terminal ── */
-        .terminal{position:relative;max-width:800px;margin:0 auto;background:var(--mantle);border:1px solid var(--sf0);border-radius:12px;overflow:hidden;box-shadow:0 8px 40px rgba(0,0,0,0.5),0 0 24px rgba(var(--accentrgb),0.06)}
-        .terminal-bar{background:var(--crust);padding:12px 16px;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--sf0)}
-        .terminal-dot{width:12px;height:12px;border-radius:50%}
-        .terminal-dot:nth-child(1){background:var(--red)}
-        .terminal-dot:nth-child(2){background:var(--yellow)}
-        .terminal-dot:nth-child(3){background:var(--green)}
-        .terminal-label{flex:1;text-align:center;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--ov0)}
-        .terminal-body{padding:24px;font-family:'JetBrains Mono',monospace;font-size:13px;line-height:1.9;text-align:left}
-        .terminal-body pre{margin:0;white-space:pre-wrap;word-wrap:break-word}
-        .t-g{color:var(--green)}.t-b{color:var(--accent1)}.t-m{color:var(--sub0)}.t-p{color:var(--peach)}
-
-        /* ── Stats ── */
-        .stats{display:flex;justify-content:center;gap:40px;padding:60px 0;position:relative}
-        .stat{text-align:center}
-        .stat-num{font-family:'JetBrains Mono',monospace;font-size:36px;font-weight:700;color:var(--accent1);line-height:1}
-        .stat-label{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--sf2);margin-top:6px;letter-spacing:2px;text-transform:uppercase}
-        .stat-div{width:1px;height:48px;background:var(--sf0);align-self:center}
-
-        /* ── Sections ── */
-        section{padding:80px 0}
-        .section-label{font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:600;color:var(--accent1);letter-spacing:3px;text-transform:uppercase;margin-bottom:12px}
-        .section-title{font-size:clamp(28px,4vw,40px);font-weight:700;margin-bottom:12px;letter-spacing:-.02em}
-        .section-desc{font-size:15px;color:var(--ov0);margin-bottom:48px;max-width:560px}
-        .gradient-line{height:1px;background:linear-gradient(90deg,transparent,var(--accent1),var(--accent2),transparent);margin:0 auto;max-width:600px}
-
-        /* ── Bento ── */
-        .bento{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
-        .bento-card{background:var(--mantle);border:1px solid var(--sf0);border-radius:12px;padding:28px;transition:all .25s;position:relative;overflow:hidden}
-        .bento-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--accent1),var(--accent2));opacity:0;transition:opacity .25s}
-        .bento-card:hover{transform:translateY(-3px);border-color:var(--sf1);box-shadow:0 12px 32px rgba(0,0,0,0.25),0 0 20px rgba(var(--accentrgb),0.06)}
-        .bento-card:hover::before{opacity:1}
-        .bento-hero{grid-column:span 2}
-        .bento-card h3{font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:600;color:var(--accent1);margin-bottom:8px}
-        .bento-card p{font-size:13.5px;color:var(--sub0);line-height:1.6}
-        .bento-card .mini-terminal{background:var(--crust);border-radius:8px;padding:14px;margin-top:14px;font-family:'JetBrains Mono',monospace;font-size:12px;line-height:1.8;text-align:left}
-        .bento-stat{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}
-        .bento-stat .big{font-family:'JetBrains Mono',monospace;font-size:42px;font-weight:700;color:var(--accent1)}
-        .bento-stat .label{font-size:12px;color:var(--sf2);margin-top:4px;letter-spacing:1px}
-
-        /* ── Pills ── */
-        .pills{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px}
-        .pill{background:var(--mantle);border:1px solid var(--sf0);border-radius:20px;padding:9px 18px;font-family:'JetBrains Mono',monospace;font-size:12px;display:flex;align-items:center;gap:8px;transition:all .2s;color:var(--sub0)}
-        .pill:hover{border-color:var(--sf1);background:var(--base)}
-        .dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
-        .dot-g{background:var(--green)}.dot-y{background:var(--yellow)}.dot-n{background:var(--sf2)}
-
-        /* ── Arch ── */
-        .arch-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:16px}
-        .arch-card{background:var(--mantle);border:1px solid var(--sf0);border-radius:12px;padding:28px;transition:border-color .2s}
-        .arch-card:hover{border-color:var(--sf1)}
-        .arch-num{display:inline-flex;width:30px;height:30px;background:linear-gradient(135deg,var(--accent1),var(--accentmid));color:var(--crust);border-radius:50%;align-items:center;justify-content:center;font-weight:700;font-size:14px;margin-bottom:14px}
-        .arch-card h3{font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:600;color:var(--teal);margin-bottom:8px}
-        .arch-card p{font-size:13.5px;color:var(--sub0);line-height:1.6}
-
-        /* ── Two Col ── */
-        .two-col{display:grid;grid-template-columns:1fr 1fr;gap:20px}
-
-        /* ── Footer ── */
-        footer{padding:48px 0;margin-top:40px}
-        .footer-line{height:1px;background:linear-gradient(90deg,transparent,var(--accent1),var(--accent2),transparent);margin-bottom:48px}
-        .footer-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:32px}
-        .footer-grid h4{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text);margin-bottom:14px;letter-spacing:2px;text-transform:uppercase}
-        .footer-grid ul{list-style:none}
-        .footer-grid li{margin-bottom:8px}
-        .footer-grid a{color:var(--ov2);text-decoration:none;font-size:13px;transition:color .2s}
-        .footer-grid a:hover{color:var(--accent1)}
-        .footer-grid p{font-size:13px;color:var(--ov1);line-height:1.7}
-        .footer-bottom{text-align:center;margin-top:36px;padding-top:24px;border-top:1px solid var(--sf0);font-size:12px;color:var(--ov0)}
-
-        /* ── Animate ── */
-        .animate{opacity:0;transform:translateY(24px);transition:opacity .6s ease,transform .6s ease}
-        .animate.visible{opacity:1;transform:translateY(0)}
-        .animate-scale{opacity:0;transform:translateY(24px) scale(.97);transition:opacity .8s ease,transform .8s ease}
-        .animate-scale.visible{opacity:1;transform:translateY(0) scale(1)}
-
-        /* ── Responsive ── */
-        @media(max-width:960px){.bento{grid-template-columns:1fr 1fr}.bento-hero{grid-column:span 2}.two-col,.arch-grid{grid-template-columns:1fr}.footer-grid{grid-template-columns:repeat(2,1fr)}.stats{flex-wrap:wrap;gap:24px}}
-        @media(max-width:600px){.container{padding:0 16px}.hero{padding:100px 0 48px}.bento{grid-template-columns:1fr}.bento-hero{grid-column:span 1}.stats{gap:16px}.stat-div{display:none}.nav-links a:not(.nav-cta){display:none}.footer-grid{grid-template-columns:1fr}.pills{grid-template-columns:repeat(auto-fill,minmax(140px,1fr))}}
-
-        a:focus-visible{outline:2px solid var(--accent1);outline-offset:2px}
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HydroShot / Rust screenshot + annotate</title>
+<meta name="description" content="Fast, lightweight screenshot capture and annotation tool built with Rust. Region selection, window capture, delay timer, 14 annotation tools, clipboard and file export, pin-to-screen, Imgur upload, OCR.">
+<meta property="og:title" content="HydroShot — Rust screenshot + annotate">
+<meta property="og:description" content="Region · window · delay · 14 annotation tools · clipboard · pin · Imgur · OCR · winit · tiny-skia.">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%231e1e2e'/%3E%3Ctext x='16' y='23' text-anchor='middle' font-family='Inter,sans-serif' font-size='20' font-weight='800' fill='%23cdd6f4'%3EH%3Ctspan fill='%23f5e0dc'%3E.%3C/tspan%3E%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--base:#1e1e2e;--mantle:#181825;--crust:#11111b;--sf0:#313244;--sf1:#45475a;--sf2:#585b70;--ov0:#6c7086;--ov1:#7f849c;--ov2:#9399b2;--sub0:#a6adc8;--sub1:#bac2de;--text:#cdd6f4;--mauve:#cba6f7;--lav:#b4befe;--blue:#89b4fa;--sky:#89dceb;--teal:#94e2d5;--green:#a6e3a1;--yellow:#f9e2af;--peach:#fab387;--red:#f38ba8;--accent:#f5e0dc}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{background:var(--crust);color:var(--text);font-family:'Inter',system-ui,-apple-system,sans-serif;font-size:15px;line-height:1.5}
+::selection{background:var(--accent);color:var(--crust)}
+a{color:inherit;text-decoration:none}
+.status{background:var(--crust);border-bottom:1px solid var(--text);padding:10px 24px;display:flex;justify-content:space-between;font-family:'JetBrains Mono','SF Mono',monospace;font-size:11px;letter-spacing:0.1em;text-transform:uppercase;color:var(--ov2);position:sticky;top:0;z-index:10}
+.status .left{display:flex;gap:24px;flex-wrap:wrap}
+.status .right{display:flex;gap:16px;flex-wrap:wrap}
+.status b{color:var(--accent);font-weight:700}
+.status .dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--green);margin-right:6px;vertical-align:middle;animation:pulse 2.5s infinite}
+.status a{color:var(--ov2);transition:color .15s}
+.status a:hover{color:var(--text)}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
+.hero{border-bottom:1px solid var(--text);padding:64px 24px 0}
+.hero-inner{max-width:1280px;margin:0 auto}
+.hero .pop{font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:500;color:var(--ov1);letter-spacing:0.1em;text-transform:uppercase;display:block;margin-bottom:24px}
+.hero h1{font-family:'Inter',sans-serif;font-size:clamp(72px,13vw,180px);line-height:0.85;font-weight:800;letter-spacing:-0.05em;color:var(--text);margin-bottom:32px}
+.hero h1 .dot{color:var(--accent)}
+.hero-grid{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:0;border-top:1px solid var(--sf1)}
+.hero-grid > div{padding:20px 24px;border-right:1px solid var(--sf1)}
+.hero-grid > div:last-child{border-right:none}
+.hero-grid .label{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--ov0);letter-spacing:0.18em;text-transform:uppercase;margin-bottom:8px}
+.hero-grid .value{font-family:'Inter',sans-serif;font-size:28px;font-weight:700;color:var(--text);letter-spacing:-0.02em}
+.hero-grid .value .unit{color:var(--accent);font-size:0.55em;font-weight:600;margin-left:2px}
+.grid{display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid var(--sf1)}
+.cell{padding:48px 32px;border-right:1px solid var(--sf1);position:relative}
+.cell:last-child{border-right:none}
+.cell.full{grid-column:1/-1;border-right:none}
+.cell-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;padding-bottom:14px;border-bottom:1px dashed var(--sf1)}
+.cell-num{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--accent);letter-spacing:0.15em;font-weight:700}
+.cell-name{font-family:'Inter',sans-serif;font-size:13px;color:var(--ov2);letter-spacing:0.2em;text-transform:uppercase;font-weight:500}
+.cell h2{font-size:36px;line-height:1.05;font-weight:700;letter-spacing:-0.025em;margin-bottom:16px}
+.cell h2 mark{background:var(--accent);color:var(--crust);padding:0 6px;font-style:normal}
+.cell p{color:var(--sub0);font-size:16px;line-height:1.65;margin-bottom:14px}
+.cell p strong{color:var(--text);font-weight:600}
+.cell p code{font-family:'JetBrains Mono',monospace;font-size:13px;background:var(--mantle);padding:2px 7px;border-radius:3px;color:var(--green)}
+.feat{display:grid;grid-template-columns:auto 1fr;gap:18px 24px;margin-top:24px;font-family:'JetBrains Mono',monospace;font-size:13px}
+.feat .k{color:var(--accent);font-weight:700;letter-spacing:0.05em}
+.feat .v{color:var(--sub1);line-height:1.65}
+.feat .v b{color:var(--text);font-weight:600}
+pre.code{background:var(--mantle);border:1px solid var(--text);border-left:6px solid var(--accent);padding:20px 24px;font-family:'JetBrains Mono',monospace;font-size:13px;line-height:1.85;color:var(--sub1);overflow-x:auto;margin-top:20px}
+pre.code .c{color:var(--ov0)}
+pre.code .k{color:var(--mauve);font-weight:500}
+pre.code .s{color:var(--green)}
+pre.code .p{color:var(--peach)}
+pre.code .v{color:var(--blue)}
+.ref{background:var(--mantle);border:1px solid var(--sf0);padding:24px 28px;font-family:'JetBrains Mono',monospace;font-size:13px;line-height:1.85;color:var(--sub1);overflow-x:auto;margin-top:20px}
+.ref h4{font-size:10px;color:var(--ov0);letter-spacing:0.18em;text-transform:uppercase;font-weight:600;margin:14px 0 8px}
+.ref h4:first-child{margin-top:0}
+.ref code{color:var(--mauve);font-weight:500;display:inline-block;width:200px}
+.ref .desc{color:var(--sub1)}
+.band{background:var(--text);color:var(--crust);padding:48px 32px;border-bottom:1px solid var(--text);display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:32px}
+.band-tag{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.2em;text-transform:uppercase;font-weight:600}
+.band h3{font-family:'Inter',sans-serif;font-weight:700;font-size:32px;line-height:1.1;letter-spacing:-0.02em}
+.band a.cta{background:var(--crust);color:var(--text);padding:16px 28px;font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;border:1px solid var(--crust);transition:all 0.15s;white-space:nowrap}
+.band a.cta:hover{background:var(--accent);color:var(--crust);border-color:var(--accent)}
+footer{padding:32px 24px;display:flex;justify-content:space-between;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--ov0);letter-spacing:0.1em;text-transform:uppercase;flex-wrap:wrap;gap:16px}
+footer a{color:var(--ov2);border-bottom:1px solid var(--sf0);transition:all .15s}
+footer a:hover{color:var(--text);border-bottom-color:var(--text)}
+@media (max-width:760px){.hero h1{font-size:64px}.hero-grid{grid-template-columns:1fr 1fr}.grid{grid-template-columns:1fr}.cell{border-right:none;border-bottom:1px solid var(--sf1)}.cell:last-child{border-bottom:none}.band{grid-template-columns:1fr;text-align:left}.status{font-size:10px;padding:10px 14px}.status .left,.status .right{gap:14px}}
+</style>
 </head>
 <body>
 
-    <!-- Nav -->
-    <nav class="nav"><div class="nav-inner">
-        <a href="#" class="nav-logo">HydroShot</a>
-        <div class="nav-links">
-            <a href="#features">Features</a>
-            <a href="#architecture">Architecture</a>
-            <a href="https://github.com/Real-Fruit-Snacks/HydroShot">GitHub</a>
-            <a href="https://github.com/Real-Fruit-Snacks/HydroShot/releases/latest" class="nav-cta">Download</a>
-        </div>
-    </div></nav>
+<div class="status">
+  <div class="left">
+    <span><b>HYDROSHOT</b></span>
+    <span><span class="dot"></span>STATUS · LIVE</span>
+    <span>RUST · NATIVE</span>
+  </div>
+  <div class="right">
+    <a href="https://github.com/Real-Fruit-Snacks/HydroShot">REPO</a>
+    <a href="https://github.com/Real-Fruit-Snacks/HydroShot/releases">RELEASES</a>
+    <a href="https://github.com/Real-Fruit-Snacks/HydroShot/blob/main/LICENSE">MIT</a>
+  </div>
+</div>
 
-    <!-- Hero -->
-    <section class="hero">
-        <div class="container">
-            <div class="hero-logo animate"><img src="https://raw.githubusercontent.com/Real-Fruit-Snacks/HydroShot/main/docs/assets/logo-dark.svg" alt="HydroShot"></div>
-            <h1 class="hero-tagline animate" style="transition-delay:.1s">Capture, annotate, share</h1>
-            <p class="hero-desc animate" style="transition-delay:.2s">Screenshot capture and annotation tool built in Rust. GPU-accelerated rendering with tiny-skia. Region selection, 14 annotation tools, OCR, Imgur upload, and pin-to-screen.</p>
-            <div class="hero-ctas animate" style="transition-delay:.3s">
-                <a href="https://github.com/Real-Fruit-Snacks/HydroShot/releases/latest" class="btn-primary">Download Latest</a>
-                <a href="https://github.com/Real-Fruit-Snacks/HydroShot" class="btn-secondary">View Source</a>
-            </div>
-            <div class="terminal animate-scale" style="transition-delay:.4s">
-                <div class="terminal-bar">
-                    <span class="terminal-dot"></span><span class="terminal-dot"></span><span class="terminal-dot"></span>
-                    <span class="terminal-label">hydroshot</span>
-                </div>
-                <div class="terminal-body"><pre><span class="t-g">$</span> hydroshot capture --clipboard
-<span class="t-b">region selected — 1920x1080 captured</span>
-<span class="t-b">copied to clipboard</span>
-
-<span class="t-g">$</span> hydroshot capture --save output.png --delay 3
-<span class="t-p">[3s countdown]</span>
-<span class="t-b">saved to output.png (2.4MB)</span>
-
-<span class="t-g">$</span> hydroshot capture --delay 5 --clipboard
-<span class="t-p">[5s countdown]</span>
-<span class="t-b">captured and copied to clipboard</span></pre></div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Stats -->
-    <div class="container">
-        <div class="stats animate">
-            <div class="stat"><div class="stat-num" data-target="14">0</div><div class="stat-label">Tools</div></div>
-            <div class="stat-div"></div>
-            <div class="stat"><div class="stat-num" data-target="5">0</div><div class="stat-label">Color Presets</div></div>
-            <div class="stat-div"></div>
-            <div class="stat"><div class="stat-num" data-target="2">0</div><div class="stat-label">Platforms</div></div>
-            <div class="stat-div"></div>
-            <div class="stat"><div class="stat-num" data-target="3">0</div><div class="stat-label">Capture Modes</div></div>
-            <div class="stat-div"></div>
-            <div class="stat"><div class="stat-num" data-target="8">0</div><div class="stat-label">Shortcuts</div></div>
-        </div>
-        <div class="gradient-line"></div>
+<section class="hero">
+  <div class="hero-inner">
+    <span class="pop">Real-Fruit-Snacks &nbsp;//&nbsp; native screenshot &nbsp;//&nbsp; no electron</span>
+    <h1>HYDROSHOT<span class="dot">.</span></h1>
+    <div class="hero-grid">
+      <div><div class="label">tools</div><div class="value">14×<span class="unit"> ANNOTATE</span></div></div>
+      <div><div class="label">backends</div><div class="value">WIN<span class="unit"> · X11 · WAYLAND</span></div></div>
+      <div><div class="label">theme</div><div class="value">CATPPUCCIN<span class="unit"> · MOCHA</span></div></div>
+      <div><div class="label">stack</div><div class="value">RUST<span class="unit"> · WINIT · SKIA</span></div></div>
     </div>
+  </div>
+</section>
 
-    <!-- Features Bento -->
-    <section id="features">
-        <div class="container">
-            <div class="section-label animate">FEATURES</div>
-            <h2 class="section-title animate" style="transition-delay:.08s">Everything you need to capture</h2>
-            <p class="section-desc animate" style="transition-delay:.16s">Region selection, window capture, delay timer, 14 annotation tools, and multiple export paths. Pure Rust, no Electron.</p>
+<div class="grid">
+  <div class="cell">
+    <div class="cell-header"><span class="cell-num">01</span><span class="cell-name">Premise</span></div>
+    <h2>A native screenshot tool, no <mark>browser</mark> attached.</h2>
+    <p>HydroShot is a native screenshot tool in pure Rust. Region capture by drag, window capture by click, timed capture with a 3/5/10-second countdown, multi-monitor coverage with a fullscreen overlay that dims inactive areas.</p>
+    <p>Captured shots flow into an annotation surface with 14 tools backed by command-pattern undo/redo. Pin captures as always-on-top reference windows; copy to clipboard, save to file, upload anonymously to Imgur, or extract text via the Windows OCR API.</p>
+  </div>
 
-            <div class="bento">
-                <div class="bento-card bento-hero animate" style="transition-delay:.1s">
-                    <h3>Region &amp; Window Capture</h3>
-                    <p>Click and drag to capture any screen area. Highlight and click to capture a specific window. Timed captures with 3s, 5s, or 10s countdown. Multi-monitor support with fullscreen overlay that dims inactive areas.</p>
-                    <div class="mini-terminal"><span class="t-g">$</span> hydroshot capture --clipboard<br><span class="t-b">region selected — copied to clipboard</span><br><span class="t-g">$</span> hydroshot capture --delay 5 --save shot.png<br><span class="t-p">[5s countdown]</span> <span class="t-b">saved to shot.png</span></div>
-                </div>
-                <div class="bento-card bento-stat animate" style="transition-delay:.18s">
-                    <div class="big">14</div>
-                    <div class="label">Annotation Tools</div>
-                </div>
-                <div class="bento-card animate" style="transition-delay:.2s">
-                    <h3 style="color:var(--mauve)">Annotation Toolkit</h3>
-                    <p>Arrow, rectangle, circle, rounded rect, line, pencil, highlight, spotlight, text, pixelate, step markers, eyedropper, and measurement. Scroll-wheel sizing with undo/redo.</p>
-                </div>
-                <div class="bento-card animate" style="transition-delay:.28s">
-                    <h3 style="color:var(--green)">Export &amp; Sharing</h3>
-                    <p>Copy to clipboard, save to file, quick crop, pin as floating window, anonymous Imgur upload, and OCR text extraction via Windows OCR API.</p>
-                </div>
-                <div class="bento-card animate" style="transition-delay:.36s">
-                    <h3 style="color:var(--peach)">System Tray</h3>
-                    <p>Lives in the system tray. Left-click or Ctrl+Shift+S from anywhere to start a capture. Pin screenshots as always-on-top reference windows. Auto-start on login.</p>
-                </div>
-                <div class="bento-card bento-stat animate" style="transition-delay:.1s">
-                    <div class="big" style="color:var(--teal)">5</div>
-                    <div class="label">Color Presets</div>
-                </div>
-                <div class="bento-card bento-hero animate" style="transition-delay:.18s">
-                    <h3 style="color:var(--red)">Catppuccin Mocha Theme</h3>
-                    <p>Consistent dark theme with 5 color presets from the Catppuccin palette. Native color picker via right-click on any color swatch. Lucide SVG icons rendered with resvg throughout the interface.</p>
-                    <div class="mini-terminal"><span class="t-m"># Keyboard shortcuts</span><br>Ctrl+Shift+S <span class="t-b">start capture</span><br>Ctrl+C <span class="t-b">copy to clipboard</span><br>Ctrl+S <span class="t-b">save to file</span><br>Ctrl+Z <span class="t-b">undo annotation</span></div>
-                </div>
-                <div class="bento-card animate" style="transition-delay:.26s">
-                    <h3 style="color:var(--yellow)">OCR Extraction</h3>
-                    <p>Extract text from screenshots using the Windows OCR API. Select a region and copy recognized text directly to the clipboard. Recent captures history with thumbnails.</p>
-                </div>
-            </div>
-        </div>
-    </section>
+  <div class="cell">
+    <div class="cell-header"><span class="cell-num">02</span><span class="cell-name">Specs</span></div>
+    <h2>What's running.</h2>
+    <div class="feat">
+      <div class="k">BINARY</div><div class="v">Pure Rust · <b>winit</b> (windowing) · <b>tiny-skia</b> (2D) · <b>resvg</b> (icons)</div>
+      <div class="k">CAPTURE</div><div class="v">Region · window · delay (3/5/10 s) · multi-monitor</div>
+      <div class="k">BACKENDS</div><div class="v"><b>Windows</b> · X11 · Wayland (window capture: X11 only)</div>
+      <div class="k">TOOLS</div><div class="v"><b>14 annotation tools</b> · select · arrow · rect · circle · rounded rect · line · pencil · highlight · spotlight · text · pixelate · step markers · eyedropper · measurement</div>
+      <div class="k">EXPORT</div><div class="v">Clipboard · file · pin-to-screen · Imgur upload · OCR (Windows)</div>
+      <div class="k">CONFIG</div><div class="v">TOML · platform-specific config dirs</div>
+      <div class="k">HOTKEY</div><div class="v">Global · <code>Ctrl+Shift+S</code> default · customizable</div>
+    </div>
+  </div>
+</div>
 
-    <!-- Capabilities -->
-    <section style="background:var(--mantle)">
-        <div class="container">
-            <div class="section-label animate">CAPABILITIES</div>
-            <h2 class="section-title animate" style="transition-delay:.08s">Platform support</h2>
-            <p class="section-desc animate" style="transition-delay:.16s">Full-featured on Windows. Core capture and annotation on Linux with X11 and Wayland backends.</p>
-            <div class="pills">
-                <div class="pill animate"><span class="dot dot-g"></span>Region Capture</div>
-                <div class="pill animate"><span class="dot dot-g"></span>Window Capture</div>
-                <div class="pill animate"><span class="dot dot-g"></span>Delay Timer</div>
-                <div class="pill animate"><span class="dot dot-g"></span>Multi-Monitor</div>
-                <div class="pill animate"><span class="dot dot-g"></span>14 Annotations</div>
-                <div class="pill animate"><span class="dot dot-g"></span>Clipboard Copy</div>
-                <div class="pill animate"><span class="dot dot-g"></span>File Save</div>
-                <div class="pill animate"><span class="dot dot-g"></span>Pin to Screen</div>
-                <div class="pill animate"><span class="dot dot-g"></span>Imgur Upload</div>
-                <div class="pill animate"><span class="dot dot-g"></span>System Tray</div>
-                <div class="pill animate"><span class="dot dot-g"></span>Global Hotkey</div>
-                <div class="pill animate"><span class="dot dot-g"></span>Catppuccin Theme</div>
-                <div class="pill animate"><span class="dot dot-g"></span>Undo / Redo</div>
-                <div class="pill animate"><span class="dot dot-g"></span>TOML Config</div>
-                <div class="pill animate"><span class="dot dot-y"></span>OCR (Windows)</div>
-                <div class="pill animate"><span class="dot dot-y"></span>Wayland Capture</div>
-            </div>
-            <div style="margin-top:16px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--ov0)">
-                <span style="color:var(--green)">●</span> Full &nbsp;
-                <span style="color:var(--yellow)">●</span> Platform Limited
-            </div>
-        </div>
-    </section>
+<div class="grid">
+  <div class="cell full">
+    <div class="cell-header"><span class="cell-num">03</span><span class="cell-name">Quickstart</span></div>
+    <h2>Pre-built or cargo build.</h2>
+    <p>Pre-built binaries ship for Windows (<code>.exe</code> portable, <code>.msi</code> installer) and Linux. Building from source needs Rust 1.80+.</p>
+<pre class="code"><span class="c"># Pre-built — Releases page</span>
+<span class="c"># https://github.com/Real-Fruit-Snacks/HydroShot/releases</span>
 
-    <!-- Architecture -->
-    <section id="architecture">
-        <div class="container">
-            <div class="section-label animate">ARCHITECTURE</div>
-            <h2 class="section-title animate" style="transition-delay:.08s">Pure Rust, no Electron</h2>
-            <p class="section-desc animate" style="transition-delay:.16s">winit for windowing, tiny-skia for 2D rendering, platform-specific capture backends. Native graphics, minimal footprint.</p>
-            <div class="arch-grid">
-                <div class="arch-card animate" style="transition-delay:.1s"><div class="arch-num">1</div><h3>Capture Backends</h3><p>Platform-specific screen capture: Windows native API, X11, and Wayland backends. Multi-monitor support with fullscreen overlay that dims inactive areas.</p></div>
-                <div class="arch-card animate" style="transition-delay:.2s"><div class="arch-num">2</div><h3>Rendering Pipeline</h3><p>GPU-accelerated 2D rendering with tiny-skia. All 14 annotation tools render through a unified pipeline. Command-pattern undo/redo with scroll-wheel tool sizing.</p></div>
-                <div class="arch-card animate" style="transition-delay:.3s"><div class="arch-num">3</div><h3>Export Engine</h3><p>Clipboard, file save, Imgur anonymous upload, and OCR text extraction. Pin-to-screen creates always-on-top floating windows for quick reference.</p></div>
-                <div class="arch-card animate" style="transition-delay:.4s"><div class="arch-num">4</div><h3>System Integration</h3><p>System tray with global hotkey (<code>Ctrl+Shift+S</code>). TOML configuration with tabbed settings UI. Optional auto-start on login via registry or XDG autostart.</p></div>
-            </div>
-        </div>
-    </section>
+<span class="c"># Build from source</span>
+$ <span class="k">git clone</span> https://github.com/Real-Fruit-Snacks/HydroShot.git
+$ <span class="k">cd</span> HydroShot
+$ <span class="k">cargo</span> build --release
+<span class="c"># Binary: target/release/hydroshot(.exe)</span>
 
-    <!-- Getting Started -->
-    <section style="background:var(--mantle)">
-        <div class="container">
-            <div class="section-label animate">GETTING STARTED</div>
-            <h2 class="section-title animate" style="transition-delay:.08s">Build or download</h2>
-            <p class="section-desc animate" style="transition-delay:.16s">Pre-built binaries on the releases page. Or build from source with Rust 1.80+.</p>
-            <div class="two-col">
-                <div class="terminal animate" style="transition-delay:.1s">
-                    <div class="terminal-bar"><span class="terminal-dot"></span><span class="terminal-dot"></span><span class="terminal-dot"></span><span class="terminal-label">build.sh</span></div>
-                    <div class="terminal-body"><pre><span class="t-g">$</span> git clone https://github.com/Real-Fruit-Snacks/HydroShot.git
-<span class="t-g">$</span> cd HydroShot &amp;&amp; cargo build --release
+<span class="c"># Tests + lint</span>
+$ <span class="k">cargo</span> test
+$ <span class="k">cargo</span> clippy
+$ <span class="k">cargo</span> fmt --check
 
-<span class="t-m"># Binary at target/release/hydroshot(.exe)</span>
+<span class="c"># CLI usage</span>
+$ hydroshot capture --clipboard
+$ hydroshot capture --save output.png
+$ hydroshot capture --delay 3
+$ hydroshot capture --delay 5 --clipboard</pre>
+  </div>
+</div>
 
-<span class="t-g">$</span> cargo test
-<span class="t-b">test result: ok</span>
-<span class="t-g">$</span> cargo clippy
-<span class="t-b">0 warnings</span></pre></div>
-                </div>
-                <div class="terminal animate" style="transition-delay:.25s">
-                    <div class="terminal-bar"><span class="terminal-dot"></span><span class="terminal-dot"></span><span class="terminal-dot"></span><span class="terminal-label">usage.sh</span></div>
-                    <div class="terminal-body"><pre><span class="t-m"># Capture and copy to clipboard</span>
-<span class="t-g">$</span> hydroshot capture --clipboard
+<div class="grid">
+  <div class="cell full">
+    <div class="cell-header"><span class="cell-num">04</span><span class="cell-name">Reference</span></div>
+    <h2>Tools, keyboard, config.</h2>
+    <p>14 annotation tools with single-letter shortcuts; scroll-wheel sizes the active tool. TOML config under <code>%APPDATA%\hydroshot\config.toml</code> (Win) or <code>~/.config/hydroshot/config.toml</code> (Linux).</p>
+<div class="ref">
+<h4>ANNOTATION TOOLS</h4>
+<div><code>V</code><span class="desc">Select / Move</span></div>
+<div><code>A</code><span class="desc">Arrow</span></div>
+<div><code>R</code><span class="desc">Rectangle</span></div>
+<div><code>C</code><span class="desc">Circle</span></div>
+<div><code>O</code><span class="desc">Rounded Rect</span></div>
+<div><code>L</code><span class="desc">Line</span></div>
+<div><code>P</code><span class="desc">Pencil</span></div>
+<div><code>H</code><span class="desc">Highlight</span></div>
+<div><code>F</code><span class="desc">Spotlight</span></div>
+<div><code>T</code><span class="desc">Text</span></div>
+<div><code>B</code><span class="desc">Pixelate</span></div>
+<div><code>N</code><span class="desc">Step Markers</span></div>
+<div><code>I</code><span class="desc">Eyedropper</span></div>
+<div><code>M</code><span class="desc">Measurement</span></div>
 
-<span class="t-m"># Capture with 3s delay</span>
-<span class="t-g">$</span> hydroshot capture --delay 3
+<h4>KEYBOARD</h4>
+<div><code>Ctrl+Shift+S</code><span class="desc">Start capture (global hotkey)</span></div>
+<div><code>Enter</code><span class="desc">Crop selection</span></div>
+<div><code>Ctrl+C</code><span class="desc">Copy to clipboard</span></div>
+<div><code>Ctrl+S</code><span class="desc">Save to file</span></div>
+<div><code>Ctrl+Z</code><span class="desc">Undo annotation</span></div>
+<div><code>Ctrl+Shift+Z</code><span class="desc">Redo annotation</span></div>
+<div><code>Escape</code><span class="desc">Cancel capture</span></div>
+<div><code>Scroll wheel</code><span class="desc">Adjust tool size</span></div>
 
-<span class="t-m"># Save to file</span>
-<span class="t-g">$</span> hydroshot capture --save output.png
+<h4>CONFIG (TOML)</h4>
+<div><code>[general]</code><span class="desc">default_color · default_thickness · save_directory</span></div>
+<div><code>[hotkey]</code><span class="desc">capture = "Ctrl+Shift+S"</span></div>
+<div><code>[shortcuts]</code><span class="desc">arrow · rectangle · circle · text · pixelate</span></div>
 
-<span class="t-m"># Delay + clipboard</span>
-<span class="t-g">$</span> hydroshot capture --delay 5 --clipboard</pre></div>
-                </div>
-            </div>
-        </div>
-    </section>
+<h4>EXPORT PATHS</h4>
+<div><code>Ctrl+C</code><span class="desc">Copy to clipboard</span></div>
+<div><code>Ctrl+S</code><span class="desc">Save to file</span></div>
+<div><code>Pin</code><span class="desc">Always-on-top floating window</span></div>
+<div><code>Upload</code><span class="desc">Anonymous Imgur upload</span></div>
+<div><code>OCR</code><span class="desc">Extract text (Windows OCR API)</span></div>
+<div><code>History</code><span class="desc">Recent captures with thumbnails</span></div>
+</div>
+  </div>
+</div>
 
-    <!-- Footer -->
-    <footer>
-        <div class="container">
-            <div class="footer-line"></div>
-            <div class="footer-grid">
-                <div><h4>Documentation</h4><ul><li><a href="https://github.com/Real-Fruit-Snacks/HydroShot#quick-start">Quick Start</a></li><li><a href="https://github.com/Real-Fruit-Snacks/HydroShot#features">Features</a></li><li><a href="https://github.com/Real-Fruit-Snacks/HydroShot#architecture">Architecture</a></li><li><a href="https://github.com/Real-Fruit-Snacks/HydroShot#keyboard-shortcuts">Shortcuts</a></li></ul></div>
-                <div><h4>Resources</h4><ul><li><a href="https://github.com/Real-Fruit-Snacks/HydroShot/releases/latest">Latest Release</a></li><li><a href="https://github.com/Real-Fruit-Snacks/HydroShot/issues">Report Issue</a></li><li><a href="https://github.com/Real-Fruit-Snacks/HydroShot/blob/main/CONTRIBUTING.md">Contributing</a></li><li><a href="https://github.com/Real-Fruit-Snacks/HydroShot/blob/main/CHANGELOG.md">Changelog</a></li></ul></div>
-                <div><h4>Toolkit</h4><ul><li><a href="https://github.com/Real-Fruit-Snacks/Surge">Surge</a></li><li><a href="https://github.com/Real-Fruit-Snacks/Ripple">Ripple</a></li><li><a href="https://github.com/Real-Fruit-Snacks/Tidemark">Tidemark</a></li><li><a href="https://github.com/Real-Fruit-Snacks">View All →</a></li></ul></div>
-                <div><h4>License</h4><p>MIT License<br>Copyright © 2026<br>Real-Fruit-Snacks</p></div>
-            </div>
-            <div class="footer-bottom">Part of the Real-Fruit-Snacks productivity toolkit</div>
-        </div>
-    </footer>
+<div class="grid">
+  <div class="cell">
+    <div class="cell-header"><span class="cell-num">05</span><span class="cell-name">Architecture</span></div>
+    <h2>winit + skia + per-platform capture.</h2>
+    <p>The annotation surface is a tiny-skia canvas; every tool emits commands that the undo/redo stack composes. Capture backends are split per-platform so the rest of the codebase stays platform-agnostic.</p>
+<pre class="code"><span class="c">src/</span>
+main.rs              <span class="c">// Entry point · event loop</span>
+cli.rs               <span class="c">// CLI argument parsing (clap)</span>
+tray.rs              <span class="c">// System tray integration</span>
+hotkey.rs            <span class="c">// Global hotkey registration</span>
+config.rs            <span class="c">// TOML configuration</span>
+renderer.rs          <span class="c">// Core rendering pipeline</span>
+export.rs            <span class="c">// Clipboard and file export</span>
+upload.rs            <span class="c">// Imgur anonymous upload</span>
+ocr.rs               <span class="c">// OCR text extraction (Windows)</span>
+capture/
+  windows.rs         <span class="c">// Windows capture</span>
+  x11.rs             <span class="c">// X11 capture</span>
+  wayland.rs         <span class="c">// Wayland capture</span>
+overlay/             <span class="c">// Overlay window + selection</span>
+tools/               <span class="c">// 14 annotation tool impls</span></pre>
+  </div>
 
-    <script>
-    // Scroll animations
-    const obs=new IntersectionObserver(e=>{e.forEach(el=>{if(el.isIntersecting){el.target.classList.add('visible');obs.unobserve(el.target)}})},{threshold:.1,rootMargin:'0px 0px -50px 0px'});
-    document.querySelectorAll('.animate,.animate-scale').forEach(el=>obs.observe(el));
+  <div class="cell">
+    <div class="cell-header"><span class="cell-num">06</span><span class="cell-name">Closing</span></div>
+    <h2>Appear, capture, disappear.</h2>
+    <p>No browser engine, no Electron, no JavaScript runtime. The tray icon waits; the global hotkey wakes it; the overlay dims everything inactive; the result lands where you want it.</p>
+    <p style="color:var(--ov1);font-size:14px;font-style:italic">A native screenshot tool that shouldn't need to ship a Chromium.</p>
+  </div>
+</div>
 
-    // Counter animation
-    function countUp(el){const t=parseInt(el.dataset.target),s=el.dataset.suffix||'',p=el.dataset.prefix||'',d=1500,st=performance.now();function u(n){const pr=Math.min((n-st)/d,1),e=1-Math.pow(1-pr,3);el.textContent=p+Math.floor(t*e)+s;if(pr<1)requestAnimationFrame(u)}requestAnimationFrame(u)}
-    const sobs=new IntersectionObserver(e=>{e.forEach(el=>{if(el.isIntersecting){countUp(el.target);sobs.unobserve(el.target)}})},{threshold:.5});
-    document.querySelectorAll('.stat-num').forEach(el=>sobs.observe(el));
+<div class="band">
+  <div class="band-tag">→ DOWNLOAD</div>
+  <h3>Native binaries for<br>Windows and Linux.</h3>
+  <a class="cta" href="https://github.com/Real-Fruit-Snacks/HydroShot/releases">Releases</a>
+</div>
 
-    // Nav scroll
-    window.addEventListener('scroll',()=>{document.querySelector('.nav').style.borderBottomColor=window.scrollY>20?'rgba(49,50,68,0.8)':'rgba(49,50,68,0.3)'});
-    </script>
+<footer>
+  <span>© 2026 Real-Fruit-Snacks · MIT</span>
+  <span>
+    <a href="https://real-fruit-snacks.github.io/">all projects</a> &nbsp;·&nbsp;
+    <a href="https://github.com/Real-Fruit-Snacks/HydroShot">github</a> &nbsp;·&nbsp;
+    <a href="https://github.com/Real-Fruit-Snacks/HydroShot/blob/main/CHANGELOG.md">changelog</a>
+  </span>
+</footer>
+
 </body>
 </html>
