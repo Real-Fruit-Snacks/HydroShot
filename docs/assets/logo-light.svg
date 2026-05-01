@@ -1,23 +1,21 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 110" fill="none">
-  <defs>
-    <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#7c3aed"/>
-      <stop offset="50%" stop-color="#6366f1"/>
-      <stop offset="100%" stop-color="#db2777"/>
-    </linearGradient>
-    <radialGradient id="glow" cx="50%" cy="40%" r="40%">
-      <stop offset="0%" stop-color="#7c3aed" stop-opacity="0.1"/>
-      <stop offset="50%" stop-color="#6366f1" stop-opacity="0.04"/>
-      <stop offset="100%" stop-color="#db2777" stop-opacity="0"/>
-    </radialGradient>
-    <filter id="textglow">
-      <feGaussianBlur in="SourceGraphic" stdDeviation="2" result="blur"/>
-      <feComposite in="SourceGraphic" in2="blur" operator="over"/>
-    </filter>
-  </defs>
-  <ellipse cx="210" cy="45" rx="160" ry="40" fill="url(#glow)"/>
-  <text x="210" y="52" text-anchor="middle" font-family="'Inter', 'SF Pro Display', 'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="40" font-weight="800" fill="url(#grad)" letter-spacing="4" filter="url(#textglow)">HYDROSHOT</text>
-  <line x1="105" y1="68" x2="315" y2="68" stroke="url(#grad)" stroke-width="0.6" opacity="0.2"/>
-  <text x="210" y="84" text-anchor="middle" font-family="'JetBrains Mono', 'SF Mono', 'Fira Code', 'Cascadia Code', monospace" font-size="10" font-weight="400" fill="#6c6f85" letter-spacing="5">SCREENSHOT CAPTURE &amp; ANNOTATE</text>
-  <text x="210" y="100" text-anchor="middle" font-family="'JetBrains Mono', 'SF Mono', 'Fira Code', monospace" font-size="7.5" font-weight="400" fill="#9ca0b0" letter-spacing="3">RUST · WINIT · TINY-SKIA</text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 200" fill="none">
+  <rect x="0" y="0" width="800" height="200" fill="#ffffff"/>
+  <line x1="0" y1="32" x2="800" y2="32" stroke="#bcc0cc" stroke-width="1"/>
+  <text x="20" y="22" font-family="'JetBrains Mono', 'SF Mono', monospace" font-size="10" font-weight="700" fill="#8839ef" letter-spacing="2">RFS</text>
+  <text x="60" y="22" font-family="'JetBrains Mono', 'SF Mono', monospace" font-size="10" font-weight="500" fill="#9ca0b0" letter-spacing="2">·  HYDROSHOT  ·  RUST SCREENSHOT + ANNOTATE</text>
+  <circle cx="676" cy="18" r="3" fill="#179299"/>
+  <text x="780" y="22" text-anchor="end" font-family="'JetBrains Mono', 'SF Mono', monospace" font-size="10" font-weight="500" fill="#6c6f85" letter-spacing="2">DESKTOP · NATIVE</text>
+  <text x="20" y="115" font-family="'Inter', sans-serif" font-size="92" font-weight="800" fill="#1e1e2e" letter-spacing="-4">HYDROSHOT<tspan fill="#dc8a78">.</tspan></text>
+  <line x1="0" y1="140" x2="800" y2="140" stroke="#bcc0cc" stroke-width="1"/>
+  <line x1="200" y1="140" x2="200" y2="200" stroke="#bcc0cc" stroke-width="1"/>
+  <line x1="400" y1="140" x2="400" y2="200" stroke="#bcc0cc" stroke-width="1"/>
+  <line x1="600" y1="140" x2="600" y2="200" stroke="#bcc0cc" stroke-width="1"/>
+  <text x="20" y="158" font-family="'JetBrains Mono', 'SF Mono', monospace" font-size="9" font-weight="600" fill="#9ca0b0" letter-spacing="2">TOOLS</text>
+  <text x="20" y="186" font-family="'Inter', sans-serif" font-size="22" font-weight="700" fill="#1e1e2e" letter-spacing="-1">14<tspan fill="#dc8a78" font-size="14"> × ANNOTATE</tspan></text>
+  <text x="220" y="158" font-family="'JetBrains Mono', 'SF Mono', monospace" font-size="9" font-weight="600" fill="#9ca0b0" letter-spacing="2">BACKENDS</text>
+  <text x="220" y="186" font-family="'Inter', sans-serif" font-size="22" font-weight="700" fill="#1e1e2e" letter-spacing="-1">WIN<tspan fill="#dc8a78" font-size="14"> · X11 · WAYLAND</tspan></text>
+  <text x="420" y="158" font-family="'JetBrains Mono', 'SF Mono', monospace" font-size="9" font-weight="600" fill="#9ca0b0" letter-spacing="2">THEME</text>
+  <text x="420" y="186" font-family="'Inter', sans-serif" font-size="22" font-weight="700" fill="#1e1e2e" letter-spacing="-1">CATPPUCCIN<tspan fill="#dc8a78" font-size="14"> · MOCHA</tspan></text>
+  <text x="620" y="158" font-family="'JetBrains Mono', 'SF Mono', monospace" font-size="9" font-weight="600" fill="#9ca0b0" letter-spacing="2">STACK</text>
+  <text x="620" y="186" font-family="'Inter', sans-serif" font-size="22" font-weight="700" fill="#1e1e2e" letter-spacing="-1">RUST<tspan fill="#dc8a78" font-size="14"> · WINIT · SKIA</tspan></text>
 </svg>
