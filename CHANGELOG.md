@@ -2,7 +2,7 @@
 
 All notable changes to HydroShot will be documented in this file.
 
-## [Unreleased]
+## [0.6.0] - 2026-06-11
 
 ### Security
 - Updated `rustls-webpki` 0.103.10 → 0.103.13 (TLS stack used for Imgur uploads): fixes RUSTSEC-2026-0098/0099 (certificate name-constraint bypasses) and RUSTSEC-2026-0104 (reachable panic in CRL parsing)
