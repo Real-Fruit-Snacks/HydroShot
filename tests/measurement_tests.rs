@@ -62,6 +62,16 @@ fn measurement_render_smoke_test() {
 }
 
 #[test]
+fn measurement_click_without_drag_produces_nothing() {
+    // A zero-length measurement is meaningless — clicks must not create one.
+    let color = Color::new(1.0, 0.0, 0.0, 1.0);
+    let mut tool = MeasurementTool::new(color);
+    tool.on_mouse_down(Point::new(50.0, 50.0));
+    let ann = tool.on_mouse_up(Point::new(50.0, 50.0));
+    assert!(ann.is_none());
+}
+
+#[test]
 fn measurement_no_annotation_without_mouse_down() {
     let color = Color::new(1.0, 0.0, 0.0, 1.0);
     let mut tool = MeasurementTool::new(color);

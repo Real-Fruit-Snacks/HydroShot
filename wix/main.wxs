@@ -49,6 +49,13 @@
                         <RemoveRegistryKey Root='HKCU' Key='Software\HydroShot' Action='removeOnUninstall' />
                     </Component>
 
+                    <!--
+                      Known trade-off: the Windows Installer Environment table writes the
+                      per-user Path value back as REG_SZ. If the user's Path was
+                      REG_EXPAND_SZ with %VAR% entries, those entries stop expanding.
+                      There is no clean WiX v3 way to append to PATH while preserving the
+                      value type; the self-installer (installer.rs) preserves it correctly.
+                    -->
                     <Component Id='Path' Guid='D2E3F4A5-B6C7-8901-DEFA-345678901234'>
                         <Environment
                             Id='PATH'

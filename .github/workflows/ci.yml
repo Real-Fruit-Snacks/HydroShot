@@ -46,3 +46,17 @@ jobs:
         run: cargo clippy -- -D warnings
       - name: Format check
         run: cargo fmt --check
+
+  audit:
+    name: Dependency audit
+    runs-on: ubuntu-latest
+    # Advisory only — a freshly published CVE in a dependency shouldn't block
+    # unrelated PRs, but it should be visible on every run.
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Install cargo-audit
+        run: cargo install cargo-audit --locked
+      - name: Audit dependencies
+        run: cargo audit

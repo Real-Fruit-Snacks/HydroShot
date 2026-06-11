@@ -2,6 +2,45 @@
 
 All notable changes to HydroShot will be documented in this file.
 
+## [Unreleased]
+
+### Security
+- Updated `rustls-webpki` 0.103.10 → 0.103.13 (TLS stack used for Imgur uploads): fixes RUSTSEC-2026-0098/0099 (certificate name-constraint bypasses) and RUSTSEC-2026-0104 (reachable panic in CRL parsing)
+
+### Added
+- Experimental X11 region capture on Linux (root-window GetImage via x11rb) — the Linux build can actually capture now
+- Global hotkey is rebindable from Settings > General (click the binding, press the new combo); digits are now valid hotkey keys
+- History can be disabled in Settings, and the History window gained scrolling, a scrollbar, and a "Clear All" button
+- Ctrl+V pastes clipboard text while typing a Text annotation; Space works in text input
+- `--clipboard` and `--save` CLI flags can be combined
+- `default_color` accepts `#rrggbb` hex values
+- Dependency-audit job (cargo-audit, advisory) in CI
+
+### Changed
+- The portable exe now ASKS before installing itself (Yes installs, No runs portably); debug builds never self-install, so `cargo run` works normally
+- Enter now copies the selection with annotations (same path as Ctrl+C) instead of silently dropping them
+- Highlighter uses multiply blending — text stays readable and overlaps don't wash out
+- History moved from the roaming config dir to local app data (existing entries are migrated)
+- Pin temp files are cleaned up on app exit, not just on pin close
+- Text annotation re-edit is a single undo step (Modify) and Escape restores the original
+
+### Fixed
+- CI: new stable clippy lint (`manual_checked_ops`) broke the build
+- Latent panic in `flatten_annotations` when capture alpha != 255; Windows capture now forces opaque alpha
+- Caps Lock no longer breaks Ctrl+C/S/Z or tool shortcuts, and no longer turns undo into redo
+- Pinned windows and the countdown now position correctly on multi-monitor setups (virtual-desktop offsets)
+- History window could only show ~12 of 20 entries (no scrolling) and froze the UI while copying
+- Window-capture mode: rects use DWM extended frame bounds (no shadow margins), cloaked UWP windows are skipped, and self-exclusion is by process id instead of window title
+- Settings "Browse" no longer freezes the event loop (tray/hotkey stay responsive)
+- Imgur upload no longer encodes the PNG on the UI thread; the unreachable "Uploading..." toast was removed
+- OCR: PowerShell console no longer flashes; missing OCR language packs produce a clear error
+- Autostart registry/desktop entries quote the exe path (paths with spaces)
+- Config files missing individual keys no longer reset the whole config; parse errors show a notification
+- Step-marker numbering stays consecutive after undo/redo/delete
+- Pixelate/spotlight regions no longer shift when the rect extends past the selection edge
+- Text annotation hit-testing and selection handles use real font metrics instead of estimates
+- Toast no longer forces continuous re-renders; hotkey events are fully drained each cycle
+
 ## [0.5.9] - 2026-03-28
 
 ### Fixed

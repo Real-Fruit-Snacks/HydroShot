@@ -1,4 +1,5 @@
 use std::num::NonZeroU32;
+use std::sync::mpsc::{channel, Receiver, TryRecvError};
 use std::sync::Arc;
 
 use tiny_skia::{Color as SkiaColor, Paint, Pixmap, Rect, Transform};
@@ -20,6 +21,7 @@ const TEXT_RGB: (u8, u8, u8) = (0xcd, 0xd6, 0xf4);
 const LAVENDER: (u8, u8, u8) = (0xb4, 0xbe, 0xfe);
 const GREEN_RGB: (u8, u8, u8) = (0xa6, 0xe3, 0xa1);
 const SUBTEXT0: (u8, u8, u8) = (0xa6, 0xad, 0xc8);
+const RED_RGB: (u8, u8, u8) = (0xf3, 0x8b, 0xa8);
 
 /// Color choices available in settings (name, R, G, B).
 const COLOR_CHOICES: &[(&str, u8, u8, u8)] = &[
@@ -38,7 +40,9 @@ pub enum Action {
     ThicknessUp,
     BrowseDir,
     ToggleAutostart,
+    ToggleHistory,
     ClickShortcut(usize),
+    ClickHotkey,
     ToggleToolbar(usize),
     SaveClose,
     SwitchTab(usize),
@@ -57,16 +61,19 @@ pub struct SettingsWindow {
     pub window: Arc<Window>,
     pub surface: softbuffer::Surface<Arc<Window>, Arc<Window>>,
     pub config: Config,
-    pub hovered_button: Option<usize>,
     pub needs_redraw: bool,
     hit_rects: Vec<HitRect>,
     pub cursor_pos: (f32, f32),
     /// Index of the shortcut currently being edited (0-13), or None.
     pub editing_shortcut: Option<usize>,
+    /// True while waiting for the user to press the new global-hotkey combo.
+    pub editing_hotkey: bool,
     /// Active tab index: 0=General, 1=Shortcuts, 2=Toolbar.
     pub active_tab: usize,
     /// Index of the currently hovered hit rect (for redraw optimization).
     hovered: Option<usize>,
+    /// Pending result channel for the async folder-picker dialog.
+    browse_rx: Option<Receiver<Option<String>>>,
 }
 
 impl SettingsWindow {
@@ -79,13 +86,44 @@ impl SettingsWindow {
             window,
             surface,
             config,
-            hovered_button: None,
             needs_redraw: true,
             hit_rects: Vec::new(),
             cursor_pos: (0.0, 0.0),
             editing_shortcut: None,
+            editing_hotkey: false,
             hovered: None,
             active_tab: 0,
+            browse_rx: None,
+        }
+    }
+
+    /// True while a folder-picker dialog is open on a background thread.
+    pub fn browse_pending(&self) -> bool {
+        self.browse_rx.is_some()
+    }
+
+    /// Poll the async folder picker. Returns true when the save directory
+    /// was just updated (caller should redraw).
+    pub fn poll_browse(&mut self) -> bool {
+        let Some(rx) = &self.browse_rx else {
+            return false;
+        };
+        match rx.try_recv() {
+            Ok(Some(dir)) => {
+                self.config.general.save_directory = dir;
+                self.browse_rx = None;
+                self.needs_redraw = true;
+                true
+            }
+            Ok(None) => {
+                self.browse_rx = None;
+                false
+            }
+            Err(TryRecvError::Empty) => false,
+            Err(TryRecvError::Disconnected) => {
+                self.browse_rx = None;
+                false
+            }
         }
     }
 
@@ -362,9 +400,65 @@ impl SettingsWindow {
         draw_label(pixmap, left, y, imgur_status, 14.0, SUBTEXT0);
         y += 30.0;
 
-        // ── Hotkey ──
-        let hotkey_label = format!("Hotkey: {}", self.config.hotkey.capture);
-        draw_label(pixmap, left, y, &hotkey_label, 14.0, SUBTEXT0);
+        // ── Hotkey (click to rebind) ──
+        draw_label(pixmap, left, y, "Capture hotkey:", 14.0, SUBTEXT0);
+        let hk_display = if self.editing_hotkey {
+            "press keys...".to_string()
+        } else {
+            self.config.hotkey.capture.clone()
+        };
+        let hk_w: f32 = 150.0;
+        let hk_h: f32 = 24.0;
+        let hk_x = WIN_W as f32 - left - hk_w;
+        let hk_y = y - 4.0;
+        draw_button(
+            pixmap,
+            hk_x,
+            hk_y,
+            hk_w,
+            hk_h,
+            &hk_display,
+            self.is_hovered(hk_x, hk_y, hk_w, hk_h),
+        );
+        self.hit_rects.push(HitRect {
+            x: hk_x,
+            y: hk_y,
+            w: hk_w,
+            h: hk_h,
+            action: Action::ClickHotkey,
+        });
+        y += 30.0;
+
+        // ── History ──
+        let history_on = self.config.general.history_enabled;
+        draw_label(pixmap, left, y, "Save history:", 14.0, SUBTEXT0);
+        {
+            let toggle_x = left + 110.0;
+            let toggle_w: f32 = 56.0;
+            let toggle_h: f32 = 26.0;
+            let toggle_bg = if history_on { GREEN_RGB } else { SURFACE0 };
+            if self.is_hovered(toggle_x, y - 2.0, toggle_w, toggle_h) {
+                fill_rect_rgb(pixmap, toggle_x, y - 2.0, toggle_w, toggle_h, SURFACE1);
+            }
+            fill_rect_rgb(
+                pixmap,
+                toggle_x + 1.0,
+                y - 1.0,
+                toggle_w - 2.0,
+                toggle_h - 2.0,
+                toggle_bg,
+            );
+            let toggle_label = if history_on { "ON" } else { "OFF" };
+            let tl_x = toggle_x + if history_on { 18.0 } else { 14.0 };
+            draw_label(pixmap, tl_x, y + 2.0, toggle_label, 12.0, TEXT_RGB);
+            self.hit_rects.push(HitRect {
+                x: toggle_x,
+                y: y - 2.0,
+                w: toggle_w,
+                h: toggle_h,
+                action: Action::ToggleHistory,
+            });
+        }
         y += 30.0;
 
         // ── Auto-start ──
@@ -409,6 +503,15 @@ impl SettingsWindow {
         let key_btn_x = WIN_W as f32 - left - key_btn_w;
 
         let entries = self.config.shortcuts.entries();
+        // Keys bound to more than one tool are rendered in red.
+        let is_duplicate = |key: &str| -> bool {
+            !key.is_empty()
+                && entries
+                    .iter()
+                    .filter(|(_, _, k)| k.eq_ignore_ascii_case(key))
+                    .count()
+                    > 1
+        };
         for (i, (symbol, label, key_val)) in entries.iter().enumerate() {
             let ry = y + i as f32 * row_h;
 
@@ -431,8 +534,13 @@ impl SettingsWindow {
             } else {
                 key_val
             };
+            let text_color = if self.editing_shortcut != Some(i) && is_duplicate(key_val) {
+                RED_RGB
+            } else {
+                TEXT_RGB
+            };
             let btn_hovered = self.is_hovered(key_btn_x, ry - 1.0, key_btn_w, key_btn_h);
-            draw_button(
+            draw_button_colored(
                 pixmap,
                 key_btn_x,
                 ry - 1.0,
@@ -440,6 +548,7 @@ impl SettingsWindow {
                 key_btn_h,
                 &display.to_uppercase(),
                 btn_hovered,
+                text_color,
             );
 
             self.hit_rects.push(HitRect {
@@ -544,10 +653,30 @@ impl SettingsWindow {
                 false
             }
             Action::BrowseDir => {
-                if let Some(path) = rfd::FileDialog::new().pick_folder() {
-                    self.config.general.save_directory = path.to_string_lossy().to_string();
-                    self.needs_redraw = true;
+                // Run the dialog on a background thread so the event loop
+                // (tray, hotkey, pinned windows) stays responsive; the result
+                // is applied via poll_browse() from about_to_wait.
+                if self.browse_rx.is_none() {
+                    let (tx, rx) = channel();
+                    self.browse_rx = Some(rx);
+                    std::thread::spawn(move || {
+                        let result = rfd::FileDialog::new()
+                            .pick_folder()
+                            .map(|p| p.to_string_lossy().to_string());
+                        let _ = tx.send(result);
+                    });
                 }
+                false
+            }
+            Action::ToggleHistory => {
+                self.config.general.history_enabled = !self.config.general.history_enabled;
+                self.needs_redraw = true;
+                false
+            }
+            Action::ClickHotkey => {
+                self.editing_hotkey = true;
+                self.editing_shortcut = None;
+                self.needs_redraw = true;
                 false
             }
             Action::ToggleAutostart => {
@@ -577,6 +706,7 @@ impl SettingsWindow {
             Action::SwitchTab(idx) => {
                 self.active_tab = idx;
                 self.editing_shortcut = None;
+                self.editing_hotkey = false;
                 self.needs_redraw = true;
                 false
             }
@@ -631,17 +761,26 @@ fn draw_label(
 }
 
 fn draw_button(pixmap: &mut Pixmap, x: f32, y: f32, w: f32, h: f32, label: &str, hovered: bool) {
+    draw_button_colored(pixmap, x, y, w, h, label, hovered, TEXT_RGB);
+}
+
+#[allow(clippy::too_many_arguments)]
+fn draw_button_colored(
+    pixmap: &mut Pixmap,
+    x: f32,
+    y: f32,
+    w: f32,
+    h: f32,
+    label: &str,
+    hovered: bool,
+    text_rgb: (u8, u8, u8),
+) {
     let bg = if hovered { SURFACE1 } else { SURFACE0 };
     fill_rect_rgb(pixmap, x, y, w, h, bg);
 
-    // Center label approximately
-    let char_w = font_size_char_width(12.0);
-    let text_w = label.len() as f32 * char_w;
+    // Center the label using real font metrics
+    let text_w = crate::tools::measure_text_width(label, 12.0);
     let tx = x + (w - text_w) / 2.0;
     let ty = y + (h - 12.0) / 2.0;
-    draw_label(pixmap, tx, ty, label, 12.0, TEXT_RGB);
-}
-
-fn font_size_char_width(size: f32) -> f32 {
-    size * 0.55
+    draw_label(pixmap, tx, ty, label, 12.0, text_rgb);
 }

@@ -1,14 +1,162 @@
 use super::selection::Selection;
 use crate::geometry::Point;
+use crate::tools::ToolKind;
 
 pub const TOOLBAR_HEIGHT: f32 = 40.0;
 pub const TOOLBAR_PADDING: f32 = 8.0;
 pub const BUTTON_SIZE: f32 = 32.0;
 pub const BUTTON_COUNT: usize = 24;
 
-/// Toolbar that appears near the selection rectangle.
-/// Buttons: 0=Select, 1=Arrow, 2=Rect, 3=Circle, 4=RoundedRect, 5=Line, 6=Pencil, 7=Highlight, 8=Spotlight, 9=Text, 10=Pixelate, 11=StepMarker, 12=Eyedropper, 13=Measurement,
-///          14-18=colors, 19=OCR, 20=Upload, 21=Pin, 22=Copy, 23=Save
+/// What a toolbar button does when clicked.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum ButtonAction {
+    /// Switch the active annotation tool.
+    Tool(ToolKind),
+    /// Select a preset color (index into `Color::presets()`).
+    Color(usize),
+    Ocr,
+    Upload,
+    Pin,
+    Copy,
+    Save,
+}
+
+/// Static definition of one toolbar button.
+pub struct ButtonDef {
+    pub action: ButtonAction,
+    /// Lucide icon name rendered by icons.rs; None for color swatches.
+    pub icon: Option<&'static str>,
+    pub tooltip: &'static str,
+}
+
+/// Single source of truth for the toolbar. Array order defines the "original"
+/// button indices that `ToolbarConfig::visible_button_indices()` refers to:
+/// 0-13 tools, 14-18 color swatches, 19-23 actions.
+pub const BUTTONS: [ButtonDef; BUTTON_COUNT] = [
+    ButtonDef {
+        action: ButtonAction::Tool(ToolKind::Select),
+        icon: Some("select"),
+        tooltip: "Select (V)",
+    },
+    ButtonDef {
+        action: ButtonAction::Tool(ToolKind::Arrow),
+        icon: Some("arrow"),
+        tooltip: "Arrow (A)",
+    },
+    ButtonDef {
+        action: ButtonAction::Tool(ToolKind::Rectangle),
+        icon: Some("rectangle"),
+        tooltip: "Rectangle (R)",
+    },
+    ButtonDef {
+        action: ButtonAction::Tool(ToolKind::Circle),
+        icon: Some("circle"),
+        tooltip: "Circle (C)",
+    },
+    ButtonDef {
+        action: ButtonAction::Tool(ToolKind::RoundedRect),
+        icon: Some("rounded-rect"),
+        tooltip: "Rounded Rect (O)",
+    },
+    ButtonDef {
+        action: ButtonAction::Tool(ToolKind::Line),
+        icon: Some("line"),
+        tooltip: "Line (L)",
+    },
+    ButtonDef {
+        action: ButtonAction::Tool(ToolKind::Pencil),
+        icon: Some("pencil"),
+        tooltip: "Pencil (P)",
+    },
+    ButtonDef {
+        action: ButtonAction::Tool(ToolKind::Highlight),
+        icon: Some("highlight"),
+        tooltip: "Highlight (H)",
+    },
+    ButtonDef {
+        action: ButtonAction::Tool(ToolKind::Spotlight),
+        icon: Some("spotlight"),
+        tooltip: "Spotlight (F)",
+    },
+    ButtonDef {
+        action: ButtonAction::Tool(ToolKind::Text),
+        icon: Some("text"),
+        tooltip: "Text (T)",
+    },
+    ButtonDef {
+        action: ButtonAction::Tool(ToolKind::Pixelate),
+        icon: Some("pixelate"),
+        tooltip: "Pixelate (B)",
+    },
+    ButtonDef {
+        action: ButtonAction::Tool(ToolKind::StepMarker),
+        icon: Some("step-marker"),
+        tooltip: "Step Marker (N)",
+    },
+    ButtonDef {
+        action: ButtonAction::Tool(ToolKind::Eyedropper),
+        icon: Some("eyedropper"),
+        tooltip: "Eyedropper (I)",
+    },
+    ButtonDef {
+        action: ButtonAction::Tool(ToolKind::Measurement),
+        icon: Some("measurement"),
+        tooltip: "Measurement (M)",
+    },
+    ButtonDef {
+        action: ButtonAction::Color(0),
+        icon: None,
+        tooltip: "Red #f38ba8 (right-click: pick)",
+    },
+    ButtonDef {
+        action: ButtonAction::Color(1),
+        icon: None,
+        tooltip: "Blue #89b4fa (right-click: pick)",
+    },
+    ButtonDef {
+        action: ButtonAction::Color(2),
+        icon: None,
+        tooltip: "Green #a6e3a1 (right-click: pick)",
+    },
+    ButtonDef {
+        action: ButtonAction::Color(3),
+        icon: None,
+        tooltip: "Yellow #f9e2af (right-click: pick)",
+    },
+    ButtonDef {
+        action: ButtonAction::Color(4),
+        icon: None,
+        tooltip: "Mauve #cba6f7 (right-click: pick)",
+    },
+    ButtonDef {
+        action: ButtonAction::Ocr,
+        icon: Some("ocr"),
+        tooltip: "OCR (Extract Text)",
+    },
+    ButtonDef {
+        action: ButtonAction::Upload,
+        icon: Some("upload"),
+        tooltip: "Upload (Imgur)",
+    },
+    ButtonDef {
+        action: ButtonAction::Pin,
+        icon: Some("pin"),
+        tooltip: "Pin",
+    },
+    ButtonDef {
+        action: ButtonAction::Copy,
+        icon: Some("copy"),
+        tooltip: "Copy (Ctrl+C)",
+    },
+    ButtonDef {
+        action: ButtonAction::Save,
+        icon: Some("save"),
+        tooltip: "Save (Ctrl+S)",
+    },
+];
+
+/// Toolbar that appears near the selection rectangle. Button layout/order is
+/// defined by [`BUTTONS`].
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Toolbar {
     pub x: f32,

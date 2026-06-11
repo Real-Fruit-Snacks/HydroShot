@@ -1,8 +1,8 @@
 //! Window detection for "Capture Window" mode.
 //!
 //! Enumerates all visible, non-minimised windows and returns their screen-space
-//! rectangles in front-to-back Z-order.  The overlay window is excluded by
-//! filtering out windows whose title starts with "HydroShot".
+//! rectangles in front-to-back Z-order. HydroShot's own windows are excluded by
+//! comparing the owning process id against ours.
 
 /// A screen-space rectangle: (x, y, width, height).
 pub type WinRect = (i32, i32, i32, i32);
@@ -11,6 +11,9 @@ pub type WinRect = (i32, i32, i32, i32);
 #[cfg(target_os = "windows")]
 pub fn enumerate_window_rects() -> Vec<WinRect> {
     use windows::Win32::Foundation::*;
+    use windows::Win32::Graphics::Dwm::{
+        DwmGetWindowAttribute, DWMWA_CLOAKED, DWMWA_EXTENDED_FRAME_BOUNDS,
+    };
     use windows::Win32::UI::WindowsAndMessaging::*;
 
     unsafe extern "system" fn enum_callback(hwnd: HWND, lparam: LPARAM) -> BOOL {
@@ -24,24 +27,44 @@ pub fn enumerate_window_rects() -> Vec<WinRect> {
                 return BOOL(1);
             }
 
-            // Skip our own overlay window
-            let mut buf = [0u16; 64];
-            let len = GetWindowTextW(hwnd, &mut buf) as usize;
-            if len > 0 {
-                let title = String::from_utf16_lossy(&buf[..len]);
-                if title.starts_with("HydroShot") {
-                    return BOOL(1);
-                }
+            // Skip our own windows (overlay, pins, settings, history) by PID.
+            let mut pid: u32 = 0;
+            let _ = GetWindowThreadProcessId(hwnd, Some(&mut pid));
+            if pid == std::process::id() {
+                return BOOL(1);
             }
 
+            // Skip cloaked windows: UWP apps keep invisible "visible" windows
+            // around that would otherwise be selectable but show nothing.
+            let mut cloaked: u32 = 0;
+            let cloak_ok = DwmGetWindowAttribute(
+                hwnd,
+                DWMWA_CLOAKED,
+                &mut cloaked as *mut u32 as *mut _,
+                std::mem::size_of::<u32>() as u32,
+            );
+            if cloak_ok.is_ok() && cloaked != 0 {
+                return BOOL(1);
+            }
+
+            // Prefer the DWM extended frame bounds: GetWindowRect includes the
+            // invisible resize border / drop shadow (~7px per side on Win10+).
             let mut rect = RECT::default();
-            if GetWindowRect(hwnd, &mut rect).is_ok() {
-                let w = rect.right - rect.left;
-                let h = rect.bottom - rect.top;
-                // Skip tiny/invisible windows
-                if w > 1 && h > 1 {
-                    rects.push((rect.left, rect.top, w, h));
-                }
+            let dwm_ok = DwmGetWindowAttribute(
+                hwnd,
+                DWMWA_EXTENDED_FRAME_BOUNDS,
+                &mut rect as *mut RECT as *mut _,
+                std::mem::size_of::<RECT>() as u32,
+            );
+            if dwm_ok.is_err() && GetWindowRect(hwnd, &mut rect).is_err() {
+                return BOOL(1);
+            }
+
+            let w = rect.right - rect.left;
+            let h = rect.bottom - rect.top;
+            // Skip tiny/invisible windows
+            if w > 1 && h > 1 {
+                rects.push((rect.left, rect.top, w, h));
             }
         }
 

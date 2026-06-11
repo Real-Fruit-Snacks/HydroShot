@@ -45,6 +45,7 @@ fn installed_exe() -> Result<PathBuf, String> {
 }
 
 /// Return the Start Menu shortcut directory
+#[cfg(target_os = "windows")]
 fn start_menu_dir() -> Result<PathBuf, String> {
     dirs::data_dir()
         .map(|d| {
@@ -58,7 +59,13 @@ fn start_menu_dir() -> Result<PathBuf, String> {
 }
 
 /// Returns true if the current exe is NOT running from the install location.
+///
+/// Always false on non-Windows platforms and in debug builds, so `cargo run`
+/// never triggers the self-installer on a development machine.
 pub fn needs_install() -> bool {
+    if cfg!(not(target_os = "windows")) || cfg!(debug_assertions) {
+        return false;
+    }
     let Ok(current) = std::env::current_exe() else {
         return false;
     };
@@ -77,6 +84,37 @@ pub fn needs_install() -> bool {
         }
     };
     strip_prefix(canonical_current) != strip_prefix(canonical_dest)
+}
+
+/// Ask the user whether HydroShot should install itself. Returns true only on
+/// an explicit Yes — never installs silently.
+#[cfg(target_os = "windows")]
+pub fn confirm_install() -> bool {
+    use windows::core::*;
+    use windows::Win32::UI::WindowsAndMessaging::*;
+
+    let msg = "Install HydroShot?\n\n\
+               This copies the app to %LocalAppData%\\HydroShot, adds a Start Menu \
+               shortcut, adds it to your PATH, and starts it on login.\n\n\
+               Choose No to run it from the current location instead.";
+    let wide_title: Vec<u16> = "HydroShot Setup"
+        .encode_utf16()
+        .chain(std::iter::once(0))
+        .collect();
+    let wide_msg: Vec<u16> = msg.encode_utf16().chain(std::iter::once(0)).collect();
+    unsafe {
+        MessageBoxW(
+            None,
+            PCWSTR(wide_msg.as_ptr()),
+            PCWSTR(wide_title.as_ptr()),
+            MB_YESNO | MB_ICONQUESTION,
+        ) == IDYES
+    }
+}
+
+#[cfg(not(target_os = "windows"))]
+pub fn confirm_install() -> bool {
+    false
 }
 
 /// Terminate any running HydroShot processes so we can overwrite the installed exe.
@@ -99,111 +137,133 @@ fn kill_running_instances() {
     std::thread::sleep(std::time::Duration::from_millis(500));
 }
 
-#[cfg(not(target_os = "windows"))]
-fn kill_running_instances() {}
-
 pub fn install() -> Result<(), String> {
-    let source = std::env::current_exe().map_err(|e| format!("Failed to find current exe: {e}"))?;
-    let dest_dir = install_dir()?;
-    let dest_exe = installed_exe()?;
+    #[cfg(not(target_os = "windows"))]
+    {
+        Err(
+            "Self-install is only supported on Windows. On Linux, copy the binary \
+             somewhere on your PATH (e.g. ~/.local/bin) instead."
+                .to_string(),
+        )
+    }
 
-    // Don't re-install over ourselves
-    if let Ok(canonical_src) = std::fs::canonicalize(&source) {
-        if let Ok(canonical_dst) = std::fs::canonicalize(&dest_exe) {
-            if canonical_src == canonical_dst {
-                println!("HydroShot is already installed at {}", dest_exe.display());
-                return Ok(());
+    #[cfg(target_os = "windows")]
+    {
+        let source =
+            std::env::current_exe().map_err(|e| format!("Failed to find current exe: {e}"))?;
+        let dest_dir = install_dir()?;
+        let dest_exe = installed_exe()?;
+
+        // Don't re-install over ourselves
+        if let Ok(canonical_src) = std::fs::canonicalize(&source) {
+            if let Ok(canonical_dst) = std::fs::canonicalize(&dest_exe) {
+                if canonical_src == canonical_dst {
+                    println!("HydroShot is already installed at {}", dest_exe.display());
+                    return Ok(());
+                }
             }
         }
-    }
 
-    // 1. Copy exe to install dir
-    std::fs::create_dir_all(&dest_dir)
-        .map_err(|e| format!("Failed to create {}: {e}", dest_dir.display()))?;
+        // 1. Copy exe to install dir
+        std::fs::create_dir_all(&dest_dir)
+            .map_err(|e| format!("Failed to create {}: {e}", dest_dir.display()))?;
 
-    // Kill any running HydroShot so we can overwrite the exe
-    kill_running_instances();
+        // Kill any running HydroShot so we can overwrite the exe
+        kill_running_instances();
 
-    // Try direct copy first; if it fails (exe still locked), rename old and copy
-    if std::fs::copy(&source, &dest_exe).is_err() {
-        let old = dest_dir.join("hydroshot.old.exe");
-        let _ = std::fs::remove_file(&old);
-        if dest_exe.exists() {
-            std::fs::rename(&dest_exe, &old)
-                .map_err(|e| format!("Failed to replace running exe: {e}"))?;
+        // Try direct copy first; if it fails (exe still locked), rename old and copy
+        if std::fs::copy(&source, &dest_exe).is_err() {
+            let old = dest_dir.join("hydroshot.old.exe");
+            let _ = std::fs::remove_file(&old);
+            if dest_exe.exists() {
+                std::fs::rename(&dest_exe, &old)
+                    .map_err(|e| format!("Failed to replace running exe: {e}"))?;
+            }
+            std::fs::copy(&source, &dest_exe).map_err(|e| format!("Failed to copy exe: {e}"))?;
+            // Clean up old exe (schedule for reboot if still locked)
+            if std::fs::remove_file(&old).is_err() {
+                schedule_delete_on_reboot(&old);
+            }
         }
-        std::fs::copy(&source, &dest_exe).map_err(|e| format!("Failed to copy exe: {e}"))?;
-        // Clean up old exe (schedule for reboot if still locked)
-        if std::fs::remove_file(&old).is_err() {
-            schedule_delete_on_reboot(&old);
-        }
+        println!("Installed to {}", dest_exe.display());
+
+        // 2. Create Start Menu shortcut via PowerShell
+        create_shortcut(&dest_exe)?;
+
+        // 3. Add to user PATH via registry
+        add_to_path(&dest_dir)?;
+
+        // 4. Register autostart (use the *installed* path, not current_exe)
+        crate::autostart::set_enabled_for(true, Some(&dest_exe))
+            .unwrap_or_else(|e| eprintln!("Warning: could not set autostart: {e}"));
+
+        let msg = format!(
+            "HydroShot installed successfully!\n\n\
+             Location:   {}\n\
+             Start Menu: shortcut created\n\
+             PATH:       added (restart terminal to use 'hydroshot' command)\n\
+             Autostart:  enabled",
+            dest_exe.display()
+        );
+        println!("{msg}");
+        message_box("HydroShot", &msg, false);
+
+        // 5. Launch the installed copy
+        let _ = std::process::Command::new(&dest_exe).spawn();
+
+        Ok(())
     }
-    println!("Installed to {}", dest_exe.display());
-
-    // 2. Create Start Menu shortcut via PowerShell
-    create_shortcut(&dest_exe)?;
-
-    // 3. Add to user PATH via registry
-    add_to_path(&dest_dir)?;
-
-    // 4. Register autostart (use the *installed* path, not current_exe)
-    crate::autostart::set_enabled_for(true, Some(&dest_exe))
-        .unwrap_or_else(|e| eprintln!("Warning: could not set autostart: {e}"));
-
-    let msg = format!(
-        "HydroShot installed successfully!\n\n\
-         Location:   {}\n\
-         Start Menu: shortcut created\n\
-         PATH:       added (restart terminal to use 'hydroshot' command)\n\
-         Autostart:  enabled",
-        dest_exe.display()
-    );
-    println!("{msg}");
-    message_box("HydroShot", &msg, false);
-
-    // 5. Launch the installed copy
-    let _ = std::process::Command::new(&dest_exe).spawn();
-
-    Ok(())
 }
 
 pub fn uninstall() -> Result<(), String> {
-    // 1. Remove autostart
-    let _ = crate::autostart::set_enabled(false);
-
-    // 2. Remove from PATH
-    let dest_dir = install_dir()?;
-    remove_from_path(&dest_dir)?;
-
-    // 3. Remove Start Menu shortcut
-    let sm_dir = start_menu_dir()?;
-    if sm_dir.exists() {
-        let _ = std::fs::remove_dir_all(&sm_dir);
-        println!("Removed Start Menu shortcut");
+    #[cfg(not(target_os = "windows"))]
+    {
+        Err("Self-uninstall is only supported on Windows.".to_string())
     }
 
-    // 4. Remove installed exe (schedule deletion since we may be running from it)
-    let dest_exe = installed_exe()?;
-    if dest_exe.exists() {
-        // Try direct removal first; if it fails (file in use), schedule for next reboot
-        if std::fs::remove_file(&dest_exe).is_err() {
-            schedule_delete_on_reboot(&dest_exe);
-            println!("Exe is in use; will be removed on next reboot");
-        } else {
-            println!("Removed {}", dest_exe.display());
+    #[cfg(target_os = "windows")]
+    {
+        // 1. Remove autostart
+        let _ = crate::autostart::set_enabled(false);
+
+        // 2. Remove from PATH
+        let dest_dir = install_dir()?;
+        remove_from_path(&dest_dir)?;
+
+        // 3. Remove Start Menu shortcut
+        let sm_dir = start_menu_dir()?;
+        if sm_dir.exists() {
+            let _ = std::fs::remove_dir_all(&sm_dir);
+            println!("Removed Start Menu shortcut");
         }
+
+        // 4. Remove installed exe (schedule deletion since we may be running from it)
+        let dest_exe = installed_exe()?;
+        if dest_exe.exists() {
+            // Try direct removal first; if it fails (file in use), schedule for next reboot
+            if std::fs::remove_file(&dest_exe).is_err() {
+                schedule_delete_on_reboot(&dest_exe);
+                println!("Exe is in use; will be removed on next reboot");
+            } else {
+                println!("Removed {}", dest_exe.display());
+            }
+        }
+
+        // Try to remove the install dir if empty
+        let _ = std::fs::remove_dir(&dest_dir);
+
+        let msg = "HydroShot has been uninstalled.";
+        println!("{msg}");
+        message_box("HydroShot", msg, false);
+        Ok(())
     }
-
-    // Try to remove the install dir if empty
-    let _ = std::fs::remove_dir(&dest_dir);
-
-    let msg = "HydroShot has been uninstalled.";
-    println!("{msg}");
-    message_box("HydroShot", msg, false);
-    Ok(())
 }
 
+#[cfg(target_os = "windows")]
 fn create_shortcut(exe_path: &std::path::Path) -> Result<(), String> {
+    use std::os::windows::process::CommandExt;
+    const CREATE_NO_WINDOW: u32 = 0x08000000;
+
     let sm_dir = start_menu_dir()?;
     std::fs::create_dir_all(&sm_dir)
         .map_err(|e| format!("Failed to create Start Menu dir: {e}"))?;
@@ -234,6 +294,7 @@ fn create_shortcut(exe_path: &std::path::Path) -> Result<(), String> {
 
     let status = std::process::Command::new("powershell")
         .args(["-NoProfile", "-EncodedCommand", &encoded])
+        .creation_flags(CREATE_NO_WINDOW)
         .output()
         .map_err(|e| format!("Failed to run PowerShell: {e}"))?;
 
@@ -331,11 +392,6 @@ fn add_to_path(dir: &std::path::Path) -> Result<(), String> {
     Ok(())
 }
 
-#[cfg(not(target_os = "windows"))]
-fn add_to_path(_dir: &std::path::Path) -> Result<(), String> {
-    Ok(())
-}
-
 #[cfg(target_os = "windows")]
 fn remove_from_path(dir: &std::path::Path) -> Result<(), String> {
     use windows::core::*;
@@ -409,11 +465,6 @@ fn remove_from_path(dir: &std::path::Path) -> Result<(), String> {
     Ok(())
 }
 
-#[cfg(not(target_os = "windows"))]
-fn remove_from_path(_dir: &std::path::Path) -> Result<(), String> {
-    Ok(())
-}
-
 #[cfg(target_os = "windows")]
 fn schedule_delete_on_reboot(path: &std::path::Path) {
     use windows::core::*;
@@ -438,6 +489,3 @@ fn schedule_delete_on_reboot(path: &std::path::Path) {
         }
     }
 }
-
-#[cfg(not(target_os = "windows"))]
-fn schedule_delete_on_reboot(_path: &std::path::Path) {}

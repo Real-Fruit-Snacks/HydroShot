@@ -50,6 +50,10 @@ pub struct OverlayState {
     pub text_input_buffer: String,
     pub text_input_position: Point,
     pub text_input_font_size: f32,
+    /// When re-editing an existing Text annotation: its original index and
+    /// content, so committing records a single Modify undo step (and Escape
+    /// restores it) instead of a Delete + Add pair.
+    pub text_edit_origin: Option<(usize, Annotation)>,
     pub current_color: Color,
     pub current_thickness: f32,
     pub is_selecting: bool,
@@ -140,6 +144,7 @@ impl OverlayState {
             text_input_buffer: String::new(),
             text_input_position: Point::new(0.0, 0.0),
             text_input_font_size: 20.0,
+            text_edit_origin: None,
             current_color: color,
             current_thickness: thickness,
             is_selecting: false,
@@ -156,6 +161,96 @@ impl OverlayState {
             upload_confirmed: false,
             visible_buttons: config.toolbar.visible_button_indices(),
         }
+    }
+
+    /// Set the drawing color on every tool that has one, plus `current_color`.
+    pub fn set_color_all(&mut self, color: Color) {
+        self.current_color = color;
+        self.arrow_tool.set_color(color);
+        self.rectangle_tool.set_color(color);
+        self.rounded_rect_tool.set_color(color);
+        self.circle_tool.set_color(color);
+        self.line_tool.set_color(color);
+        self.pencil_tool.set_color(color);
+        self.highlight_tool.set_color(color);
+        self.text_tool.set_color(color);
+        self.step_marker_tool.set_color(color);
+        self.measurement_tool.set_color(color);
+    }
+
+    /// Set the stroke thickness on every tool that has one, plus `current_thickness`.
+    pub fn set_thickness_all(&mut self, thickness: f32) {
+        let t = thickness.clamp(1.0, 20.0);
+        self.current_thickness = t;
+        self.arrow_tool.set_thickness(t);
+        self.rectangle_tool.set_thickness(t);
+        self.rounded_rect_tool.set_thickness(t);
+        self.circle_tool.set_thickness(t);
+        self.line_tool.set_thickness(t);
+        self.pencil_tool.set_thickness(t);
+    }
+
+    /// Resync the step-marker counter to one past the highest number present,
+    /// so undo/redo/delete don't leave gaps in the numbering.
+    pub fn sync_step_counter(&mut self) {
+        let max = self
+            .annotations
+            .iter()
+            .filter_map(|a| match a {
+                Annotation::StepMarker { number, .. } => Some(*number),
+                _ => None,
+            })
+            .max()
+            .unwrap_or(0);
+        self.step_marker_tool.set_next_number(max.saturating_add(1));
+    }
+
+    /// Crop the current selection and flatten all annotations into it.
+    /// Returns `(pixels, width, height)`, or `None` if there is no selection
+    /// or it has zero area.
+    pub fn flattened_selection(&self) -> Option<(Vec<u8>, u32, u32)> {
+        let sel = self.selection.as_ref()?;
+        let r = sel.clamped(self.screenshot.width, self.screenshot.height);
+        if r.w == 0 || r.h == 0 {
+            return None;
+        }
+        let pixels = crate::export::crop_and_flatten(
+            &self.screenshot.pixels,
+            self.screenshot.width,
+            r.x,
+            r.y,
+            r.w,
+            r.h,
+            &self.annotations,
+        );
+        Some((pixels, r.w, r.h))
+    }
+
+    /// Crop the current selection WITHOUT annotations (raw screenshot pixels).
+    pub fn raw_selection(&self) -> Option<(Vec<u8>, u32, u32)> {
+        let sel = self.selection.as_ref()?;
+        let r = sel.clamped(self.screenshot.width, self.screenshot.height);
+        if r.w == 0 || r.h == 0 {
+            return None;
+        }
+        let mut cropped = vec![0u8; (r.w as usize) * (r.h as usize) * 4];
+        let src_w = self.screenshot.width;
+        for row in 0..r.h {
+            let src_row = r.y + row;
+            if src_row >= self.screenshot.height {
+                break;
+            }
+            let src_offset = ((src_row * src_w + r.x) * 4) as usize;
+            let dst_offset = (row * r.w * 4) as usize;
+            let copy_w = (r.w.min(src_w.saturating_sub(r.x)) * 4) as usize;
+            let src_end = (src_offset + copy_w).min(self.screenshot.pixels.len());
+            if src_end > src_offset {
+                let actual = src_end - src_offset;
+                cropped[dst_offset..dst_offset + actual]
+                    .copy_from_slice(&self.screenshot.pixels[src_offset..src_end]);
+            }
+        }
+        Some((cropped, r.w, r.h))
     }
 
     /// Show an in-overlay toast for the given duration

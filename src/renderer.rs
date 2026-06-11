@@ -1,10 +1,11 @@
 use crate::geometry::Color;
 use crate::icons::blend_pixmap;
 use crate::overlay::selection::Selection;
-use crate::overlay::toolbar::Toolbar;
+use crate::overlay::toolbar::{ButtonAction, Toolbar, BUTTONS};
 use crate::state::OverlayState;
 use crate::tools::{
-    annotation_bounding_box, render_annotation, Annotation, AnnotationTool, ToolKind,
+    annotation_bounding_box, measure_text_width, render_annotation, Annotation, AnnotationTool,
+    ToolKind,
 };
 use tiny_skia::{Paint, PathBuilder, Stroke, Transform};
 
@@ -151,10 +152,12 @@ pub fn render_overlay(state: &mut OverlayState, pixmap: &mut tiny_skia::Pixmap) 
             let src_w = state.screenshot_pixmap.width();
             let screenshot_data = state.screenshot_pixmap.data();
             for (tl, sz) in &spotlights {
+                // Shrink the region when the origin is clamped so the cutout
+                // matches the annotation rect instead of extending right/down.
+                let sw = (sz.width + tl.x.min(0.0)).max(0.0) as u32;
+                let sh = (sz.height + tl.y.min(0.0)).max(0.0) as u32;
                 let sx = tl.x.max(0.0) as u32;
                 let sy = tl.y.max(0.0) as u32;
-                let sw = sz.width as u32;
-                let sh = sz.height as u32;
                 let pm_w = pixmap.width();
                 let pm_h = pixmap.height();
                 let pixmap_data = pixmap.data_mut();
@@ -208,17 +211,8 @@ pub fn render_overlay(state: &mut OverlayState, pixmap: &mut tiny_skia::Pixmap) 
     }
     // Text cursor (vertical white line after text)
     if state.text_input_active {
-        let font = &*crate::font::FONT;
         let cursor_x = state.text_input_position.x
-            + state
-                .text_input_buffer
-                .chars()
-                .map(|ch| {
-                    font.rasterize(ch, state.text_input_font_size)
-                        .0
-                        .advance_width
-                })
-                .sum::<f32>();
+            + measure_text_width(&state.text_input_buffer, state.text_input_font_size);
         let cursor_y = state.text_input_position.y;
         let cursor_h = state.text_input_font_size;
         let mut pb = PathBuilder::new();
@@ -274,18 +268,14 @@ pub fn render_overlay(state: &mut OverlayState, pixmap: &mut tiny_skia::Pixmap) 
                 pixmap.stroke_path(&path, &border, &stroke, Transform::identity(), None);
             }
 
-            // Hex code label below swatch
-            let r8 = (color.r * 255.0) as u8;
-            let g8 = (color.g * 255.0) as u8;
-            let b8 = (color.b * 255.0) as u8;
+            // Hex code label below swatch (round, don't truncate)
+            let r8 = (color.r * 255.0 + 0.5) as u8;
+            let g8 = (color.g * 255.0 + 0.5) as u8;
+            let b8 = (color.b * 255.0 + 0.5) as u8;
             let hex = format!("#{:02x}{:02x}{:02x}", r8, g8, b8);
 
             let font_size = 12.0_f32;
-            let font = &*crate::font::FONT;
-            let text_width: f32 = hex
-                .chars()
-                .map(|ch| font.rasterize(ch, font_size).0.advance_width)
-                .sum();
+            let text_width = measure_text_width(&hex, font_size);
 
             let pad_x = 4.0_f32;
             let pad_y = 2.0_f32;
@@ -318,11 +308,7 @@ pub fn render_overlay(state: &mut OverlayState, pixmap: &mut tiny_skia::Pixmap) 
     state.clear_expired_toast();
     if let Some(ref msg) = state.toast_message {
         let font_size = 14.0_f32;
-        let font = &*crate::font::FONT;
-        let text_width: f32 = msg
-            .chars()
-            .map(|ch| font.rasterize(ch, font_size).0.advance_width)
-            .sum();
+        let text_width = measure_text_width(msg, font_size);
 
         let pad_x = 16.0_f32;
         let pad_y = 10.0_f32;
@@ -361,15 +347,6 @@ pub fn render_overlay(state: &mut OverlayState, pixmap: &mut tiny_skia::Pixmap) 
         render_text_annotation(pixmap, &text_pos, msg, &text_color, font_size);
     }
 }
-
-/// Catppuccin Mocha swatch colors matching Color::presets() order.
-const SWATCH_COLORS: [(f32, f32, f32); 5] = [
-    (0.953, 0.545, 0.659), // Red (#f38ba8)
-    (0.537, 0.706, 0.980), // Blue (#89b4fa)
-    (0.651, 0.890, 0.631), // Green (#a6e3a1)
-    (0.976, 0.886, 0.686), // Yellow (#f9e2af)
-    (0.796, 0.651, 0.969), // Mauve (#cba6f7)
-];
 
 /// Build a rounded rectangle path with given corner radius.
 fn rounded_rect_path(x: f32, y: f32, w: f32, h: f32, r: f32) -> Option<tiny_skia::Path> {
@@ -555,26 +532,11 @@ fn render_toolbar(state: &mut OverlayState, selection: &Selection, pixmap: &mut 
     // --- Render each button ---
     for (vis_idx, &i) in visible.iter().enumerate() {
         let (bx, by, bw, bh) = toolbar.button_rect(vis_idx);
+        let Some(def) = BUTTONS.get(i) else { continue };
 
-        let is_active = match i {
-            0 => state.active_tool == ToolKind::Select,
-            1 => state.active_tool == ToolKind::Arrow,
-            2 => state.active_tool == ToolKind::Rectangle,
-            3 => state.active_tool == ToolKind::Circle,
-            4 => state.active_tool == ToolKind::RoundedRect,
-            5 => state.active_tool == ToolKind::Line,
-            6 => state.active_tool == ToolKind::Pencil,
-            7 => state.active_tool == ToolKind::Highlight,
-            8 => state.active_tool == ToolKind::Spotlight,
-            9 => state.active_tool == ToolKind::Text,
-            10 => state.active_tool == ToolKind::Pixelate,
-            11 => state.active_tool == ToolKind::StepMarker,
-            12 => state.active_tool == ToolKind::Eyedropper,
-            13 => state.active_tool == ToolKind::Measurement,
-            14..=18 => {
-                let idx = i - 14;
-                idx < presets.len() && state.current_color == presets[idx]
-            }
+        let is_active = match def.action {
+            ButtonAction::Tool(kind) => state.active_tool == kind,
+            ButtonAction::Color(idx) => idx < presets.len() && state.current_color == presets[idx],
             _ => false,
         };
 
@@ -618,30 +580,7 @@ fn render_toolbar(state: &mut OverlayState, selection: &Selection, pixmap: &mut 
         }
 
         // --- SVG icon rendering for tool buttons and action buttons ---
-        let icon_name = match i {
-            0 => Some("select"),
-            1 => Some("arrow"),
-            2 => Some("rectangle"),
-            3 => Some("circle"),
-            4 => Some("rounded-rect"),
-            5 => Some("line"),
-            6 => Some("pencil"),
-            7 => Some("highlight"),
-            8 => Some("spotlight"),
-            9 => Some("text"),
-            10 => Some("pixelate"),
-            11 => Some("step-marker"),
-            12 => Some("eyedropper"),
-            13 => Some("measurement"),
-            19 => Some("ocr"),
-            20 => Some("upload"),
-            21 => Some("pin"),
-            22 => Some("copy"),
-            23 => Some("save"),
-            _ => None,
-        };
-
-        if let Some(name) = icon_name {
+        if let Some(name) = def.icon {
             let icon_size = (bw - 12.0).max(12.0) as u32;
             let color_hex = if is_active { "#cdd6f4" } else { "#a6adc8" };
             if let Some(icon_pixmap) = state.icon_cache.get_or_render(name, icon_size, color_hex) {
@@ -651,50 +590,45 @@ fn render_toolbar(state: &mut OverlayState, selection: &Selection, pixmap: &mut 
             }
         }
 
-        if let 14..=18 = i {
-            {
-                // Color swatch: rounded filled rect with border
-                let idx = i - 14;
-                if idx < SWATCH_COLORS.len() {
-                    let (r, g, b) = SWATCH_COLORS[idx];
-                    let inset = 6.0;
-                    if let Some(swatch_path) = rounded_rect_path(
-                        bx + inset,
-                        by + inset,
-                        bw - inset * 2.0,
-                        bh - inset * 2.0,
-                        3.0,
-                    ) {
-                        // Fill with color
-                        let mut paint = Paint::default();
-                        paint.set_color(tiny_skia::Color::from_rgba(r, g, b, 1.0).unwrap());
-                        paint.anti_alias = true;
-                        pixmap.fill_path(
-                            &swatch_path,
-                            &paint,
-                            tiny_skia::FillRule::Winding,
-                            Transform::identity(),
-                            None,
-                        );
-                        // Border (darker for light colors, lighter for dark)
-                        let border_alpha = if r + g + b > 2.0 { 0.3 } else { 0.5 };
-                        let mut border = Paint::default();
-                        border.set_color(
-                            tiny_skia::Color::from_rgba(1.0, 1.0, 1.0, border_alpha).unwrap(),
-                        );
-                        border.anti_alias = true;
-                        let stroke = Stroke {
-                            width: 1.0,
-                            ..Stroke::default()
-                        };
-                        pixmap.stroke_path(
-                            &swatch_path,
-                            &border,
-                            &stroke,
-                            Transform::identity(),
-                            None,
-                        );
-                    }
+        if let ButtonAction::Color(idx) = def.action {
+            // Color swatch: rounded filled rect with border
+            if let Some(c) = presets.get(idx) {
+                let (r, g, b) = (c.r, c.g, c.b);
+                let inset = 6.0;
+                if let Some(swatch_path) = rounded_rect_path(
+                    bx + inset,
+                    by + inset,
+                    bw - inset * 2.0,
+                    bh - inset * 2.0,
+                    3.0,
+                ) {
+                    // Fill with color
+                    let mut paint = Paint::default();
+                    paint.set_color(
+                        tiny_skia::Color::from_rgba(r, g, b, 1.0)
+                            .unwrap_or(tiny_skia::Color::WHITE),
+                    );
+                    paint.anti_alias = true;
+                    pixmap.fill_path(
+                        &swatch_path,
+                        &paint,
+                        tiny_skia::FillRule::Winding,
+                        Transform::identity(),
+                        None,
+                    );
+                    // Border (darker for light colors, lighter for dark)
+                    let border_alpha = if r + g + b > 2.0 { 0.3 } else { 0.5 };
+                    let mut border = Paint::default();
+                    border.set_color(
+                        tiny_skia::Color::from_rgba(1.0, 1.0, 1.0, border_alpha)
+                            .unwrap_or(tiny_skia::Color::WHITE),
+                    );
+                    border.anti_alias = true;
+                    let stroke = Stroke {
+                        width: 1.0,
+                        ..Stroke::default()
+                    };
+                    pixmap.stroke_path(&swatch_path, &border, &stroke, Transform::identity(), None);
                 }
             }
         }
@@ -704,44 +638,13 @@ fn render_toolbar(state: &mut OverlayState, selection: &Selection, pixmap: &mut 
     let mouse = crate::geometry::Point::new(state.last_mouse_pos.x, state.last_mouse_pos.y);
     if let Some(vis_idx) = toolbar.hit_test_dynamic(mouse, visible_count) {
         let btn_idx = visible[vis_idx];
-        let label = match btn_idx {
-            0 => "Select (V)",
-            1 => "Arrow (A)",
-            2 => "Rectangle (R)",
-            3 => "Circle (C)",
-            4 => "Rounded Rect (O)",
-            5 => "Line (L)",
-            6 => "Pencil (P)",
-            7 => "Highlight (H)",
-            8 => "Spotlight (F)",
-            9 => "Text (T)",
-            10 => "Pixelate (B)",
-            11 => "Step Marker (N)",
-            12 => "Eyedropper (I)",
-            13 => "Measurement (M)",
-            14 => "Red #f38ba8 (right-click: pick)",
-            15 => "Blue #89b4fa (right-click: pick)",
-            16 => "Green #a6e3a1 (right-click: pick)",
-            17 => "Yellow #f9e2af (right-click: pick)",
-            18 => "Mauve #cba6f7 (right-click: pick)",
-            19 => "OCR (Extract Text)",
-            20 => "Upload (Imgur)",
-            21 => "Pin",
-            22 => "Copy (Ctrl+C)",
-            23 => "Save (Ctrl+S)",
-            _ => "",
-        };
+        let label = BUTTONS.get(btn_idx).map(|d| d.tooltip).unwrap_or("");
 
         if !label.is_empty() {
             let (btn_x, _btn_y, btn_w, _btn_h) = toolbar.button_rect(vis_idx);
 
-            // Measure text width
-            let font = &*crate::font::FONT;
             let font_size = 12.0;
-            let text_width: f32 = label
-                .chars()
-                .map(|ch| font.rasterize(ch, font_size).0.advance_width)
-                .sum();
+            let text_width = measure_text_width(label, font_size);
 
             let pad_x = 6.0;
             let pad_y = 4.0;
@@ -804,17 +707,10 @@ fn render_size_label(
     screen_w: f32,
     screen_h: f32,
 ) {
-    let font = &*crate::font::FONT;
     let font_size = 14.0;
 
     let label = format!("{} \u{00D7} {}", sel.width as u32, sel.height as u32);
-
-    // Measure text width
-    let mut text_width: f32 = 0.0;
-    for ch in label.chars() {
-        let (metrics, _) = font.rasterize(ch, font_size);
-        text_width += metrics.advance_width;
-    }
+    let text_width = measure_text_width(&label, font_size);
 
     let pad_x: f32 = 8.0;
     let pad_y: f32 = 4.0;
@@ -857,59 +753,9 @@ fn render_size_label(
         );
     }
 
-    // Render text on top
-    let line_metrics = font.horizontal_line_metrics(font_size);
-    let ascent = line_metrics.map(|m| m.ascent).unwrap_or(font_size * 0.8);
-    let text_x = pill_x + pad_x;
-    let baseline_y = pill_y + pad_y + ascent;
-
-    let pw = pixmap.width() as i32;
-    let ph = pixmap.height() as i32;
-    let pixels = pixmap.data_mut();
-
-    let mut cursor_x = text_x;
-    for ch in label.chars() {
-        let (metrics, bitmap) = font.rasterize(ch, font_size);
-        if metrics.width == 0 || metrics.height == 0 {
-            cursor_x += metrics.advance_width;
-            continue;
-        }
-
-        let glyph_x = cursor_x as i32 + metrics.xmin;
-        let glyph_y = baseline_y as i32 - metrics.height as i32 - metrics.ymin;
-
-        for row in 0..metrics.height {
-            for col in 0..metrics.width {
-                let px_x = glyph_x + col as i32;
-                let px_y = glyph_y + row as i32;
-                if px_x < 0 || px_x >= pw || px_y < 0 || px_y >= ph {
-                    continue;
-                }
-
-                let coverage = bitmap[row * metrics.width + col] as f32 / 255.0;
-                if coverage < 1.0 / 255.0 {
-                    continue;
-                }
-
-                let idx = ((px_y as u32 * pw as u32 + px_x as u32) * 4) as usize;
-
-                // White text, alpha-blended
-                let src_val = (255.0 * coverage) as u8;
-                let src_a = coverage;
-                let inv_a = 1.0 - src_a;
-
-                let dst_r = pixels[idx];
-                let dst_g = pixels[idx + 1];
-                let dst_b = pixels[idx + 2];
-                let dst_a = pixels[idx + 3];
-
-                pixels[idx] = (src_val as f32 + dst_r as f32 * inv_a).min(255.0) as u8;
-                pixels[idx + 1] = (src_val as f32 + dst_g as f32 * inv_a).min(255.0) as u8;
-                pixels[idx + 2] = (src_val as f32 + dst_b as f32 * inv_a).min(255.0) as u8;
-                pixels[idx + 3] = (src_a * 255.0 + dst_a as f32 * inv_a).min(255.0) as u8;
-            }
-        }
-
-        cursor_x += metrics.advance_width;
-    }
+    // Render text on top via the shared single-line text path
+    use crate::tools::render_text_annotation;
+    let text_pos = crate::geometry::Point::new(pill_x + pad_x, pill_y + pad_y);
+    let white = crate::geometry::Color::new(1.0, 1.0, 1.0, 1.0);
+    render_text_annotation(pixmap, &text_pos, &label, &white, font_size);
 }

@@ -3,53 +3,146 @@ use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use tracing;
 
+// Per-field serde defaults so a config missing any single key (e.g. hand-edited
+// or written by an older version) still parses instead of resetting everything.
+
+fn default_true() -> bool {
+    true
+}
+fn d_color() -> String {
+    "red".into()
+}
+fn d_thickness() -> f32 {
+    3.0
+}
+fn d_capture() -> String {
+    "Ctrl+Shift+S".into()
+}
+
+macro_rules! key_default {
+    ($fn_name:ident, $key:expr) => {
+        fn $fn_name() -> String {
+            $key.into()
+        }
+    };
+}
+key_default!(k_select, "v");
+key_default!(k_arrow, "a");
+key_default!(k_rectangle, "r");
+key_default!(k_circle, "c");
+key_default!(k_rounded_rect, "o");
+key_default!(k_line, "l");
+key_default!(k_pencil, "p");
+key_default!(k_highlight, "h");
+key_default!(k_spotlight, "f");
+key_default!(k_text, "t");
+key_default!(k_pixelate, "b");
+key_default!(k_step_marker, "n");
+key_default!(k_eyedropper, "i");
+key_default!(k_measurement, "m");
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct GeneralConfig {
+    #[serde(default = "d_color")]
     pub default_color: String,
+    #[serde(default = "d_thickness")]
     pub default_thickness: f32,
+    #[serde(default)]
     pub save_directory: String,
     #[serde(default)]
     pub imgur_client_id: String,
+    /// When false, captures are not saved to the recent-captures history.
+    #[serde(default = "default_true")]
+    pub history_enabled: bool,
+}
+
+impl Default for GeneralConfig {
+    fn default() -> Self {
+        Self {
+            default_color: d_color(),
+            default_thickness: d_thickness(),
+            save_directory: String::new(),
+            imgur_client_id: String::new(),
+            history_enabled: true,
+        }
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct HotkeyConfig {
+    #[serde(default = "d_capture")]
     pub capture: String,
+}
+
+impl Default for HotkeyConfig {
+    fn default() -> Self {
+        Self {
+            capture: d_capture(),
+        }
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ShortcutsConfig {
+    #[serde(default = "k_select")]
     pub select: String,
+    #[serde(default = "k_arrow")]
     pub arrow: String,
+    #[serde(default = "k_rectangle")]
     pub rectangle: String,
+    #[serde(default = "k_circle")]
     pub circle: String,
+    #[serde(default = "k_rounded_rect")]
     pub rounded_rect: String,
+    #[serde(default = "k_line")]
     pub line: String,
+    #[serde(default = "k_pencil")]
     pub pencil: String,
+    #[serde(default = "k_highlight")]
     pub highlight: String,
+    #[serde(default = "k_spotlight")]
     pub spotlight: String,
+    #[serde(default = "k_text")]
     pub text: String,
+    #[serde(default = "k_pixelate")]
     pub pixelate: String,
+    #[serde(default = "k_step_marker")]
     pub step_marker: String,
+    #[serde(default = "k_eyedropper")]
     pub eyedropper: String,
+    #[serde(default = "k_measurement")]
     pub measurement: String,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ToolbarConfig {
+    #[serde(default = "default_true")]
     pub select: bool,
+    #[serde(default = "default_true")]
     pub arrow: bool,
+    #[serde(default = "default_true")]
     pub rectangle: bool,
+    #[serde(default = "default_true")]
     pub circle: bool,
+    #[serde(default = "default_true")]
     pub rounded_rect: bool,
+    #[serde(default = "default_true")]
     pub line: bool,
+    #[serde(default = "default_true")]
     pub pencil: bool,
+    #[serde(default = "default_true")]
     pub highlight: bool,
+    #[serde(default = "default_true")]
     pub spotlight: bool,
+    #[serde(default = "default_true")]
     pub text: bool,
+    #[serde(default = "default_true")]
     pub pixelate: bool,
+    #[serde(default = "default_true")]
     pub step_marker: bool,
+    #[serde(default = "default_true")]
     pub eyedropper: bool,
+    #[serde(default = "default_true")]
     pub measurement: bool,
 }
 
@@ -222,32 +315,16 @@ impl ShortcutsConfig {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Default)]
 pub struct Config {
+    #[serde(default)]
     pub general: GeneralConfig,
+    #[serde(default)]
     pub hotkey: HotkeyConfig,
     #[serde(default)]
     pub shortcuts: ShortcutsConfig,
     #[serde(default)]
     pub toolbar: ToolbarConfig,
-}
-
-impl Default for Config {
-    fn default() -> Self {
-        Self {
-            general: GeneralConfig {
-                default_color: "red".to_string(),
-                default_thickness: 3.0,
-                save_directory: String::new(),
-                imgur_client_id: String::new(),
-            },
-            hotkey: HotkeyConfig {
-                capture: "Ctrl+Shift+S".to_string(),
-            },
-            shortcuts: ShortcutsConfig::default(),
-            toolbar: ToolbarConfig::default(),
-        }
-    }
 }
 
 impl Config {
@@ -278,7 +355,15 @@ impl Config {
             Ok(contents) => match toml::from_str::<Config>(&contents) {
                 Ok(cfg) => cfg,
                 Err(e) => {
+                    // The file is left untouched so the user can fix it.
+                    // Surface the error visibly — tracing output is invisible
+                    // in a windows_subsystem = "windows" build.
                     tracing::warn!("Failed to parse config, using defaults: {e}");
+                    let _ = notify_rust::Notification::new()
+                        .summary("HydroShot")
+                        .body(&format!("config.toml has an error and was ignored:\n{e}"))
+                        .timeout(5000)
+                        .show();
                     Self::default()
                 }
             },
@@ -312,7 +397,8 @@ impl Config {
         Ok(())
     }
 
-    /// Parse the `default_color` string into a `Color`, falling back to red.
+    /// Parse the `default_color` string into a `Color`. Accepts the named
+    /// Catppuccin colors or a hex value like `#89b4fa`. Falls back to red.
     pub fn default_color(&self) -> Color {
         match self.general.default_color.as_str() {
             "red" => Color::red(),
@@ -326,6 +412,9 @@ impl Config {
             "sky" => Color::sky(),
             "lavender" => Color::lavender(),
             other => {
+                if let Some(c) = parse_hex_color(other) {
+                    return c;
+                }
                 tracing::warn!("Unknown color '{other}', falling back to red");
                 Color::red()
             }
@@ -349,4 +438,21 @@ impl Config {
             None
         }
     }
+}
+
+/// Parse a `#rrggbb` hex string into a Color.
+pub fn parse_hex_color(s: &str) -> Option<Color> {
+    let hex = s.strip_prefix('#')?;
+    if hex.len() != 6 || !hex.chars().all(|c| c.is_ascii_hexdigit()) {
+        return None;
+    }
+    let r = u8::from_str_radix(&hex[0..2], 16).ok()?;
+    let g = u8::from_str_radix(&hex[2..4], 16).ok()?;
+    let b = u8::from_str_radix(&hex[4..6], 16).ok()?;
+    Some(Color::new(
+        r as f32 / 255.0,
+        g as f32 / 255.0,
+        b as f32 / 255.0,
+        1.0,
+    ))
 }

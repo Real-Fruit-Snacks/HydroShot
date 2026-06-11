@@ -240,6 +240,7 @@ fn rounded_rect(x: f32, y: f32, w: f32, h: f32, r: f32) -> Option<tiny_skia::Pat
 }
 
 // ─── Helper: L-shaped bracket ───
+#[allow(clippy::too_many_arguments)]
 fn draw_bracket(
     pixmap: &mut tiny_skia::Pixmap,
     x: f32,

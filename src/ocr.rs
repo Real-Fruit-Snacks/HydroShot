@@ -76,9 +76,18 @@ $stream = Await ($file.OpenAsync([Windows.Storage.FileAccessMode]::Read)) ([Wind
 $decoder = Await ([Windows.Graphics.Imaging.BitmapDecoder]::CreateAsync($stream)) ([Windows.Graphics.Imaging.BitmapDecoder])
 $bitmap = Await ($decoder.GetSoftwareBitmapAsync()) ([Windows.Graphics.Imaging.SoftwareBitmap])
 $engine = [Windows.Media.Ocr.OcrEngine]::TryCreateFromUserProfileLanguages()
+if ($null -eq $engine) {
+    Write-Error 'No OCR-capable language pack is installed. Add one under Windows Settings > Time & Language > Language.'
+    exit 1
+}
 $result = Await ($engine.RecognizeAsync($bitmap)) ([Windows.Media.Ocr.OcrResult])
 Write-Output $result.Text
 "#;
+
+    // CREATE_NO_WINDOW: without it a console window flashes on screen, since
+    // the GUI-subsystem app has no console for powershell.exe to inherit.
+    use std::os::windows::process::CommandExt;
+    const CREATE_NO_WINDOW: u32 = 0x08000000;
 
     let output = std::process::Command::new("powershell")
         .env("HYDROSHOT_OCR_PATH", image_path)
@@ -90,6 +99,7 @@ Write-Output $result.Text
             "-Command",
             script,
         ])
+        .creation_flags(CREATE_NO_WINDOW)
         .output()
         .map_err(|e| format!("Failed to run PowerShell: {e}"))?;
 

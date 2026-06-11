@@ -426,10 +426,13 @@ pub fn render_annotation(
             let rect = tiny_skia::Rect::from_xywh(top_left.x, top_left.y, size.width, size.height);
             if let Some(rect) = rect {
                 let mut paint = Paint::default();
-                let c = tiny_skia::Color::from_rgba(color.r, color.g, color.b, 0.3);
+                let c = tiny_skia::Color::from_rgba(color.r, color.g, color.b, 1.0);
                 if let Some(c) = c {
                     paint.set_color(c);
                 }
+                // Multiply blend like a real highlighter: dark ink stays readable,
+                // light backgrounds take the tint, and overlaps don't wash out.
+                paint.blend_mode = tiny_skia::BlendMode::Multiply;
                 paint.anti_alias = false;
                 pixmap.fill_rect(rect, &paint, Transform::identity(), None);
             }
@@ -555,10 +558,12 @@ pub fn render_annotation(
             };
 
             let bs = (*block_size).max(1) as usize;
+            // Shrink the region when the origin is clamped to 0 so the pixelated
+            // area matches the annotation rect instead of extending right/down.
+            let rw = (size.width + top_left.x.min(0.0)).max(0.0) as usize;
+            let rh = (size.height + top_left.y.min(0.0)).max(0.0) as usize;
             let rx = top_left.x.max(0.0) as usize;
             let ry = top_left.y.max(0.0) as usize;
-            let rw = size.width as usize;
-            let rh = size.height as usize;
             let pm_w = pixmap.width() as usize;
             let pm_h = pixmap.height() as usize;
 
@@ -593,10 +598,14 @@ pub fn render_annotation(
                         }
                     }
 
-                    if count > 0 {
-                        let avg_r = (sum_r / count) as f32 / 255.0;
-                        let avg_g = (sum_g / count) as f32 / 255.0;
-                        let avg_b = (sum_b / count) as f32 / 255.0;
+                    if let (Some(avg_r), Some(avg_g), Some(avg_b)) = (
+                        sum_r.checked_div(count),
+                        sum_g.checked_div(count),
+                        sum_b.checked_div(count),
+                    ) {
+                        let avg_r = avg_r as f32 / 255.0;
+                        let avg_g = avg_g as f32 / 255.0;
+                        let avg_b = avg_b as f32 / 255.0;
 
                         // Clamp fill rect to pixmap bounds
                         let fill_x = px_x.min(pm_w);
@@ -780,6 +789,23 @@ pub fn render_annotation(
     }
 }
 
+/// Measure the rendered width of single-line text using the embedded font's
+/// advance metrics — matches exactly what `render_text_annotation` produces.
+pub fn measure_text_width(text: &str, font_size: f32) -> f32 {
+    let font = &*crate::font::FONT;
+    text.chars()
+        .map(|ch| font.metrics(ch, font_size).advance_width)
+        .sum()
+}
+
+/// Measure the line height (ascent + descent) of the embedded font at a size.
+pub fn measure_text_height(font_size: f32) -> f32 {
+    let font = &*crate::font::FONT;
+    font.horizontal_line_metrics(font_size)
+        .map(|m| m.ascent + m.descent.abs())
+        .unwrap_or(font_size)
+}
+
 /// Rasterize a single-line text annotation onto a pixmap using fontdue.
 pub fn render_text_annotation(
     pixmap: &mut Pixmap,
@@ -961,13 +987,12 @@ pub fn hit_test_annotation(annotation: &Annotation, point: &Point, threshold: f3
             text,
             ..
         } => {
-            let char_width = font_size * 0.6;
-            let text_width = char_width * text.chars().count() as f32;
-            let text_height = *font_size;
-            point.x >= position.x
-                && point.x <= position.x + text_width
-                && point.y >= position.y
-                && point.y <= position.y + text_height
+            let text_width = measure_text_width(text, *font_size);
+            let text_height = measure_text_height(*font_size);
+            point.x >= position.x - threshold
+                && point.x <= position.x + text_width + threshold
+                && point.y >= position.y - threshold
+                && point.y <= position.y + text_height + threshold
         }
         Annotation::StepMarker { position, size, .. } => {
             let dx = point.x - position.x;
@@ -1213,9 +1238,9 @@ pub fn annotation_bounding_box(annotation: &Annotation) -> Option<(f32, f32, f32
             text,
             ..
         } => {
-            let char_width = font_size * 0.6;
-            let text_width = char_width * text.chars().count() as f32;
-            Some((position.x, position.y, text_width, *font_size))
+            let text_width = measure_text_width(text, *font_size);
+            let text_height = measure_text_height(*font_size);
+            Some((position.x, position.y, text_width, text_height))
         }
         Annotation::StepMarker { position, size, .. } => {
             let half = size / 2.0;
