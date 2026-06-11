@@ -76,7 +76,7 @@ fn capture_root() -> Result<CapturedScreen, CaptureError> {
     let data = reply.data;
     // Rows are padded to the server's scanline pad. At 32 bpp the stride is
     // normally exactly w*4, but derive it from the buffer to be safe.
-    let stride = if h > 0 { data.len() / h } else { 0 };
+    let stride = data.len().checked_div(h).unwrap_or(0);
     if stride < w * 4 {
         return Err(CaptureError::PlatformError(
             "GetImage returned an undersized buffer".to_string(),
