@@ -25,7 +25,7 @@ Configuration lives in TOML. Tray-resident with a global hotkey (`Ctrl+Shift+S` 
 |------------|-----------------------------------------------------------------------------|
 | BINARY     | **Pure Rust** · winit (windowing) · tiny-skia (2D) · resvg (icons)          |
 | CAPTURE    | Region · window · delay (3/5/10 s) · multi-monitor                          |
-| BACKENDS   | **Windows** · **X11** · **Wayland** (window capture: X11 only)              |
+| BACKENDS   | **Windows** (GDI) · **X11** (experimental) · Wayland not yet · window capture: Windows only |
 | TOOLS      | **14 annotation tools** · select · arrow · rect · circle · rounded rect · line · pencil · highlight · spotlight · text · pixelate · step markers · eyedropper · measurement |
 | EXPORT     | Clipboard · file · pin-to-screen · anonymous Imgur upload · OCR (Windows)   |
 | THEME      | **Catppuccin Mocha** · 5 palette presets · native color picker · Lucide icons |
@@ -70,9 +70,11 @@ CLI usage:
 ```bash
 hydroshot capture --clipboard           # capture and copy
 hydroshot capture --save output.png     # capture and save
-hydroshot capture --delay 3             # 3-second countdown
-hydroshot capture --delay 5 --clipboard
+hydroshot capture --delay 3             # wait 3 seconds, then open interactive capture
+hydroshot capture --delay 5 --clipboard # wait, then capture straight to clipboard
 ```
+
+(The on-screen countdown window is shown for tray-menu delays; CLI `--delay` waits silently.)
 
 ---
 
@@ -90,23 +92,25 @@ ANNOTATION TOOLS
 KEYBOARD
 
   Ctrl+Shift+S            Start capture (global hotkey)
-  Enter                   Crop selection
+  Enter                   Copy selection to clipboard (annotations included)
   Ctrl+C                  Copy to clipboard
   Ctrl+S                  Save to file
   Ctrl+Z                  Undo annotation
   Ctrl+Shift+Z            Redo annotation
+  Ctrl+V                  Paste clipboard text (while typing a Text annotation)
   Escape                  Cancel capture
   Scroll wheel            Adjust tool size
 
 CONFIG (TOML)
 
   [general]
-  default_color = "blue"
+  default_color = "blue"        # named Catppuccin color or "#rrggbb"
   default_thickness = 3.0
   save_directory = ""
+  history_enabled = true        # recent-captures history (toggle in Settings)
 
   [hotkey]
-  capture = "Ctrl+Shift+S"
+  capture = "Ctrl+Shift+S"      # rebind in Settings > General
 
   [shortcuts]
   arrow = "a"     rectangle = "r"     circle = "c"
@@ -163,10 +167,10 @@ src/
 
 | Capability | Windows | Linux |
 |------------|---------|-------|
-| Region Capture | Full | Full (X11 + Wayland) |
-| Window Capture | Full | X11 only |
+| Region Capture | Full | X11 / XWayland (experimental) |
+| Window Capture | Full | Not supported |
 | Delay Capture | Full | Full |
-| Multi-Monitor | Full | Full |
+| Multi-Monitor | Full | X11 virtual screen |
 | 14 Annotation Tools | Full | Full |
 | Clipboard Copy | Full | Full |
 | System Tray | Full | Full |
@@ -174,6 +178,7 @@ src/
 | OCR | Windows OCR API | Not supported |
 | Imgur Upload | Full | Full |
 | Auto-Start | Registry | XDG autostart |
+| Native Wayland Capture | — | Not yet (planned via xdg-desktop-portal) |
 
 ---
 

@@ -60,6 +60,50 @@ fn serialize_roundtrip_via_toml() {
 }
 
 #[test]
+fn partial_config_parses_with_defaults() {
+    // A config missing keys/sections (older version, hand-edited) must parse
+    // instead of silently resetting everything to defaults.
+    let toml_src = r#"
+[general]
+default_color = "blue"
+
+[shortcuts]
+arrow = "q"
+"#;
+    let cfg: Config = toml::from_str(toml_src).expect("partial config should parse");
+    assert_eq!(cfg.general.default_color, "blue");
+    assert_eq!(cfg.general.default_thickness, 3.0); // default filled in
+    assert!(cfg.general.history_enabled); // default filled in
+    assert_eq!(cfg.hotkey.capture, "Ctrl+Shift+S"); // whole section defaulted
+    assert_eq!(cfg.shortcuts.arrow, "q");
+    assert_eq!(cfg.shortcuts.rectangle, "r"); // sibling key defaulted
+    assert!(cfg.toolbar.select);
+}
+
+#[test]
+fn empty_config_parses_as_defaults() {
+    let cfg: Config = toml::from_str("").expect("empty config should parse");
+    assert_eq!(cfg.general.default_color, "red");
+    assert_eq!(cfg.hotkey.capture, "Ctrl+Shift+S");
+}
+
+#[test]
+fn parse_color_hex() {
+    let mut cfg = Config::default();
+    cfg.general.default_color = "#89b4fa".to_string();
+    let c = cfg.default_color();
+    assert!((c.r - 0x89 as f32 / 255.0).abs() < 0.001);
+    assert!((c.g - 0xb4 as f32 / 255.0).abs() < 0.001);
+    assert!((c.b - 0xfa as f32 / 255.0).abs() < 0.001);
+
+    // Malformed hex falls back to red
+    cfg.general.default_color = "#zzzzzz".to_string();
+    assert_eq!(cfg.default_color(), Color::red());
+    cfg.general.default_color = "#fff".to_string();
+    assert_eq!(cfg.default_color(), Color::red());
+}
+
+#[test]
 fn thickness_clamping() {
     let mut cfg = Config::default();
 

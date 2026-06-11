@@ -80,7 +80,9 @@ fn set_enabled_windows(enabled: bool, exe_path: Option<&std::path::Path>) -> Res
 
         if enabled {
             let exe = exe_path.ok_or("exe_path required when enabling autostart")?;
-            let exe_str = exe.to_string_lossy();
+            // Quote the path: unquoted Run values containing spaces are parsed
+            // CreateProcess-style (tries "C:\Users\First.exe" first).
+            let exe_str = format!("\"{}\"", exe.to_string_lossy());
             let value: Vec<u16> = exe_str.encode_utf16().chain(std::iter::once(0)).collect();
             let bytes: &[u8] =
                 std::slice::from_raw_parts(value.as_ptr() as *const u8, value.len() * 2);
@@ -111,8 +113,9 @@ fn set_enabled_linux(enabled: bool, exe_path: Option<&std::path::Path>) -> Resul
         if let Some(parent) = path.parent() {
             std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
         }
+        // Quote Exec so paths containing spaces survive desktop-entry parsing.
         let content = format!(
-            "[Desktop Entry]\nType=Application\nName=HydroShot\nExec={}\nX-GNOME-Autostart-enabled=true\n",
+            "[Desktop Entry]\nType=Application\nName=HydroShot\nExec=\"{}\"\nX-GNOME-Autostart-enabled=true\n",
             exe.display()
         );
         std::fs::write(&path, content).map_err(|e| e.to_string())

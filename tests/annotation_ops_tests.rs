@@ -396,9 +396,25 @@ fn bbox_text() {
     let (x, y, w, h) = annotation_bounding_box(&ann).unwrap();
     assert_eq!(x, 30.0);
     assert_eq!(y, 30.0);
-    // "Hello" = 5 chars, char_width = 20*0.6=12, total 60
-    assert!((w - 60.0).abs() < 0.01);
-    assert_eq!(h, 20.0);
+    // Width/height come from real font metrics and match the renderer exactly.
+    let expected_w = hydroshot::tools::measure_text_width("Hello", 20.0);
+    let expected_h = hydroshot::tools::measure_text_height(20.0);
+    assert!((w - expected_w).abs() < 0.01);
+    assert!((h - expected_h).abs() < 0.01);
+    // Sanity: a 5-character word at 20px lands in a plausible range.
+    assert!(w > 20.0 && w < 120.0, "unexpected text width: {w}");
+    assert!((18.0..=30.0).contains(&h), "unexpected text height: {h}");
+}
+
+#[test]
+fn measure_text_width_grows_with_content() {
+    use hydroshot::tools::measure_text_width;
+    let short = measure_text_width("Hi", 20.0);
+    let long = measure_text_width("Hi there, world", 20.0);
+    assert!(short > 0.0);
+    assert!(long > short);
+    // Bigger font, wider text
+    assert!(measure_text_width("Hi", 40.0) > short);
 }
 
 #[test]

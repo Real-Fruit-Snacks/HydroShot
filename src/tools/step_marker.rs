@@ -33,6 +33,11 @@ impl StepMarkerTool {
     pub fn reset_counter(&mut self) {
         self.next_number = 1;
     }
+
+    /// Set the next number directly — used to resync after undo/redo/delete.
+    pub fn set_next_number(&mut self, n: u32) {
+        self.next_number = n.max(1);
+    }
 }
 
 impl AnnotationTool for StepMarkerTool {

@@ -90,6 +90,74 @@ fn crop_and_flatten_crops_correctly() {
 }
 
 #[test]
+fn flatten_non_opaque_input_does_not_panic_and_premultiplies() {
+    // Regression test: pixels with component > alpha used to hit
+    // `PremultipliedColorU8::from_rgba(...).unwrap()` and panic. A capture
+    // backend returning alpha=0 (e.g. GDI's undefined alpha byte) must not
+    // crash every export path.
+    let width: u32 = 2;
+    let height: u32 = 2;
+    #[rustfmt::skip]
+    let pixels: Vec<u8> = vec![
+        200, 100, 50, 0,   // component > alpha: the old code panicked here
+        200, 100, 50, 128, // semi-transparent
+        255, 255, 255, 255, // opaque white
+        0, 0, 0, 255,      // opaque black
+    ];
+
+    let result = flatten_annotations(&pixels, width, height, &[]);
+    assert_eq!(result.len(), pixels.len());
+
+    // Alpha=0 pixel comes back fully transparent
+    assert_eq!(result[3], 0);
+    // Semi-transparent pixel: premultiply + demultiply round-trips approximately
+    assert_eq!(result[7], 128);
+    assert!((result[4] as i32 - 200).abs() <= 2, "r was {}", result[4]);
+    // Opaque pixels survive exactly
+    assert_eq!(&result[8..12], &[255, 255, 255, 255]);
+    assert_eq!(&result[12..16], &[0, 0, 0, 255]);
+}
+
+#[test]
+fn pixelate_clamped_origin_does_not_extend_region() {
+    // A pixelate rect starting left of the canvas must not pixelate extra
+    // columns to the right of its true extent after clamping.
+    let width: u32 = 40;
+    let height: u32 = 20;
+    // Gradient so pixelation visibly changes values
+    let mut screenshot = Vec::with_capacity((width * height * 4) as usize);
+    for y in 0..height {
+        for x in 0..width {
+            screenshot.push((x * 6) as u8);
+            screenshot.push((y * 12) as u8);
+            screenshot.push(7);
+            screenshot.push(255);
+        }
+    }
+
+    // Extends from x=-10 to x=10: only columns 0..10 may change.
+    let ann = Annotation::Pixelate {
+        top_left: Point::new(-10.0, 0.0),
+        size: Size::new(20.0, 20.0),
+        block_size: 5,
+    };
+
+    let result = flatten_annotations(&screenshot, width, height, &[ann]);
+
+    // Columns >= 10 must be untouched
+    for y in 0..height as usize {
+        for x in 10..width as usize {
+            let i = (y * width as usize + x) * 4;
+            assert_eq!(
+                &result[i..i + 4],
+                &screenshot[i..i + 4],
+                "pixel ({x},{y}) outside the pixelate rect changed"
+            );
+        }
+    }
+}
+
+#[test]
 fn crop_and_flatten_offsets_annotations() {
     let width: u32 = 100;
     let height: u32 = 100;

@@ -156,15 +156,16 @@ pub fn blend_pixmap(
                 continue;
             }
 
-            // Standard alpha compositing (src is premultiplied from resvg)
+            // Standard alpha compositing (src is premultiplied from resvg).
+            // +127 rounds to nearest instead of truncating toward darker.
             let inv_sa = 255 - sa;
             for c in 0..3 {
                 let s = src_data[si + c] as u32;
                 let d = dst_data[di + c] as u32;
-                dst_data[di + c] = (s + (d * inv_sa) / 255).min(255) as u8;
+                dst_data[di + c] = (s + (d * inv_sa + 127) / 255).min(255) as u8;
             }
             let da = dst_data[di + 3] as u32;
-            dst_data[di + 3] = (sa + (da * inv_sa) / 255).min(255) as u8;
+            dst_data[di + 3] = (sa + (da * inv_sa + 127) / 255).min(255) as u8;
         }
     }
 }

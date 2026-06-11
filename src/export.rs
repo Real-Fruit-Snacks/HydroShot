@@ -25,18 +25,23 @@ pub fn flatten_annotations(
     }
 
     // Fast path: screenshots are fully opaque (a=255), so premultiplication is a
-    // no-op — we can bulk-copy instead of per-pixel conversion.
+    // no-op — we can copy components directly instead of multiplying per pixel.
     let all_opaque = pixels.chunks_exact(4).all(|px| px[3] == 255);
     let pm_pixels = pixmap.pixels_mut();
     if all_opaque {
         for (i, chunk) in pixels.chunks_exact(4).enumerate() {
-            pm_pixels[i] =
-                PremultipliedColorU8::from_rgba(chunk[0], chunk[1], chunk[2], 255).unwrap();
+            pm_pixels[i] = PremultipliedColorU8::from_rgba(chunk[0], chunk[1], chunk[2], 255)
+                .unwrap_or(PremultipliedColorU8::TRANSPARENT);
         }
     } else {
+        // Straight RGBA in — premultiply each component. The multiply guarantees
+        // component <= alpha, so from_rgba cannot fail here.
         for (i, chunk) in pixels.chunks_exact(4).enumerate() {
+            let a = chunk[3] as u16;
+            let pm = |c: u8| ((c as u16 * a + 127) / 255) as u8;
             pm_pixels[i] =
-                PremultipliedColorU8::from_rgba(chunk[0], chunk[1], chunk[2], chunk[3]).unwrap();
+                PremultipliedColorU8::from_rgba(pm(chunk[0]), pm(chunk[1]), pm(chunk[2]), chunk[3])
+                    .unwrap_or(PremultipliedColorU8::TRANSPARENT);
         }
     }
 
