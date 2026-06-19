@@ -21,53 +21,55 @@ No Electron, no browser engine — just `winit` for windowing and `tiny-skia` fo
 
 ---
 
-## §2 / Specs
+## Key Features
 
-| KEY        | VALUE                                                                       |
-|------------|-----------------------------------------------------------------------------|
-| BINARY     | **Pure Rust** · winit (windowing) · tiny-skia (2D) · resvg (icons)          |
-| CAPTURE    | Region · window · delay (3/5/10 s) · multi-monitor                          |
-| BACKENDS   | **Windows** (GDI) · **X11** (experimental) · Wayland not yet · window capture: Windows only |
-| TOOLS      | **14 annotation tools** · select · arrow · rect · circle · rounded rect · line · pencil · highlight · spotlight · text · pixelate · step markers · eyedropper · measurement |
-| EXPORT     | Clipboard · file · pin-to-screen · anonymous Imgur upload · OCR (Windows)   |
-| THEME      | **Catppuccin Mocha** · 5 palette presets · native color picker · Lucide icons |
-| CONFIG     | TOML · `%APPDATA%\hydroshot\config.toml` · `~/.config/hydroshot/config.toml` |
-| HOTKEY     | Global · `Ctrl+Shift+S` default · customizable                              |
-| STACK      | **Rust 1.80+** · Cargo · MIT licensed                                       |
-
-Architecture in §5 below.
+- **Native Binary:** Pure Rust utilizing `winit` for cross-platform native windowing and `tiny-skia` for lightning-fast 2D rendering. No web views.
+- **Versatile Capture Modes:** Region selection, full window capture, multi-monitor support, and delayed capture with 3/5/10-second intervals.
+- **14 Annotation Tools:** Select, arrow, rectangle, circle, rounded rect, line, pencil, highlight, spotlight, text, pixelate, step markers, eyedropper, and measurement tools.
+- **Advanced Exporting:** Save directly to file, copy to clipboard, upload anonymously to Imgur, pin captures to screen, or extract text via Windows OCR.
+- **Premium Aesthetics:** Fully themed with Catppuccin Mocha colors, including 5 palette presets, a native color picker, and Lucide icons.
+- **System Tray Integration:** Runs in the background with auto-start capabilities (Registry/XDG) and a global hotkey trigger.
+- **Command-Pattern Undo/Redo:** Non-destructive editing allows rolling back and re-applying annotations endlessly.
+- **Cross-Platform:** Available for Windows (GDI) and Linux (X11 experimental).
 
 ---
 
-## §3 / Quickstart
+## Getting Started / Installation
 
-### Pre-built binaries
+### Pre-built Binaries
 
 Download the latest release from the [Releases](https://github.com/Real-Fruit-Snacks/HydroShot/releases) page:
 
-| Platform | Format |
-|----------|--------|
-| Windows  | `.exe` portable · `.msi` installer |
-| Linux    | `hydroshot-linux` binary |
+- **Windows:** `.exe` portable or `.msi` installer
+- **Linux:** `hydroshot-linux` binary
 
-### Build from source
+### Build From Source
 
-Prerequisites: **Rust 1.80+**.
+**Prerequisites:** Rust 1.80+.
 
 ```bash
 git clone https://github.com/Real-Fruit-Snacks/HydroShot.git
 cd HydroShot
+
+# Build the release binary
 cargo build --release
-# → target/release/hydroshot(.exe)
+
+# The compiled binary will be located at:
+# -> target/release/hydroshot(.exe)
 ```
 
+**Development Commands:**
 ```bash
 cargo test                    # run tests
 cargo clippy                  # lint
 cargo fmt --check             # format check
 ```
 
-CLI usage:
+---
+
+## Usage
+
+### CLI Usage
 
 ```bash
 hydroshot capture --clipboard           # capture and copy
@@ -75,62 +77,41 @@ hydroshot capture --save output.png     # capture and save
 hydroshot capture --delay 3             # wait 3 seconds, then open interactive capture
 hydroshot capture --delay 5 --clipboard # wait, then capture straight to clipboard
 ```
+*(The on-screen countdown window is shown for tray-menu delays; CLI `--delay` waits silently.)*
 
-(The on-screen countdown window is shown for tray-menu delays; CLI `--delay` waits silently.)
+### Keyboard Shortcuts
 
----
+- `Ctrl+Shift+S`: Start capture (global hotkey)
+- `Enter`: Copy selection to clipboard (annotations included)
+- `Ctrl+C`: Copy to clipboard
+- `Ctrl+S`: Save to file
+- `Ctrl+Z`: Undo annotation
+- `Ctrl+Shift+Z`: Redo annotation
+- `Ctrl+V`: Paste clipboard text (while typing a Text annotation)
+- `Escape`: Cancel capture
+- `Scroll wheel`: Adjust tool size
 
-## §4 / Reference
+**Tool Shortcuts:**
+`V` (Select), `A` (Arrow), `R` (Rectangle), `C` (Circle), `O` (Rounded Rect), `L` (Line), `P` (Pencil), `H` (Highlight), `F` (Spotlight), `T` (Text), `B` (Pixelate), `N` (Step Markers), `I` (Eyedropper), `M` (Measurement).
 
-```
-ANNOTATION TOOLS
+### Configuration (TOML)
 
-  V   Select / Move        A   Arrow              R   Rectangle
-  C   Circle               O   Rounded Rect       L   Line
-  P   Pencil               H   Highlight          F   Spotlight
-  T   Text                 B   Pixelate           N   Step Markers
-  I   Eyedropper           M   Measurement
+HydroShot generates a config file at `%APPDATA%\hydroshot\config.toml` (Windows) or `~/.config/hydroshot/config.toml` (Linux).
 
-KEYBOARD
+```toml
+[general]
+default_color = "blue"        # named Catppuccin color or "#rrggbb"
+default_thickness = 3.0
+save_directory = ""
+history_enabled = true        # recent-captures history (toggle in Settings)
 
-  Ctrl+Shift+S            Start capture (global hotkey)
-  Enter                   Copy selection to clipboard (annotations included)
-  Ctrl+C                  Copy to clipboard
-  Ctrl+S                  Save to file
-  Ctrl+Z                  Undo annotation
-  Ctrl+Shift+Z            Redo annotation
-  Ctrl+V                  Paste clipboard text (while typing a Text annotation)
-  Escape                  Cancel capture
-  Scroll wheel            Adjust tool size
-
-CONFIG (TOML)
-
-  [general]
-  default_color = "blue"        # named Catppuccin color or "#rrggbb"
-  default_thickness = 3.0
-  save_directory = ""
-  history_enabled = true        # recent-captures history (toggle in Settings)
-
-  [hotkey]
-  capture = "Ctrl+Shift+S"      # rebind in Settings > General
-
-  [shortcuts]
-  arrow = "a"     rectangle = "r"     circle = "c"
-  text  = "t"     pixelate  = "b"
-
-EXPORT PATHS
-
-  Ctrl+C     Copy to clipboard
-  Ctrl+S     Save to file
-  Pin        Always-on-top floating window
-  Upload     Anonymous Imgur upload
-  OCR        Extract text (Windows OCR API)
-  History    Recent captures with thumbnails
+[hotkey]
+capture = "Ctrl+Shift+S"      # rebind in Settings > General
 ```
 
 ---
 
-## §5 / Architecture
+## Architecture / File Structure
 
 ```
 src/
@@ -151,37 +132,16 @@ src/
   tools/              14 annotation tool implementations
 ```
 
-| Layer        | Implementation                                                  |
-|--------------|-----------------------------------------------------------------|
-| **Window**   | winit · cross-platform native windowing                         |
-| **Render**   | tiny-skia · 2D vector + bitmap rendering                        |
-| **Icons**    | Lucide SVG rendered with resvg                                  |
-| **Capture**  | Per-platform backend (Windows / X11 / Wayland)                  |
-| **Overlay**  | Fullscreen dimming overlay · click-and-drag selection           |
-| **Tools**    | Command-pattern undo/redo · scroll-wheel sizing                 |
-| **Tray**     | Native system tray · auto-start on login (Registry / XDG)       |
-
 **Key patterns:** No browser engine, no Electron, no JavaScript runtime. The annotation surface is a `tiny-skia` canvas; every tool emits commands that the undo/redo stack composes. Capture backends are split per-platform so the rest of the codebase stays platform-agnostic.
 
 ---
 
-## §6 / Platform support
+## Contributing
 
-| Capability | Windows | Linux |
-|------------|---------|-------|
-| Region Capture | Full | X11 / XWayland (experimental) |
-| Window Capture | Full | Not supported |
-| Delay Capture | Full | Full |
-| Multi-Monitor | Full | X11 virtual screen |
-| 14 Annotation Tools | Full | Full |
-| Clipboard Copy | Full | Full |
-| System Tray | Full | Full |
-| Global Hotkey | Full | Full |
-| OCR | Windows OCR API | Not supported |
-| Imgur Upload | Full | Full |
-| Auto-Start | Registry | XDG autostart |
-| Native Wayland Capture | — | Not yet (planned via xdg-desktop-portal) |
+We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on how to help improve the project. Be sure to also review our [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
 
 ---
 
-[License: MIT](LICENSE) · Part of [Real-Fruit-Snacks](https://github.com/Real-Fruit-Snacks) — building offensive security tools, one wave at a time.
+## License
+
+This project is licensed under the [MIT License](LICENSE).
