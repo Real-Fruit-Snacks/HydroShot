@@ -1,0 +1,143 @@
+:root {
+    /* Catppuccin Mocha */
+    --bg: #11111b; /* Crust */
+    --text: #cdd6f4; /* Text */
+    --accent-1: #cba6f7; /* Mauve */
+    --accent-2: #89b4fa; /* Blue */
+    --accent-3: #a6e3a1; /* Green */
+    --overlay: #6c7086; /* Overlay0 */
+    
+    --font-mono: 'Space Mono', monospace;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    background-color: var(--bg);
+    color: var(--text);
+    font-family: var(--font-mono);
+    line-height: 1.6;
+    padding: 2rem;
+    font-size: 16px;
+    overflow-y: scroll;
+}
+
+.man-page {
+    max-width: 900px;
+    margin: 0 auto;
+}
+
+.man-header, .man-footer {
+    display: flex;
+    justify-content: space-between;
+    font-weight: bold;
+    margin-bottom: 3rem;
+    color: var(--overlay);
+}
+
+.man-footer {
+    margin-top: 4rem;
+    margin-bottom: 1rem;
+}
+
+.man-section {
+    margin-bottom: 2.5rem;
+}
+
+h2 {
+    font-size: 1.25rem;
+    font-weight: bold;
+    margin-bottom: 1.25rem;
+    color: var(--accent-1);
+    text-transform: uppercase;
+}
+
+.indent {
+    padding-left: 4rem;
+}
+
+p {
+    margin-bottom: 1.25rem;
+    text-align: justify;
+}
+
+strong {
+    font-weight: bold;
+    color: var(--text);
+}
+
+em {
+    font-style: italic;
+    color: var(--accent-2);
+}
+
+.options-list dt {
+    margin-top: 1.25rem;
+    margin-bottom: 0.25rem;
+}
+
+.options-list dd {
+    padding-left: 2rem;
+    margin-bottom: 1.25rem;
+    text-align: justify;
+}
+
+pre {
+    background-color: transparent; 
+    padding: 1rem 0;
+    overflow-x: auto;
+    color: var(--accent-3);
+}
+
+a {
+    color: var(--accent-2);
+    text-decoration: underline;
+    text-underline-offset: 4px;
+}
+
+a:hover {
+    color: var(--text);
+}
+
+.man-btn {
+    background-color: transparent;
+    color: var(--overlay);
+    border: 1px solid var(--overlay);
+    padding: 0.5rem 1rem;
+    font-family: var(--font-mono);
+    font-weight: bold;
+    cursor: pointer;
+    margin-top: 1rem;
+    transition: all 0.2s;
+    font-size: 0.9rem;
+}
+
+.man-btn:hover {
+    color: var(--bg);
+    background-color: var(--text);
+    border-color: var(--text);
+}
+
+.disclaimer p {
+    color: var(--overlay);
+    font-size: 0.9rem;
+}
+
+/* Custom minimal scrollbar */
+::-webkit-scrollbar { width: 8px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--overlay); }
+::-webkit-scrollbar-thumb:hover { background: var(--accent-1); }
+
+@media (max-width: 600px) {
+    .indent {
+        padding-left: 1rem;
+    }
+    body {
+        padding: 1.5rem;
+    }
+}

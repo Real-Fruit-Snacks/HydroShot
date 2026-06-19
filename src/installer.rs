@@ -1,0 +1,491 @@
+use std::path::PathBuf;
+
+/// Show a Windows message box (no-op on other platforms).
+#[cfg(target_os = "windows")]
+fn message_box(title: &str, msg: &str, error: bool) {
+    use windows::core::*;
+    use windows::Win32::UI::WindowsAndMessaging::*;
+
+    let wide_title: Vec<u16> = title.encode_utf16().chain(std::iter::once(0)).collect();
+    let wide_msg: Vec<u16> = msg.encode_utf16().chain(std::iter::once(0)).collect();
+    let flags = if error {
+        MB_OK | MB_ICONERROR
+    } else {
+        MB_OK | MB_ICONINFORMATION
+    };
+    unsafe {
+        let _ = MessageBoxW(
+            None,
+            PCWSTR(wide_msg.as_ptr()),
+            PCWSTR(wide_title.as_ptr()),
+            flags,
+        );
+    }
+}
+
+#[cfg(not(target_os = "windows"))]
+fn message_box(_title: &str, _msg: &str, _error: bool) {}
+
+/// Show an error message box (public so main.rs can use it for install/uninstall errors).
+pub fn show_error(msg: &str) {
+    eprintln!("{msg}");
+    message_box("HydroShot - Error", msg, true);
+}
+
+/// Return the install directory: %LocalAppData%\HydroShot
+fn install_dir() -> Result<PathBuf, String> {
+    dirs::data_local_dir()
+        .map(|d| d.join("HydroShot"))
+        .ok_or_else(|| "Could not determine LocalAppData directory".into())
+}
+
+/// Return the installed exe path
+fn installed_exe() -> Result<PathBuf, String> {
+    Ok(install_dir()?.join("hydroshot.exe"))
+}
+
+/// Return the Start Menu shortcut directory
+#[cfg(target_os = "windows")]
+fn start_menu_dir() -> Result<PathBuf, String> {
+    dirs::data_dir()
+        .map(|d| {
+            d.join("Microsoft")
+                .join("Windows")
+                .join("Start Menu")
+                .join("Programs")
+                .join("HydroShot")
+        })
+        .ok_or_else(|| "Could not determine Start Menu directory".into())
+}
+
+/// Returns true if the current exe is NOT running from the install location.
+///
+/// Always false on non-Windows platforms and in debug builds, so `cargo run`
+/// never triggers the self-installer on a development machine.
+pub fn needs_install() -> bool {
+    if cfg!(not(target_os = "windows")) || cfg!(debug_assertions) {
+        return false;
+    }
+    let Ok(current) = std::env::current_exe() else {
+        return false;
+    };
+    let Ok(dest) = installed_exe() else {
+        return false;
+    };
+    // Compare canonical paths — if they match, we're already installed.
+    // Strip \\?\ UNC prefix that canonicalize adds on Windows for consistent comparison.
+    let canonical_current = std::fs::canonicalize(&current).unwrap_or(current);
+    let canonical_dest = std::fs::canonicalize(&dest).unwrap_or(dest);
+    let strip_prefix = |p: PathBuf| -> PathBuf {
+        let s = p.to_string_lossy();
+        match s.strip_prefix(r"\\?\") {
+            Some(stripped) => PathBuf::from(stripped),
+            None => p,
+        }
+    };
+    strip_prefix(canonical_current) != strip_prefix(canonical_dest)
+}
+
+/// Ask the user whether HydroShot should install itself. Returns true only on
+/// an explicit Yes — never installs silently.
+#[cfg(target_os = "windows")]
+pub fn confirm_install() -> bool {
+    use windows::core::*;
+    use windows::Win32::UI::WindowsAndMessaging::*;
+
+    let msg = "Install HydroShot?\n\n\
+               This copies the app to %LocalAppData%\\HydroShot, adds a Start Menu \
+               shortcut, adds it to your PATH, and starts it on login.\n\n\
+               Choose No to run it from the current location instead.";
+    let wide_title: Vec<u16> = "HydroShot Setup"
+        .encode_utf16()
+        .chain(std::iter::once(0))
+        .collect();
+    let wide_msg: Vec<u16> = msg.encode_utf16().chain(std::iter::once(0)).collect();
+    unsafe {
+        MessageBoxW(
+            None,
+            PCWSTR(wide_msg.as_ptr()),
+            PCWSTR(wide_title.as_ptr()),
+            MB_YESNO | MB_ICONQUESTION,
+        ) == IDYES
+    }
+}
+
+#[cfg(not(target_os = "windows"))]
+pub fn confirm_install() -> bool {
+    false
+}
+
+/// Terminate any running HydroShot processes so we can overwrite the installed exe.
+#[cfg(target_os = "windows")]
+fn kill_running_instances() {
+    use std::os::windows::process::CommandExt;
+    const CREATE_NO_WINDOW: u32 = 0x08000000;
+    let current_pid = std::process::id();
+    let _ = std::process::Command::new("taskkill")
+        .args([
+            "/F",
+            "/IM",
+            "hydroshot.exe",
+            "/FI",
+            &format!("PID ne {}", current_pid),
+        ])
+        .creation_flags(CREATE_NO_WINDOW)
+        .output();
+    // Give the OS a moment to release file locks
+    std::thread::sleep(std::time::Duration::from_millis(500));
+}
+
+pub fn install() -> Result<(), String> {
+    #[cfg(not(target_os = "windows"))]
+    {
+        Err(
+            "Self-install is only supported on Windows. On Linux, copy the binary \
+             somewhere on your PATH (e.g. ~/.local/bin) instead."
+                .to_string(),
+        )
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        let source =
+            std::env::current_exe().map_err(|e| format!("Failed to find current exe: {e}"))?;
+        let dest_dir = install_dir()?;
+        let dest_exe = installed_exe()?;
+
+        // Don't re-install over ourselves
+        if let Ok(canonical_src) = std::fs::canonicalize(&source) {
+            if let Ok(canonical_dst) = std::fs::canonicalize(&dest_exe) {
+                if canonical_src == canonical_dst {
+                    println!("HydroShot is already installed at {}", dest_exe.display());
+                    return Ok(());
+                }
+            }
+        }
+
+        // 1. Copy exe to install dir
+        std::fs::create_dir_all(&dest_dir)
+            .map_err(|e| format!("Failed to create {}: {e}", dest_dir.display()))?;
+
+        // Kill any running HydroShot so we can overwrite the exe
+        kill_running_instances();
+
+        // Try direct copy first; if it fails (exe still locked), rename old and copy
+        if std::fs::copy(&source, &dest_exe).is_err() {
+            let old = dest_dir.join("hydroshot.old.exe");
+            let _ = std::fs::remove_file(&old);
+            if dest_exe.exists() {
+                std::fs::rename(&dest_exe, &old)
+                    .map_err(|e| format!("Failed to replace running exe: {e}"))?;
+            }
+            std::fs::copy(&source, &dest_exe).map_err(|e| format!("Failed to copy exe: {e}"))?;
+            // Clean up old exe (schedule for reboot if still locked)
+            if std::fs::remove_file(&old).is_err() {
+                schedule_delete_on_reboot(&old);
+            }
+        }
+        println!("Installed to {}", dest_exe.display());
+
+        // 2. Create Start Menu shortcut via PowerShell
+        create_shortcut(&dest_exe)?;
+
+        // 3. Add to user PATH via registry
+        add_to_path(&dest_dir)?;
+
+        // 4. Register autostart (use the *installed* path, not current_exe)
+        crate::autostart::set_enabled_for(true, Some(&dest_exe))
+            .unwrap_or_else(|e| eprintln!("Warning: could not set autostart: {e}"));
+
+        let msg = format!(
+            "HydroShot installed successfully!\n\n\
+             Location:   {}\n\
+             Start Menu: shortcut created\n\
+             PATH:       added (restart terminal to use 'hydroshot' command)\n\
+             Autostart:  enabled",
+            dest_exe.display()
+        );
+        println!("{msg}");
+        message_box("HydroShot", &msg, false);
+
+        // 5. Launch the installed copy
+        let _ = std::process::Command::new(&dest_exe).spawn();
+
+        Ok(())
+    }
+}
+
+pub fn uninstall() -> Result<(), String> {
+    #[cfg(not(target_os = "windows"))]
+    {
+        Err("Self-uninstall is only supported on Windows.".to_string())
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        // 1. Remove autostart
+        let _ = crate::autostart::set_enabled(false);
+
+        // 2. Remove from PATH
+        let dest_dir = install_dir()?;
+        remove_from_path(&dest_dir)?;
+
+        // 3. Remove Start Menu shortcut
+        let sm_dir = start_menu_dir()?;
+        if sm_dir.exists() {
+            let _ = std::fs::remove_dir_all(&sm_dir);
+            println!("Removed Start Menu shortcut");
+        }
+
+        // 4. Remove installed exe (schedule deletion since we may be running from it)
+        let dest_exe = installed_exe()?;
+        if dest_exe.exists() {
+            // Try direct removal first; if it fails (file in use), schedule for next reboot
+            if std::fs::remove_file(&dest_exe).is_err() {
+                schedule_delete_on_reboot(&dest_exe);
+                println!("Exe is in use; will be removed on next reboot");
+            } else {
+                println!("Removed {}", dest_exe.display());
+            }
+        }
+
+        // Try to remove the install dir if empty
+        let _ = std::fs::remove_dir(&dest_dir);
+
+        let msg = "HydroShot has been uninstalled.";
+        println!("{msg}");
+        message_box("HydroShot", msg, false);
+        Ok(())
+    }
+}
+
+#[cfg(target_os = "windows")]
+fn create_shortcut(exe_path: &std::path::Path) -> Result<(), String> {
+    use std::os::windows::process::CommandExt;
+    const CREATE_NO_WINDOW: u32 = 0x08000000;
+
+    let sm_dir = start_menu_dir()?;
+    std::fs::create_dir_all(&sm_dir)
+        .map_err(|e| format!("Failed to create Start Menu dir: {e}"))?;
+
+    let lnk_path = sm_dir.join("HydroShot.lnk");
+    let exe_str = exe_path.to_string_lossy();
+    let lnk_str = lnk_path.to_string_lossy();
+
+    let ps_script = format!(
+        "$ws = New-Object -ComObject WScript.Shell; \
+         $s = $ws.CreateShortcut('{}'); \
+         $s.TargetPath = '{}'; \
+         $s.Description = 'Screenshot capture and annotation tool'; \
+         $s.Save()",
+        lnk_str.replace('\'', "''"),
+        exe_str.replace('\'', "''"),
+    );
+
+    // Use -EncodedCommand to avoid shell metacharacter injection
+    let utf16: Vec<u8> = ps_script
+        .encode_utf16()
+        .flat_map(|c| c.to_le_bytes())
+        .collect();
+    let encoded = {
+        use base64::Engine;
+        base64::engine::general_purpose::STANDARD.encode(&utf16)
+    };
+
+    let status = std::process::Command::new("powershell")
+        .args(["-NoProfile", "-EncodedCommand", &encoded])
+        .creation_flags(CREATE_NO_WINDOW)
+        .output()
+        .map_err(|e| format!("Failed to run PowerShell: {e}"))?;
+
+    if status.status.success() {
+        println!("Created Start Menu shortcut");
+        Ok(())
+    } else {
+        let stderr = String::from_utf8_lossy(&status.stderr);
+        Err(format!("Failed to create shortcut: {stderr}"))
+    }
+}
+
+#[cfg(target_os = "windows")]
+fn add_to_path(dir: &std::path::Path) -> Result<(), String> {
+    use windows::core::*;
+    use windows::Win32::System::Registry::*;
+
+    let dir_str = dir.to_string_lossy();
+
+    unsafe {
+        let mut key = HKEY::default();
+        let path = w!("Environment");
+        RegOpenKeyExW(HKEY_CURRENT_USER, path, 0, KEY_READ | KEY_WRITE, &mut key)
+            .ok()
+            .map_err(|e| format!("Failed to open Environment key: {e}"))?;
+
+        // Read current PATH
+        let mut buf_size: u32 = 0;
+        let name = w!("Path");
+        let _ = RegQueryValueExW(key, name, None, None, None, Some(&mut buf_size));
+
+        let current_path = if buf_size > 0 {
+            let mut buf = vec![0u8; buf_size as usize];
+            if let Err(e) = RegQueryValueExW(
+                key,
+                name,
+                None,
+                None,
+                Some(buf.as_mut_ptr()),
+                Some(&mut buf_size),
+            )
+            .ok()
+            {
+                let _ = RegCloseKey(key);
+                return Err(format!("Failed to read PATH: {e}"));
+            }
+            let wide: &[u16] =
+                std::slice::from_raw_parts(buf.as_ptr() as *const u16, buf.len() / 2);
+            String::from_utf16_lossy(wide)
+                .trim_end_matches('\0')
+                .to_string()
+        } else {
+            String::new()
+        };
+
+        // Check if already in PATH
+        let lower_dir = dir_str.to_lowercase();
+        if current_path
+            .split(';')
+            .any(|p| p.trim().to_lowercase() == lower_dir)
+        {
+            let _ = RegCloseKey(key);
+            return Ok(());
+        }
+
+        // Append
+        let new_path = if current_path.is_empty() {
+            dir_str.to_string()
+        } else {
+            format!("{};{}", current_path.trim_end_matches(';'), dir_str)
+        };
+
+        let value: Vec<u16> = new_path.encode_utf16().chain(std::iter::once(0)).collect();
+        let bytes: &[u8] = std::slice::from_raw_parts(value.as_ptr() as *const u8, value.len() * 2);
+        if let Err(e) = RegSetValueExW(key, name, 0, REG_EXPAND_SZ, Some(bytes)).ok() {
+            let _ = RegCloseKey(key);
+            return Err(format!("Failed to update PATH: {e}"));
+        }
+
+        let _ = RegCloseKey(key);
+
+        // Broadcast WM_SETTINGCHANGE so Explorer picks up the new PATH
+        use windows::Win32::Foundation::{LPARAM, WPARAM};
+        use windows::Win32::UI::WindowsAndMessaging::*;
+        let param = w!("Environment");
+        let _ = PostMessageW(
+            HWND_BROADCAST,
+            WM_SETTINGCHANGE,
+            WPARAM(0),
+            LPARAM(param.as_ptr() as isize),
+        );
+    }
+
+    println!("Added to user PATH");
+    Ok(())
+}
+
+#[cfg(target_os = "windows")]
+fn remove_from_path(dir: &std::path::Path) -> Result<(), String> {
+    use windows::core::*;
+    use windows::Win32::System::Registry::*;
+
+    let dir_str = dir.to_string_lossy().to_lowercase();
+
+    unsafe {
+        let mut key = HKEY::default();
+        let path = w!("Environment");
+        RegOpenKeyExW(HKEY_CURRENT_USER, path, 0, KEY_READ | KEY_WRITE, &mut key)
+            .ok()
+            .map_err(|e| format!("Failed to open Environment key: {e}"))?;
+
+        let mut buf_size: u32 = 0;
+        let name = w!("Path");
+        let _ = RegQueryValueExW(key, name, None, None, None, Some(&mut buf_size));
+
+        if buf_size == 0 {
+            let _ = RegCloseKey(key);
+            return Ok(());
+        }
+
+        let mut buf = vec![0u8; buf_size as usize];
+        if let Err(e) = RegQueryValueExW(
+            key,
+            name,
+            None,
+            None,
+            Some(buf.as_mut_ptr()),
+            Some(&mut buf_size),
+        )
+        .ok()
+        {
+            let _ = RegCloseKey(key);
+            return Err(format!("Failed to read PATH: {e}"));
+        }
+
+        let wide: &[u16] = std::slice::from_raw_parts(buf.as_ptr() as *const u16, buf.len() / 2);
+        let current = String::from_utf16_lossy(wide)
+            .trim_end_matches('\0')
+            .to_string();
+
+        let new_path: Vec<&str> = current
+            .split(';')
+            .filter(|p| !p.trim().is_empty() && p.trim().to_lowercase() != dir_str)
+            .collect();
+        let new_path = new_path.join(";");
+
+        let value: Vec<u16> = new_path.encode_utf16().chain(std::iter::once(0)).collect();
+        let bytes: &[u8] = std::slice::from_raw_parts(value.as_ptr() as *const u8, value.len() * 2);
+        if let Err(e) = RegSetValueExW(key, name, 0, REG_EXPAND_SZ, Some(bytes)).ok() {
+            let _ = RegCloseKey(key);
+            return Err(format!("Failed to update PATH: {e}"));
+        }
+
+        let _ = RegCloseKey(key);
+
+        use windows::Win32::Foundation::{LPARAM, WPARAM};
+        use windows::Win32::UI::WindowsAndMessaging::*;
+        let param = w!("Environment");
+        let _ = PostMessageW(
+            HWND_BROADCAST,
+            WM_SETTINGCHANGE,
+            WPARAM(0),
+            LPARAM(param.as_ptr() as isize),
+        );
+    }
+
+    println!("Removed from user PATH");
+    Ok(())
+}
+
+#[cfg(target_os = "windows")]
+fn schedule_delete_on_reboot(path: &std::path::Path) {
+    use windows::core::*;
+    use windows::Win32::Storage::FileSystem::*;
+
+    let wide: Vec<u16> = path
+        .to_string_lossy()
+        .encode_utf16()
+        .chain(std::iter::once(0))
+        .collect();
+    unsafe {
+        let result = MoveFileExW(
+            PCWSTR(wide.as_ptr()),
+            PCWSTR::null(),
+            MOVEFILE_DELAY_UNTIL_REBOOT,
+        );
+        if result.is_err() {
+            eprintln!(
+                "Warning: could not schedule {} for deletion on reboot (requires admin)",
+                path.display()
+            );
+        }
+    }
+}

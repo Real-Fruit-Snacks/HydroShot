@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>hydroshot(1) - Linux manual page</title>
+    <meta name="description" content="Man page for hydroshot, a native screenshot and annotation tool.">
+    <!-- Minimalist Monospace -->
+    <link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400;1,700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="icon" type="image/png" href="icon_256.png">
+</head>
+<body>
+    <div class="man-page">
+        <header class="man-header">
+            <span class="left">HYDROSHOT(1)</span>
+            <span class="center">User Commands</span>
+            <span class="right">HYDROSHOT(1)</span>
+        </header>
+
+        <section class="man-section">
+            <h2>NAME</h2>
+            <p class="indent"><strong>hydroshot</strong> - Fast, lightweight screenshot capture and annotation tool built with Rust.</p>
+        </section>
+
+        <section class="man-section">
+            <h2>SYNOPSIS</h2>
+            <p class="indent"><strong>hydroshot</strong> [<strong>--region</strong> | <strong>--window</strong>] [<strong>--delay</strong> <em>SECONDS</em>]</p>
+        </section>
+
+        <section class="man-section">
+            <h2>DESCRIPTION</h2>
+            <p class="indent">
+                <strong>hydroshot</strong> is a native screenshot tool in pure Rust. It features region capture by drag, window capture by click, timed capture with 3/5/10-second countdown, multi-monitor coverage with a fullscreen overlay that dims inactive areas. Captured shots flow into an annotation surface with 14 tools backed by command-pattern undo/redo. Pin captures as always-on-top reference windows; copy to clipboard, save to file, upload anonymously to Imgur, or extract text via the Windows OCR API.
+            </p>
+            <p class="indent">
+                No Electron, no browser engine — just <code>winit</code> for windowing and <code>tiny-skia</code> for 2D drawing. Configuration lives in TOML. Tray-resident with a global hotkey (<code>Ctrl+Shift+S</code> by default).
+            </p>
+        </section>
+
+        <section class="man-section">
+            <h2>OPTIONS</h2>
+            <dl class="indent options-list">
+                <dt><strong>-r</strong>, <strong>--region</strong></dt>
+                <dd>Start in region selection mode (default).</dd>
+                
+                <dt><strong>-w</strong>, <strong>--window</strong></dt>
+                <dd>Start in window selection mode.</dd>
+                
+                <dt><strong>-d</strong>, <strong>--delay</strong> <em>SECONDS</em></dt>
+                <dd>Delay the capture by the specified number of seconds.</dd>
+            </dl>
+        </section>
+
+        <section class="man-section">
+            <h2>EXAMPLES</h2>
+            <div class="indent">
+                <p>To clone the repository and build the binary:</p>
+                <pre><code>git clone https://github.com/Real-Fruit-Snacks/HydroShot.git
+cd HydroShot
+cargo build --release</code></pre>
+                <button class="man-btn copy-btn" data-clipboard="git clone https://github.com/Real-Fruit-Snacks/HydroShot.git">COPY CLONE COMMAND</button>
+            </div>
+        </section>
+
+        <section class="man-section">
+            <h2>AUTHOR</h2>
+            <p class="indent">Written by Real-Fruit-Snacks.</p>
+        </section>
+
+        <section class="man-section">
+            <h2>SEE ALSO</h2>
+            <p class="indent">
+                <a href="https://github.com/Real-Fruit-Snacks/HydroShot" target="_blank">Source Repository</a>, 
+                <a href="https://github.com/Real-Fruit-Snacks/HydroShot/releases" target="_blank">Releases</a>,
+                <a href="https://github.com/Real-Fruit-Snacks/HydroShot/issues" target="_blank">Issue Tracker</a>
+            </p>
+        </section>
+
+        <footer class="man-footer">
+            <span class="left">hydroshot 1.0.0</span>
+            <span class="center">2026-06-19</span>
+            <span class="right">HYDROSHOT(1)</span>
+        </footer>
+    </div>
+    
+    <script src="script.js"></script>
+</body>
+</html>

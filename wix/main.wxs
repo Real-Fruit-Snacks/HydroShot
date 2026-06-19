@@ -1,0 +1,111 @@
+<?xml version='1.0' encoding='windows-1252'?>
+<!--
+  HydroShot Windows Installer
+  Built with cargo-wix: https://github.com/volks73/cargo-wix
+-->
+<Wix xmlns='http://schemas.microsoft.com/wix/2006/wi'>
+
+    <Product
+        Id='*'
+        Name='HydroShot'
+        UpgradeCode='39077896-4755-47D8-BB2E-9B5198782CAB'
+        Manufacturer='Matt'
+        Language='1033'
+        Codepage='1252'
+        Version='$(var.Version)'>
+
+        <Package Id='*'
+            Keywords='Installer'
+            Description='HydroShot - Screenshot capture and annotation tool'
+            Manufacturer='Matt'
+            InstallerVersion='450'
+            Languages='1033'
+            Compressed='yes'
+            InstallScope='perUser'
+            SummaryCodepage='1252' />
+
+        <MajorUpgrade
+            Schedule='afterInstallInitialize'
+            DowngradeErrorMessage='A newer version of [ProductName] is already installed. Setup will now exit.' />
+
+        <MediaTemplate EmbedCab='yes' />
+
+        <Icon Id='ProductICO' SourceFile='assets\icon.ico' />
+        <Property Id='ARPPRODUCTICON' Value='ProductICO' />
+        <Property Id='ARPHELPLINK' Value='https://github.com/Real-Fruit-Snacks/HydroShot' />
+
+        <Directory Id='TARGETDIR' Name='SourceDir'>
+            <Directory Id='LocalAppDataFolder'>
+                <Directory Id='APPLICATIONFOLDER' Name='HydroShot'>
+                    <Component Id='binary0' Guid='B1C2D3E4-F5A6-7890-BCDE-F12345678901'>
+                        <File Id='exe0'
+                            Name='hydroshot.exe'
+                            DiskId='1'
+                            Source='target\release\hydroshot.exe' />
+                        <RegistryValue Root='HKCU' Key='Software\HydroShot' Name='exe_installed' Type='integer' Value='1' KeyPath='yes' />
+                        <RemoveFolder Id='CleanUpAppFolder' Directory='APPLICATIONFOLDER' On='uninstall' />
+                        <!-- Clean up autostart entry that may have been set by the self-installer -->
+                        <RemoveRegistryValue Root='HKCU' Key='Software\Microsoft\Windows\CurrentVersion\Run' Name='HydroShot' />
+                        <RemoveRegistryKey Root='HKCU' Key='Software\HydroShot' Action='removeOnUninstall' />
+                    </Component>
+
+                    <!--
+                      Known trade-off: the Windows Installer Environment table writes the
+                      per-user Path value back as REG_SZ. If the user's Path was
+                      REG_EXPAND_SZ with %VAR% entries, those entries stop expanding.
+                      There is no clean WiX v3 way to append to PATH while preserving the
+                      value type; the self-installer (installer.rs) preserves it correctly.
+                    -->
+                    <Component Id='Path' Guid='D2E3F4A5-B6C7-8901-DEFA-345678901234'>
+                        <Environment
+                            Id='PATH'
+                            Name='PATH'
+                            Value='[APPLICATIONFOLDER]'
+                            Permanent='no'
+                            Part='last'
+                            Action='set'
+                            System='no' />
+                        <RegistryValue Root='HKCU' Key='Software\HydroShot' Name='path_set' Type='integer' Value='1' KeyPath='yes' />
+                    </Component>
+                </Directory>
+            </Directory>
+
+            <Directory Id='ProgramMenuFolder'>
+                <Directory Id='ApplicationProgramsFolder' Name='HydroShot' />
+            </Directory>
+        </Directory>
+
+        <DirectoryRef Id='ApplicationProgramsFolder'>
+            <Component Id='StartMenuShortcut' Guid='C2D3E4F5-A6B7-8901-CDEF-234567890123'>
+                <Shortcut Id='ApplicationStartMenuShortcut'
+                    Name='HydroShot'
+                    Description='Screenshot capture and annotation tool'
+                    Target='[APPLICATIONFOLDER]hydroshot.exe'
+                    WorkingDirectory='APPLICATIONFOLDER'
+                    Icon='ProductICO' />
+                <RemoveFolder Id='CleanUpShortCut' Directory='ApplicationProgramsFolder' On='uninstall' />
+                <RegistryValue Root='HKCU' Key='Software\HydroShot' Name='installed' Type='integer' Value='1' KeyPath='yes' />
+            </Component>
+        </DirectoryRef>
+
+        <Feature Id='Binaries' Title='Application' Description='Installs the HydroShot executable.' Level='1' AllowAdvertise='no' Display='expand'>
+            <ComponentRef Id='binary0' />
+        </Feature>
+
+        <Feature Id='Environment' Title='PATH Environment Variable' Description='Add the install location to the PATH system environment variable.' Level='1' Absent='allow'>
+            <ComponentRef Id='Path' />
+        </Feature>
+
+        <Feature Id='StartMenu' Title='Start Menu Shortcut' Description='Add a shortcut to HydroShot in the Start Menu.' Level='1' Absent='allow'>
+            <ComponentRef Id='StartMenuShortcut' />
+        </Feature>
+
+        <SetProperty Id='ARPINSTALLLOCATION' Value='[APPLICATIONFOLDER]' After='CostFinalize' />
+
+        <UI>
+            <UIRef Id='WixUI_Minimal' />
+        </UI>
+
+        <WixVariable Id='WixUILicenseRtf' Value='wix\License.rtf' />
+    </Product>
+</Wix>
