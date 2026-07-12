@@ -405,7 +405,7 @@ impl Config {
     }
 
     /// Parse the `default_color` string into a `Color`. Accepts the named
-    /// Catppuccin colors or a hex value like `#89b4fa`. Falls back to red.
+    /// Terminal Workbench colors or a hex value like `#89b4fa`. Falls back to red.
     pub fn default_color(&self) -> Color {
         match self.general.default_color.as_str() {
             "red" => Color::red(),
