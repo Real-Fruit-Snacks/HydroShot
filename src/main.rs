@@ -68,6 +68,7 @@ const FRAME_INTERVAL: Duration = Duration::from_millis(16); // ~60fps cap
 
 impl App {
     fn new(config: Config) -> Self {
+        hydroshot::theme::set_mode(config.theme_mode());
         Self {
             config,
             state: AppState::Idle,
@@ -295,6 +296,7 @@ impl App {
         if apply {
             let old_binding = self.config.hotkey.capture.clone();
             self.config = Config::load(); // reload saved config
+            hydroshot::theme::set_mode(self.config.theme_mode());
             if self.config.hotkey.capture != old_binding && !self.cli_only {
                 self.register_hotkey_with_fallback();
             }
