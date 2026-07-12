@@ -15,6 +15,9 @@ fn d_color() -> String {
 fn d_thickness() -> f32 {
     3.0
 }
+fn d_theme() -> String {
+    "dark".into()
+}
 fn d_capture() -> String {
     "Ctrl+Shift+S".into()
 }
@@ -54,6 +57,9 @@ pub struct GeneralConfig {
     /// When false, captures are not saved to the recent-captures history.
     #[serde(default = "default_true")]
     pub history_enabled: bool,
+    /// UI theme: "dark" or "light".
+    #[serde(default = "d_theme")]
+    pub theme: String,
 }
 
 impl Default for GeneralConfig {
@@ -64,6 +70,7 @@ impl Default for GeneralConfig {
             save_directory: String::new(),
             imgur_client_id: String::new(),
             history_enabled: true,
+            theme: d_theme(),
         }
     }
 }
@@ -418,6 +425,15 @@ impl Config {
                 tracing::warn!("Unknown color '{other}', falling back to red");
                 Color::red()
             }
+        }
+    }
+
+    /// Resolve the configured theme into a `ThemeMode` (unknown → dark).
+    pub fn theme_mode(&self) -> crate::theme::ThemeMode {
+        if self.general.theme.eq_ignore_ascii_case("light") {
+            crate::theme::ThemeMode::Light
+        } else {
+            crate::theme::ThemeMode::Dark
         }
     }
 

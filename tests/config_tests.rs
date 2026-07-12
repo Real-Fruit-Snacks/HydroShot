@@ -116,3 +116,19 @@ fn thickness_clamping() {
     cfg.general.default_thickness = 10.0;
     assert_eq!(cfg.clamped_thickness(), 10.0);
 }
+
+#[test]
+fn theme_defaults_to_dark() {
+    let cfg = hydroshot::config::Config::default();
+    assert_eq!(cfg.general.theme, "dark");
+    assert_eq!(cfg.theme_mode(), hydroshot::theme::ThemeMode::Dark);
+}
+
+#[test]
+fn theme_mode_parses_light_case_insensitively() {
+    let mut cfg = hydroshot::config::Config::default();
+    cfg.general.theme = "Light".to_string();
+    assert_eq!(cfg.theme_mode(), hydroshot::theme::ThemeMode::Light);
+    cfg.general.theme = "garbage".to_string();
+    assert_eq!(cfg.theme_mode(), hydroshot::theme::ThemeMode::Dark);
+}
