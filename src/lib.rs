@@ -18,6 +18,7 @@ pub mod pin;
 pub mod renderer;
 pub mod settings_ui;
 pub mod state;
+pub mod theme;
 pub mod tools;
 pub mod tray;
 pub mod upload;
