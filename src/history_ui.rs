@@ -21,7 +21,6 @@ const PADDING: f32 = 16.0;
 const GAP: f32 = 12.0;
 const HEADER_H: f32 = 44.0;
 
-
 /// A loaded thumbnail: path, RGBA pixels, width, height.
 struct Thumbnail {
     path: PathBuf,
@@ -114,7 +113,14 @@ impl HistoryWindow {
         };
 
         // Background
-        fill_rect_rgb(&mut pixmap, 0.0, 0.0, WIN_W as f32, WIN_H as f32, crate::theme::bg_1());
+        fill_rect_rgb(
+            &mut pixmap,
+            0.0,
+            0.0,
+            WIN_W as f32,
+            WIN_H as f32,
+            crate::theme::bg_1(),
+        );
 
         if self.thumbnails.is_empty() {
             draw_label(
@@ -181,7 +187,14 @@ impl HistoryWindow {
         }
 
         // Header drawn last so scrolled thumbnails never overlap it
-        fill_rect_rgb(&mut pixmap, 0.0, 0.0, WIN_W as f32, HEADER_H - 3.0, crate::theme::bg_1());
+        fill_rect_rgb(
+            &mut pixmap,
+            0.0,
+            0.0,
+            WIN_W as f32,
+            HEADER_H - 3.0,
+            crate::theme::bg_1(),
+        );
         draw_label(
             &mut pixmap,
             PADDING,
@@ -202,7 +215,11 @@ impl HistoryWindow {
         // Clear All button
         if !self.thumbnails.is_empty() {
             let (cx, cy, cw, ch) = self.clear_rect;
-            let bg = if self.hover_clear { crate::theme::bg_4() } else { crate::theme::bg_3() };
+            let bg = if self.hover_clear {
+                crate::theme::bg_4()
+            } else {
+                crate::theme::bg_3()
+            };
             fill_rect_rgb(&mut pixmap, cx, cy, cw, ch, bg);
             let label = "Clear All";
             let tw = measure_text_width(label, 12.0);

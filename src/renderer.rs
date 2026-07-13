@@ -584,7 +584,11 @@ fn render_toolbar(state: &mut OverlayState, selection: &Selection, pixmap: &mut 
             let icon_size = (bw - 12.0).max(12.0) as u32;
             let active_hex = crate::theme::hex(crate::theme::text_normal());
             let inactive_hex = crate::theme::hex(crate::theme::text_muted());
-            let color_hex = if is_active { active_hex.as_str() } else { inactive_hex.as_str() };
+            let color_hex = if is_active {
+                active_hex.as_str()
+            } else {
+                inactive_hex.as_str()
+            };
             if let Some(icon_pixmap) = state.icon_cache.get_or_render(name, icon_size, color_hex) {
                 let icon_x = (bx + (bw - icon_size as f32) / 2.0) as i32;
                 let icon_y = (by + (bh - icon_size as f32) / 2.0) as i32;
@@ -674,8 +678,7 @@ fn render_toolbar(state: &mut OverlayState, selection: &Selection, pixmap: &mut 
 
                 // Border
                 let mut border_paint = Paint::default();
-                border_paint
-                    .set_color(crate::theme::skia(crate::theme::text_normal(), 0.2));
+                border_paint.set_color(crate::theme::skia(crate::theme::text_normal(), 0.2));
                 border_paint.anti_alias = true;
                 let border_stroke = Stroke {
                     width: 0.5,
