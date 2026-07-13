@@ -2,6 +2,11 @@
 
 All notable changes to HydroShot will be documented in this file.
 
+## [1.1.2] - 2026-07-12
+
+### Changed
+- Attribution is now consistently **Real-Fruit-Snacks** across the LICENSE, the executable's embedded copyright and company name, the MSI installer's manufacturer and bundled license, and the crate metadata.
+
 ## [1.1.1] - 2026-07-12
 
 ### Changed
