@@ -1,13 +1,20 @@
 <div align="center">
 
-  # HydroShot
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/Real-Fruit-Snacks/HydroShot/main/docs/assets/cover-dark.svg" />
+    <img alt="HydroShot — a fast native screenshot and annotation tool" src="https://raw.githubusercontent.com/Real-Fruit-Snacks/HydroShot/main/docs/assets/cover-light.svg" width="820" />
+  </picture>
 
-  **Fast, lightweight screenshot capture and annotation tool built with Rust. Region selection, window capture, delay timer, 14 annotation tools, clipboard and file export, pin-to-screen, Imgur upload, OCR text extraction, and recent captures history. Catppuccin Mocha themed with customizable shortcuts and toolbar.**
+  <br/>
 
-  [![License: MIT](https://img.shields.io/badge/License-MIT-cba6f7.svg)](LICENSE)
-  [![Version](https://img.shields.io/badge/version-1.0.0-89b4fa)](https://github.com/Real-Fruit-Snacks/HydroShot/releases)
-  
-  [Website](https://real-fruit-snacks.github.io/HydroShot/) • [Report Issue](https://github.com/Real-Fruit-Snacks/HydroShot/issues)
+  **Fast, lightweight screenshot capture and annotation tool built in pure Rust — region and window capture, a delay timer, 14 annotation tools, clipboard and file export, pin-to-screen, Imgur upload, OCR text extraction, and a recent-captures history. Terminal Workbench themed, with mandatory dark + light modes and customizable shortcuts and toolbar.**
+
+  [![License: MIT](https://img.shields.io/badge/License-MIT-63f2ab.svg?style=flat-square)](LICENSE)
+  [![Latest release](https://img.shields.io/github/v/release/Real-Fruit-Snacks/HydroShot?color=6bdcff&label=release&style=flat-square)](https://github.com/Real-Fruit-Snacks/HydroShot/releases)
+  [![Theme: Terminal Workbench](https://img.shields.io/badge/theme-Terminal%20Workbench-f0c674?style=flat-square)](https://github.com/Real-Fruit-Snacks/terminal-workbench-design-system)
+  [![Modes: dark + light](https://img.shields.io/badge/modes-dark%20%2B%20light-63f2ab?style=flat-square)](https://real-fruit-snacks.github.io/HydroShot/)
+
+  [Website](https://real-fruit-snacks.github.io/HydroShot/) · [Releases](https://github.com/Real-Fruit-Snacks/HydroShot/releases) · [Report an issue](https://github.com/Real-Fruit-Snacks/HydroShot/issues)
 
 </div>
 
@@ -27,7 +34,7 @@ No Electron, no browser engine — just `winit` for windowing and `tiny-skia` fo
 - **Versatile Capture Modes:** Region selection, full window capture, multi-monitor support, and delayed capture with 3/5/10-second intervals.
 - **14 Annotation Tools:** Select, arrow, rectangle, circle, rounded rect, line, pencil, highlight, spotlight, text, pixelate, step markers, eyedropper, and measurement tools.
 - **Advanced Exporting:** Save directly to file, copy to clipboard, upload anonymously to Imgur, pin captures to screen, or extract text via Windows OCR.
-- **Premium Aesthetics:** Fully themed with Catppuccin Mocha colors, including 5 palette presets, a native color picker, and Lucide icons.
+- **Premium Aesthetics:** Themed with the [Terminal Workbench](https://github.com/Real-Fruit-Snacks/terminal-workbench-design-system) design system — calm graphite surfaces, restrained ANSI-style accents, and mandatory dark + light modes — including 5 palette presets, a native color picker, and Lucide icons.
 - **System Tray Integration:** Runs in the background with auto-start capabilities (Registry/XDG) and a global hotkey trigger.
 - **Command-Pattern Undo/Redo:** Non-destructive editing allows rolling back and re-applying annotations endlessly.
 - **Cross-Platform:** Available for Windows (GDI) and Linux (X11 experimental).
@@ -100,14 +107,21 @@ HydroShot generates a config file at `%APPDATA%\hydroshot\config.toml` (Windows)
 
 ```toml
 [general]
-default_color = "blue"        # named Catppuccin color or "#rrggbb"
+default_color = "blue"        # named Terminal Workbench color or "#rrggbb"
 default_thickness = 3.0
 save_directory = ""
 history_enabled = true        # recent-captures history (toggle in Settings)
+theme = "dark"                # "dark" or "light" (toggle in Settings > General)
 
 [hotkey]
 capture = "Ctrl+Shift+S"      # rebind in Settings > General
 ```
+
+---
+
+## Theming
+
+HydroShot uses the [Terminal Workbench](https://github.com/Real-Fruit-Snacks/terminal-workbench-design-system) design system across both the app and its [website](https://real-fruit-snacks.github.io/HydroShot/): calm graphite surfaces, quiet chrome, and restrained accents where color carries meaning. Both **dark and light** modes are supported everywhere — switch them from **Settings › General**, or set `theme` in `config.toml`. The five annotation presets (red, blue, green, yellow, mauve) map to the theme's semantic hues.
 
 ---
 
