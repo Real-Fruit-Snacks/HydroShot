@@ -2,6 +2,11 @@
 
 All notable changes to HydroShot will be documented in this file.
 
+## [1.1.1] - 2026-07-12
+
+### Changed
+- Rebuilt the project website on the Terminal Workbench product-page layout — fixed nav, a hero with a live capture-overlay mock, feature cards, a workflow guide, and install cards — so it matches the design system's other sites. Redrew the cover art in the calm, centered house style. The site remains fully self-hosted and offline (vendored fonts, no CDN). Documentation only; no application changes.
+
 ## [1.1.0] - 2026-07-12
 
 ### Added
