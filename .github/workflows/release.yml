@@ -56,10 +56,23 @@ jobs:
           chmod +x release/hydroshot
           tar -czf hydroshot-${{ github.ref_name }}-linux-x64.tar.gz -C release hydroshot
 
+      - name: Package website (self-contained offline hosting bundle)
+        run: |
+          mkdir -p bundle/docs
+          cp -r docs/. bundle/docs/
+          cp .gitlab-ci.yml bundle/
+          zip -r hydroshot-${{ github.ref_name }}-website.zip bundle
+        # The bundle holds the whole static site (HTML, CSS, vendored
+        # Terminal Workbench Mono fonts, SVGs) plus a GitLab Pages CI file,
+        # so it can be hosted anywhere — GitHub Pages, GitLab Pages, or an
+        # air-gapped web server — with no internet access required.
+
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: linux-binary
-          path: hydroshot-*.tar.gz
+          path: |
+            hydroshot-*.tar.gz
+            hydroshot-*-website.zip
 
   release:
     name: Create Release
