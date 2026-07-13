@@ -9,7 +9,7 @@
         Id='*'
         Name='HydroShot'
         UpgradeCode='39077896-4755-47D8-BB2E-9B5198782CAB'
-        Manufacturer='Matt'
+        Manufacturer='Real-Fruit-Snacks'
         Language='1033'
         Codepage='1252'
         Version='$(var.Version)'>
@@ -17,7 +17,7 @@
         <Package Id='*'
             Keywords='Installer'
             Description='HydroShot - Screenshot capture and annotation tool'
-            Manufacturer='Matt'
+            Manufacturer='Real-Fruit-Snacks'
             InstallerVersion='450'
             Languages='1033'
             Compressed='yes'

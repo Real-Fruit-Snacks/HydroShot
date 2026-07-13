@@ -22,8 +22,9 @@ fn main() {
         let mut res = winres::WindowsResource::new();
         res.set_icon("assets/icon.ico");
         res.set("ProductName", "HydroShot");
+        res.set("CompanyName", "Real-Fruit-Snacks");
         res.set("FileDescription", "Screenshot capture and annotation tool");
-        res.set("LegalCopyright", "Copyright 2026 Matt");
+        res.set("LegalCopyright", "Copyright 2026 Real-Fruit-Snacks");
         res.compile().expect("winres resource compile failed");
     }
 }

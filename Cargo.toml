@@ -1,8 +1,11 @@
 [package]
 name = "hydroshot"
 version = "1.1.1"
+authors = ["Real-Fruit-Snacks"]
 description = "Screenshot capture and annotation tool"
 license = "MIT"
+repository = "https://github.com/Real-Fruit-Snacks/HydroShot"
+homepage = "https://real-fruit-snacks.github.io/HydroShot/"
 edition = "2021"
 rust-version = "1.80"
 
