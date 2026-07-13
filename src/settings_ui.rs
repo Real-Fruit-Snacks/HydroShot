@@ -13,23 +13,13 @@ use crate::tools::render_text_annotation;
 pub const WIN_W: u32 = 420;
 pub const WIN_H: u32 = 520;
 
-// Catppuccin Mocha palette
-const BASE: (u8, u8, u8) = (0x1e, 0x1e, 0x2e);
-const SURFACE0: (u8, u8, u8) = (0x31, 0x32, 0x44);
-const SURFACE1: (u8, u8, u8) = (0x45, 0x47, 0x5a);
-const TEXT_RGB: (u8, u8, u8) = (0xcd, 0xd6, 0xf4);
-const LAVENDER: (u8, u8, u8) = (0xb4, 0xbe, 0xfe);
-const GREEN_RGB: (u8, u8, u8) = (0xa6, 0xe3, 0xa1);
-const SUBTEXT0: (u8, u8, u8) = (0xa6, 0xad, 0xc8);
-const RED_RGB: (u8, u8, u8) = (0xf3, 0x8b, 0xa8);
-
 /// Color choices available in settings (name, R, G, B).
 const COLOR_CHOICES: &[(&str, u8, u8, u8)] = &[
-    ("red", 0xf3, 0x8b, 0xa8),
-    ("blue", 0x89, 0xb4, 0xfa),
-    ("green", 0xa6, 0xe3, 0xa1),
-    ("yellow", 0xf9, 0xe2, 0xaf),
-    ("mauve", 0xcb, 0xa6, 0xf7),
+    ("red", 0xff, 0x6e, 0x7a),
+    ("blue", 0x6b, 0xdc, 0xff),
+    ("green", 0x63, 0xf2, 0xab),
+    ("yellow", 0xf0, 0xc6, 0x74),
+    ("mauve", 0xb7, 0x8c, 0xff),
 ];
 
 /// Actions produced by clicking a region.
@@ -41,6 +31,7 @@ pub enum Action {
     BrowseDir,
     ToggleAutostart,
     ToggleHistory,
+    ToggleTheme,
     ClickShortcut(usize),
     ClickHotkey,
     ToggleToolbar(usize),
@@ -135,7 +126,14 @@ impl SettingsWindow {
         };
 
         // Background
-        fill_rect_rgb(&mut pixmap, 0.0, 0.0, WIN_W as f32, WIN_H as f32, BASE);
+        fill_rect_rgb(
+            &mut pixmap,
+            0.0,
+            0.0,
+            WIN_W as f32,
+            WIN_H as f32,
+            crate::theme::bg_1(),
+        );
 
         self.hit_rects.clear();
 
@@ -143,7 +141,14 @@ impl SettingsWindow {
         let left: f32 = 24.0;
 
         // ── Title ──
-        draw_label(&mut pixmap, left, y, "HydroShot Settings", 16.0, TEXT_RGB);
+        draw_label(
+            &mut pixmap,
+            left,
+            y,
+            "HydroShot Settings",
+            16.0,
+            crate::theme::text_normal(),
+        );
         y += 30.0;
 
         // ── Tab bar ──
@@ -156,13 +161,27 @@ impl SettingsWindow {
             let tx = left + i as f32 * tab_w;
 
             if i == self.active_tab {
-                fill_rect_rgb(&mut pixmap, tx, tab_y, tab_w, tab_h, SURFACE0);
-                draw_label(&mut pixmap, tx + 12.0, tab_y + 8.0, name, 14.0, LAVENDER);
+                fill_rect_rgb(&mut pixmap, tx, tab_y, tab_w, tab_h, crate::theme::bg_3());
+                draw_label(
+                    &mut pixmap,
+                    tx + 12.0,
+                    tab_y + 8.0,
+                    name,
+                    14.0,
+                    crate::theme::accent(),
+                );
             } else {
                 if self.is_hovered(tx, tab_y, tab_w, tab_h) {
-                    fill_rect_rgb(&mut pixmap, tx, tab_y, tab_w, tab_h, (0x25, 0x25, 0x38));
+                    fill_rect_rgb(&mut pixmap, tx, tab_y, tab_w, tab_h, crate::theme::bg_2());
                 }
-                draw_label(&mut pixmap, tx + 12.0, tab_y + 8.0, name, 14.0, SUBTEXT0);
+                draw_label(
+                    &mut pixmap,
+                    tx + 12.0,
+                    tab_y + 8.0,
+                    name,
+                    14.0,
+                    crate::theme::text_muted(),
+                );
             }
 
             self.hit_rects.push(HitRect {
@@ -182,7 +201,7 @@ impl SettingsWindow {
             y,
             WIN_W as f32 - left * 2.0,
             1.0,
-            SURFACE0,
+            crate::theme::bg_3(),
         );
         y += 16.0;
 
@@ -256,7 +275,14 @@ impl SettingsWindow {
     /// Render the General tab content.
     fn render_general_tab(&mut self, pixmap: &mut Pixmap, left: f32, mut y: f32) {
         // ── Default Color ──
-        draw_label(pixmap, left, y, "Default Color", 14.0, SUBTEXT0);
+        draw_label(
+            pixmap,
+            left,
+            y,
+            "Default Color",
+            14.0,
+            crate::theme::text_muted(),
+        );
         y += 24.0;
 
         let swatch_size: f32 = 28.0;
@@ -272,7 +298,7 @@ impl SettingsWindow {
                     sy - 2.0,
                     swatch_size + 4.0,
                     swatch_size + 4.0,
-                    LAVENDER,
+                    crate::theme::accent(),
                 );
             }
 
@@ -283,7 +309,7 @@ impl SettingsWindow {
                     sy - 1.0,
                     swatch_size + 2.0,
                     swatch_size + 2.0,
-                    SURFACE1,
+                    crate::theme::bg_4(),
                 );
             }
 
@@ -300,9 +326,23 @@ impl SettingsWindow {
         y += swatch_size + 20.0;
 
         // ── Default Thickness ──
-        draw_label(pixmap, left, y, "Default Thickness", 14.0, SUBTEXT0);
+        draw_label(
+            pixmap,
+            left,
+            y,
+            "Default Thickness",
+            14.0,
+            crate::theme::text_muted(),
+        );
         let thickness_label = format!("{:.1}", self.config.general.default_thickness);
-        draw_label(pixmap, left + 160.0, y, &thickness_label, 14.0, TEXT_RGB);
+        draw_label(
+            pixmap,
+            left + 160.0,
+            y,
+            &thickness_label,
+            14.0,
+            crate::theme::text_normal(),
+        );
         y += 26.0;
 
         let btn_w: f32 = 36.0;
@@ -346,7 +386,14 @@ impl SettingsWindow {
         y += btn_h + 20.0;
 
         // ── Save Directory ──
-        draw_label(pixmap, left, y, "Save Directory", 14.0, SUBTEXT0);
+        draw_label(
+            pixmap,
+            left,
+            y,
+            "Save Directory",
+            14.0,
+            crate::theme::text_muted(),
+        );
         y += 22.0;
 
         let dir_display = if self.config.general.save_directory.is_empty() {
@@ -367,7 +414,7 @@ impl SettingsWindow {
         } else {
             dir_display.to_string()
         };
-        draw_label(pixmap, left, y, &dir_short, 12.0, TEXT_RGB);
+        draw_label(pixmap, left, y, &dir_short, 12.0, crate::theme::text_normal());
 
         let browse_w: f32 = 64.0;
         let browse_x = WIN_W as f32 - left - browse_w;
@@ -397,11 +444,18 @@ impl SettingsWindow {
         } else {
             "Imgur Upload: configured"
         };
-        draw_label(pixmap, left, y, imgur_status, 14.0, SUBTEXT0);
+        draw_label(pixmap, left, y, imgur_status, 14.0, crate::theme::text_muted());
         y += 30.0;
 
         // ── Hotkey (click to rebind) ──
-        draw_label(pixmap, left, y, "Capture hotkey:", 14.0, SUBTEXT0);
+        draw_label(
+            pixmap,
+            left,
+            y,
+            "Capture hotkey:",
+            14.0,
+            crate::theme::text_muted(),
+        );
         let hk_display = if self.editing_hotkey {
             "press keys...".to_string()
         } else {
@@ -431,14 +485,25 @@ impl SettingsWindow {
 
         // ── History ──
         let history_on = self.config.general.history_enabled;
-        draw_label(pixmap, left, y, "Save history:", 14.0, SUBTEXT0);
+        draw_label(
+            pixmap,
+            left,
+            y,
+            "Save history:",
+            14.0,
+            crate::theme::text_muted(),
+        );
         {
             let toggle_x = left + 110.0;
             let toggle_w: f32 = 56.0;
             let toggle_h: f32 = 26.0;
-            let toggle_bg = if history_on { GREEN_RGB } else { SURFACE0 };
+            let toggle_bg = if history_on {
+                crate::theme::accent()
+            } else {
+                crate::theme::bg_3()
+            };
             if self.is_hovered(toggle_x, y - 2.0, toggle_w, toggle_h) {
-                fill_rect_rgb(pixmap, toggle_x, y - 2.0, toggle_w, toggle_h, SURFACE1);
+                fill_rect_rgb(pixmap, toggle_x, y - 2.0, toggle_w, toggle_h, crate::theme::bg_4());
             }
             fill_rect_rgb(
                 pixmap,
@@ -450,7 +515,7 @@ impl SettingsWindow {
             );
             let toggle_label = if history_on { "ON" } else { "OFF" };
             let tl_x = toggle_x + if history_on { 18.0 } else { 14.0 };
-            draw_label(pixmap, tl_x, y + 2.0, toggle_label, 12.0, TEXT_RGB);
+            draw_label(pixmap, tl_x, y + 2.0, toggle_label, 12.0, crate::theme::text_normal());
             self.hit_rects.push(HitRect {
                 x: toggle_x,
                 y: y - 2.0,
@@ -459,19 +524,54 @@ impl SettingsWindow {
                 action: Action::ToggleHistory,
             });
         }
-        y += 30.0;
+        y += 28.0;
+
+        // ── Theme (Dark / Light) ──
+        let is_light = self.config.general.theme.eq_ignore_ascii_case("light");
+        draw_label(pixmap, left, y, "Theme:", 14.0, crate::theme::text_muted());
+        {
+            let toggle_x = left + 110.0;
+            let toggle_w: f32 = 72.0;
+            let toggle_h: f32 = 26.0;
+            let toggle_bg = crate::theme::bg_3();
+            if self.is_hovered(toggle_x, y - 2.0, toggle_w, toggle_h) {
+                fill_rect_rgb(pixmap, toggle_x, y - 2.0, toggle_w, toggle_h, crate::theme::bg_4());
+            }
+            fill_rect_rgb(
+                pixmap,
+                toggle_x + 1.0,
+                y - 1.0,
+                toggle_w - 2.0,
+                toggle_h - 2.0,
+                toggle_bg,
+            );
+            let toggle_label = if is_light { "LIGHT" } else { "DARK" };
+            draw_label(pixmap, toggle_x + 12.0, y + 2.0, toggle_label, 12.0, crate::theme::accent());
+            self.hit_rects.push(HitRect {
+                x: toggle_x,
+                y: y - 2.0,
+                w: toggle_w,
+                h: toggle_h,
+                action: Action::ToggleTheme,
+            });
+        }
+        y += 28.0;
 
         // ── Auto-start ──
         let autostart_on = crate::autostart::is_enabled();
-        draw_label(pixmap, left, y, "Auto-start:", 14.0, SUBTEXT0);
+        draw_label(pixmap, left, y, "Auto-start:", 14.0, crate::theme::text_muted());
 
         let toggle_x = left + 110.0;
         let toggle_w: f32 = 56.0;
         let toggle_h: f32 = 26.0;
-        let toggle_bg = if autostart_on { GREEN_RGB } else { SURFACE0 };
+        let toggle_bg = if autostart_on {
+            crate::theme::accent()
+        } else {
+            crate::theme::bg_3()
+        };
         let hovered = self.is_hovered(toggle_x, y - 2.0, toggle_w, toggle_h);
         if hovered {
-            fill_rect_rgb(pixmap, toggle_x, y - 2.0, toggle_w, toggle_h, SURFACE1);
+            fill_rect_rgb(pixmap, toggle_x, y - 2.0, toggle_w, toggle_h, crate::theme::bg_4());
         }
         fill_rect_rgb(
             pixmap,
@@ -484,7 +584,7 @@ impl SettingsWindow {
 
         let toggle_label = if autostart_on { "ON" } else { "OFF" };
         let tl_x = toggle_x + if autostart_on { 18.0 } else { 14.0 };
-        draw_label(pixmap, tl_x, y + 2.0, toggle_label, 12.0, TEXT_RGB);
+        draw_label(pixmap, tl_x, y + 2.0, toggle_label, 12.0, crate::theme::text_normal());
 
         self.hit_rects.push(HitRect {
             x: toggle_x,
@@ -522,12 +622,12 @@ impl SettingsWindow {
                     ry - 2.0,
                     WIN_W as f32 - (left - 4.0) * 2.0,
                     row_h,
-                    SURFACE0,
+                    crate::theme::bg_3(),
                 );
             }
 
-            draw_label(pixmap, left, ry, symbol, 12.0, LAVENDER);
-            draw_label(pixmap, left + 36.0, ry, label, 12.0, TEXT_RGB);
+            draw_label(pixmap, left, ry, symbol, 12.0, crate::theme::accent());
+            draw_label(pixmap, left + 36.0, ry, label, 12.0, crate::theme::text_normal());
 
             let display = if self.editing_shortcut == Some(i) {
                 "..."
@@ -535,9 +635,9 @@ impl SettingsWindow {
                 key_val
             };
             let text_color = if self.editing_shortcut != Some(i) && is_duplicate(key_val) {
-                RED_RGB
+                crate::theme::red()
             } else {
-                TEXT_RGB
+                crate::theme::text_normal()
             };
             let btn_hovered = self.is_hovered(key_btn_x, ry - 1.0, key_btn_w, key_btn_h);
             draw_button_colored(
@@ -572,15 +672,19 @@ impl SettingsWindow {
         for (i, (symbol, label, enabled)) in toolbar_entries.iter().enumerate() {
             let ry = y + i as f32 * row_h;
 
-            draw_label(pixmap, left, ry, symbol, 12.0, LAVENDER);
-            draw_label(pixmap, left + 36.0, ry, label, 12.0, TEXT_RGB);
+            draw_label(pixmap, left, ry, symbol, 12.0, crate::theme::accent());
+            draw_label(pixmap, left + 36.0, ry, label, 12.0, crate::theme::text_normal());
 
             let toggle_label = if *enabled { "ON" } else { "OFF" };
-            let toggle_bg = if *enabled { GREEN_RGB } else { SURFACE0 };
+            let toggle_bg = if *enabled {
+                crate::theme::accent()
+            } else {
+                crate::theme::bg_3()
+            };
             let btn_hovered = self.is_hovered(toggle_x, ry - 1.0, toggle_w, toggle_h);
 
             if btn_hovered {
-                fill_rect_rgb(pixmap, toggle_x, ry - 1.0, toggle_w, toggle_h, SURFACE1);
+                fill_rect_rgb(pixmap, toggle_x, ry - 1.0, toggle_w, toggle_h, crate::theme::bg_4());
             }
             fill_rect_rgb(
                 pixmap,
@@ -592,7 +696,7 @@ impl SettingsWindow {
             );
 
             let tl_x = toggle_x + if *enabled { 14.0 } else { 12.0 };
-            draw_label(pixmap, tl_x, ry + 2.0, toggle_label, 12.0, TEXT_RGB);
+            draw_label(pixmap, tl_x, ry + 2.0, toggle_label, 12.0, crate::theme::text_normal());
 
             self.hit_rects.push(HitRect {
                 x: toggle_x,
@@ -670,6 +774,13 @@ impl SettingsWindow {
             }
             Action::ToggleHistory => {
                 self.config.general.history_enabled = !self.config.general.history_enabled;
+                self.needs_redraw = true;
+                false
+            }
+            Action::ToggleTheme => {
+                let now_light = !self.config.general.theme.eq_ignore_ascii_case("light");
+                self.config.general.theme = if now_light { "light" } else { "dark" }.to_string();
+                crate::theme::set_mode(self.config.theme_mode());
                 self.needs_redraw = true;
                 false
             }
@@ -761,7 +872,7 @@ fn draw_label(
 }
 
 fn draw_button(pixmap: &mut Pixmap, x: f32, y: f32, w: f32, h: f32, label: &str, hovered: bool) {
-    draw_button_colored(pixmap, x, y, w, h, label, hovered, TEXT_RGB);
+    draw_button_colored(pixmap, x, y, w, h, label, hovered, crate::theme::text_normal());
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -775,7 +886,11 @@ fn draw_button_colored(
     hovered: bool,
     text_rgb: (u8, u8, u8),
 ) {
-    let bg = if hovered { SURFACE1 } else { SURFACE0 };
+    let bg = if hovered {
+        crate::theme::bg_4()
+    } else {
+        crate::theme::bg_3()
+    };
     fill_rect_rgb(pixmap, x, y, w, h, bg);
 
     // Center the label using real font metrics
