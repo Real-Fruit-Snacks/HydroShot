@@ -3,92 +3,236 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>hydroshot(1) - Linux manual page</title>
-    <meta name="description" content="Man page for hydroshot, a native screenshot and annotation tool.">
-    <meta name="theme-color" content="#090c0d">
+    <meta name="description" content="HydroShot is a fast, lightweight screenshot capture and annotation tool built in pure Rust. Region and window capture, 14 annotation tools, OCR, pin-to-screen, and Imgur upload — Terminal Workbench themed, dark and light.">
+    <meta name="keywords" content="HydroShot, screenshot, annotation, Rust, capture, OCR, tiny-skia, winit, Terminal Workbench">
+    <title>HydroShot — native screenshot &amp; annotation tool</title>
+    <link rel="icon" href="favicon.svg" type="image/svg+xml">
+    <meta property="og:title" content="HydroShot — native screenshot &amp; annotation tool">
+    <meta property="og:description" content="Fast, lightweight capture and annotation in pure Rust — region &amp; window capture, 14 tools, OCR, pin, Imgur. Terminal Workbench themed, dark + light.">
     <meta property="og:type" content="website">
-    <meta property="og:title" content="HydroShot — native screenshot & annotation tool">
-    <meta property="og:description" content="Fast, lightweight capture and annotation in pure Rust. Terminal Workbench themed, dark + light.">
     <meta property="og:image" content="assets/cover-dark.svg">
+    <meta name="theme-color" content="#090c0d">
     <link rel="stylesheet" href="fonts.css">
     <link rel="stylesheet" href="tokens.css">
     <link rel="stylesheet" href="styles.css">
-    <link rel="icon" type="image/svg+xml" href="favicon.svg">
 </head>
 <body>
-    <div class="man-page">
-        <header class="man-header">
-            <span class="left">HYDROSHOT(1)</span>
-            <span class="center">User Commands</span>
-            <span class="right">HYDROSHOT(1)</span>
-        </header>
 
-        <section class="man-section">
-            <h2>NAME</h2>
-            <p class="indent"><strong>hydroshot</strong> - Fast, lightweight screenshot capture and annotation tool built with Rust.</p>
-        </section>
-
-        <section class="man-section">
-            <h2>SYNOPSIS</h2>
-            <p class="indent"><strong>hydroshot</strong> [<strong>--region</strong> | <strong>--window</strong>] [<strong>--delay</strong> <em>SECONDS</em>]</p>
-        </section>
-
-        <section class="man-section">
-            <h2>DESCRIPTION</h2>
-            <p class="indent">
-                <strong>hydroshot</strong> is a native screenshot tool in pure Rust. It features region capture by drag, window capture by click, timed capture with 3/5/10-second countdown, multi-monitor coverage with a fullscreen overlay that dims inactive areas. Captured shots flow into an annotation surface with 14 tools backed by command-pattern undo/redo. Pin captures as always-on-top reference windows; copy to clipboard, save to file, upload anonymously to Imgur, or extract text via the Windows OCR API.
-            </p>
-            <p class="indent">
-                No Electron, no browser engine — just <code>winit</code> for windowing and <code>tiny-skia</code> for 2D drawing. Configuration lives in TOML. Tray-resident with a global hotkey (<code>Ctrl+Shift+S</code> by default).
-            </p>
-        </section>
-
-        <section class="man-section">
-            <h2>OPTIONS</h2>
-            <dl class="indent options-list">
-                <dt><strong>-r</strong>, <strong>--region</strong></dt>
-                <dd>Start in region selection mode (default).</dd>
-                
-                <dt><strong>-w</strong>, <strong>--window</strong></dt>
-                <dd>Start in window selection mode.</dd>
-                
-                <dt><strong>-d</strong>, <strong>--delay</strong> <em>SECONDS</em></dt>
-                <dd>Delay the capture by the specified number of seconds.</dd>
-            </dl>
-        </section>
-
-        <section class="man-section">
-            <h2>EXAMPLES</h2>
-            <div class="indent">
-                <p>To clone the repository and build the binary:</p>
-                <pre><code>git clone https://github.com/Real-Fruit-Snacks/HydroShot.git
-cd HydroShot
-cargo build --release</code></pre>
-                <button class="man-btn copy-btn" data-clipboard="git clone https://github.com/Real-Fruit-Snacks/HydroShot.git">COPY CLONE COMMAND</button>
+    <!-- ==================== NAV ==================== -->
+    <nav class="nav" id="nav">
+        <div class="nav-inner">
+            <a href="#" class="nav-logo"><img src="favicon.svg" alt="" width="24" height="24">HydroShot</a>
+            <div class="nav-links">
+                <a href="#features" class="manifest">Features</a>
+                <a href="#how" class="manifest">How it works</a>
+                <a href="#install" class="manifest">Install</a>
+                <a href="https://github.com/Real-Fruit-Snacks/HydroShot" class="nav-github" target="_blank" rel="noopener" aria-label="GitHub repository">
+                    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
+                </a>
             </div>
-        </section>
+        </div>
+    </nav>
 
-        <section class="man-section">
-            <h2>AUTHOR</h2>
-            <p class="indent">Written by Real-Fruit-Snacks.</p>
-        </section>
+    <!-- ==================== HERO ==================== -->
+    <section class="hero">
+        <div class="hero-grid"></div>
+        <div class="hero-content">
+            <div class="hero-badge manifest"><span class="dot"></span>Native · Rust · MIT</div>
+            <h1 class="hero-title">Capture, annotate, <em>done</em>.</h1>
+            <p class="hero-subtitle">HydroShot is a fast, lightweight screenshot tool in pure Rust — region and window capture, 14 annotation tools, OCR, pin-to-screen, and anonymous Imgur upload. No Electron, no browser engine.</p>
+            <div class="hero-actions">
+                <a href="https://github.com/Real-Fruit-Snacks/HydroShot/releases/latest" class="btn btn--primary" target="_blank" rel="noopener">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    Download
+                </a>
+                <a href="https://github.com/Real-Fruit-Snacks/HydroShot" class="btn btn--ghost" target="_blank" rel="noopener">
+                    View on GitHub
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg>
+                </a>
+            </div>
+        </div>
 
-        <section class="man-section">
-            <h2>SEE ALSO</h2>
-            <p class="indent">
-                <a href="https://github.com/Real-Fruit-Snacks/HydroShot" target="_blank">Source Repository</a>, 
-                <a href="https://github.com/Real-Fruit-Snacks/HydroShot/releases" target="_blank">Releases</a>,
-                <a href="https://github.com/Real-Fruit-Snacks/HydroShot/issues" target="_blank">Issue Tracker</a>
-            </p>
-        </section>
+        <div class="hero-visual">
+            <div class="mock">
+                <div class="mock-bar">
+                    <span class="mock-prompt">&#10095;</span>
+                    <span class="manifest">hydroshot — region capture</span>
+                </div>
+                <div class="mock-shot">
+                    <div class="shot-win shot-win--a"></div>
+                    <div class="shot-win shot-win--b"></div>
+                    <div class="shot-sel">
+                        <span class="shot-handle tl"></span><span class="shot-handle tr"></span>
+                        <span class="shot-handle bl"></span><span class="shot-handle br"></span>
+                        <svg class="shot-arrow" viewBox="0 0 120 90" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="78" x2="98" y2="20"/><path d="M98 20 l-22 3 l10 14 z" fill="currentColor" stroke="none"/></svg>
+                        <span class="shot-step">1</span>
+                        <span class="shot-size manifest">960 × 540</span>
+                    </div>
+                    <div class="shot-toolbar">
+                        <span class="tool">&#9635;</span>
+                        <span class="tool">&#8594;</span>
+                        <span class="tool">&#9645;</span>
+                        <span class="tool">&#9711;</span>
+                        <span class="tool tool--on">Aa</span>
+                        <span class="tsep"></span>
+                        <span class="sw" style="background:#ff6e7a"></span>
+                        <span class="sw" style="background:#6bdcff"></span>
+                        <span class="sw" style="background:#63f2ab"></span>
+                        <span class="sw" style="background:#f0c674"></span>
+                        <span class="sw" style="background:#b78cff"></span>
+                        <span class="tsep"></span>
+                        <span class="tool">&#9112;</span>
+                        <span class="tool">&#9106;</span>
+                    </div>
+                </div>
+                <div class="mock-foot"><span class="manifest">Selection <b>960 × 540</b> · arrow, box, text, blur, step, OCR — then copy, save, pin</span></div>
+            </div>
+        </div>
+    </section>
 
-        <footer class="man-footer">
-            <span class="left">hydroshot 1.0.0</span>
-            <span class="center">2026-06-19</span>
-            <span class="right">HYDROSHOT(1)</span>
-        </footer>
-    </div>
-    
-    <script src="script.js"></script>
+    <!-- ==================== FEATURES ==================== -->
+    <section class="features" id="features">
+        <div class="wrap">
+            <div class="section-head">
+                <p class="kicker manifest">Capabilities</p>
+                <h2 class="section-title">Quiet capture. Loud annotation.</h2>
+                <p class="section-desc">A small native binary that starts instantly, gets out of the way, and hands you a full annotation surface the moment you drag a selection.</p>
+            </div>
+            <div class="feature-grid">
+                <div class="feature-card" data-reveal>
+                    <div class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><path d="M9 2v2M15 2v2M9 20v2M15 20v2M2 9h2M2 15h2M20 9h2M20 15h2"/></svg></div>
+                    <h3>Native, no Electron</h3>
+                    <p>Pure Rust with <code>winit</code> for windowing and <code>tiny-skia</code> for 2D drawing. No web view, no browser engine — just a small binary that launches instantly.</p>
+                </div>
+                <div class="feature-card" data-reveal>
+                    <div class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2v14a2 2 0 0 0 2 2h14"/><path d="M18 22V8a2 2 0 0 0-2-2H2"/></svg></div>
+                    <h3>Capture any way</h3>
+                    <p>Region by drag, window by click, full multi-monitor coverage, or a delayed capture with a 3 / 5 / 10-second countdown. Inactive areas dim so your selection pops.</p>
+                </div>
+                <div class="feature-card" data-reveal>
+                    <div class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></div>
+                    <h3>14 annotation tools</h3>
+                    <p>Arrow, rectangle, circle, rounded rect, line, pencil, highlight, spotlight, text, pixelate, step markers, eyedropper, and measurement — all with command-pattern undo/redo.</p>
+                </div>
+                <div class="feature-card" data-reveal>
+                    <div class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg></div>
+                    <h3>Export everywhere</h3>
+                    <p>Copy to clipboard, save to file, pin the capture on top as a reference, upload anonymously to Imgur, or pull the text out with the Windows OCR API.</p>
+                </div>
+                <div class="feature-card" data-reveal>
+                    <div class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 0 0 0 20z"/></svg></div>
+                    <h3>Dark + light theme</h3>
+                    <p>Themed end to end with <a href="https://github.com/Real-Fruit-Snacks/terminal-workbench-design-system" target="_blank" rel="noopener">Terminal Workbench</a>. Toggle dark or light in Settings; the five presets map to the theme's semantic hues.</p>
+                </div>
+                <div class="feature-card" data-reveal>
+                    <div class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></div>
+                    <h3>Tray + global hotkey</h3>
+                    <p>Lives in the system tray with optional autostart. Press <code>Ctrl+Shift+S</code> from anywhere to capture — rebind it, and the whole toolbar and shortcuts, in Settings.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==================== HOW IT WORKS ==================== -->
+    <section class="how" id="how">
+        <div class="wrap">
+            <div class="section-head">
+                <p class="kicker manifest">Workflow</p>
+                <h2 class="section-title">Hotkey, select, ship.</h2>
+            </div>
+            <div class="steps">
+                <div class="step" data-reveal>
+                    <div class="step-marker"><span class="step-num">1</span><div class="step-line"></div></div>
+                    <div class="step-body">
+                        <h3>Press the hotkey</h3>
+                        <p>Hit <code>Ctrl+Shift+S</code> from anywhere (rebindable), or pick region / window / delayed capture from the tray menu.</p>
+                    </div>
+                </div>
+                <div class="step" data-reveal>
+                    <div class="step-marker"><span class="step-num">2</span><div class="step-line"></div></div>
+                    <div class="step-body">
+                        <h3>Select and annotate</h3>
+                        <p>Drag a region or click a window, then draw with 14 tools. Every stroke is on an undo/redo stack, so nothing is destructive.</p>
+                    </div>
+                </div>
+                <div class="step" data-reveal>
+                    <div class="step-marker"><span class="step-num">3</span></div>
+                    <div class="step-body">
+                        <h3>Copy, save, or share</h3>
+                        <p>Press <kbd>Enter</kbd> to copy to the clipboard, or save to file, pin on top, upload to Imgur, or extract the text with OCR.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==================== INSTALL ==================== -->
+    <section class="install" id="install">
+        <div class="wrap">
+            <div class="section-head">
+                <p class="kicker manifest">Get started</p>
+                <h2 class="section-title">Install in under a minute.</h2>
+            </div>
+            <div class="install-grid">
+                <div class="install-card install-card--rec" data-reveal>
+                    <span class="install-card-tag">Recommended</span>
+                    <h3>Windows</h3>
+                    <ol>
+                        <li>Open the <a href="https://github.com/Real-Fruit-Snacks/HydroShot/releases/latest" target="_blank" rel="noopener">latest release</a>.</li>
+                        <li>Download the <code>.msi</code> installer or the portable <code>.zip</code>.</li>
+                        <li>Run it — a tray icon appears; press <code>Ctrl+Shift+S</code>.</li>
+                    </ol>
+                </div>
+                <div class="install-card" data-reveal>
+                    <h3>Linux</h3>
+                    <ol>
+                        <li>Download <code>hydroshot-*-linux-x64.tar.gz</code> from the <a href="https://github.com/Real-Fruit-Snacks/HydroShot/releases/latest" target="_blank" rel="noopener">latest release</a>.</li>
+                        <li>Extract, then <code>chmod +x hydroshot</code>.</li>
+                        <li>Run <code>./hydroshot</code> (X11 region capture is experimental).</li>
+                    </ol>
+                </div>
+                <div class="install-card" data-reveal>
+                    <h3>Build from source</h3>
+                    <ol>
+                        <li>Install <a href="https://rustup.rs" target="_blank" rel="noopener">Rust</a> 1.80+.</li>
+                        <li><code>git clone</code> the repo and <code>cd HydroShot</code>.</li>
+                        <li><code>cargo build --release</code> → <code>target/release/hydroshot</code>.</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==================== FOOTER ==================== -->
+    <footer class="footer">
+        <div class="wrap footer-inner">
+            <div class="footer-left"><img src="favicon.svg" alt="" width="22" height="22"><span>HydroShot</span></div>
+            <p class="footer-meta">MIT &middot; built in Rust &middot; <a href="https://github.com/Real-Fruit-Snacks/terminal-workbench-design-system" target="_blank" rel="noopener">Terminal Workbench</a> themed &middot; by <a href="https://github.com/Real-Fruit-Snacks" target="_blank" rel="noopener">Real-Fruit-Snacks</a></p>
+        </div>
+    </footer>
+
+    <script>
+        const nav = document.getElementById('nav');
+        const onScroll = () => nav.classList.toggle('nav--scrolled', window.scrollY > 32);
+        onScroll();
+        window.addEventListener('scroll', onScroll, { passive: true });
+
+        const revealEls = document.querySelectorAll('[data-reveal]');
+        if ('IntersectionObserver' in window) {
+            const obs = new IntersectionObserver((entries) => {
+                entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('revealed'); obs.unobserve(e.target); } });
+            }, { threshold: 0.15 });
+            revealEls.forEach(el => obs.observe(el));
+        } else {
+            revealEls.forEach(el => el.classList.add('revealed'));
+        }
+
+        document.querySelectorAll('a[href^="#"]').forEach(a => {
+            a.addEventListener('click', function (e) {
+                const t = document.querySelector(this.getAttribute('href'));
+                if (t) { e.preventDefault(); t.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+            });
+        });
+    </script>
 </body>
 </html>
