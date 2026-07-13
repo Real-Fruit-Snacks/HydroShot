@@ -772,7 +772,7 @@ pub fn render_annotation(
             // Draw background pill
             if let Some(pill) = tiny_skia::Rect::from_xywh(pill_x, pill_y, label_w, label_h) {
                 let mut bg = Paint::default();
-                bg.set_color(tiny_skia::Color::from_rgba(0.067, 0.067, 0.094, 0.85).unwrap());
+                bg.set_color(crate::theme::skia(crate::theme::bg_1(), 0.85));
                 bg.anti_alias = false;
                 pixmap.fill_rect(pill, &bg, Transform::identity(), None);
             }
@@ -782,7 +782,7 @@ pub fn render_annotation(
                 pixmap,
                 &Point::new(pill_x + 4.0, pill_y + 2.0),
                 &label,
-                &Color::new(0.804, 0.839, 0.957, 1.0),
+                &crate::theme::gcolor(crate::theme::text_normal(), 1.0),
                 font_size,
             );
         }

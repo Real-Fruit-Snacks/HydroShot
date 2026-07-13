@@ -300,6 +300,9 @@ impl App {
             if self.config.hotkey.capture != old_binding && !self.cli_only {
                 self.register_hotkey_with_fallback();
             }
+        } else {
+            // Discard any live theme preview from the Settings toggle.
+            hydroshot::theme::set_mode(self.config.theme_mode());
         }
         // Settings can toggle autostart — keep the tray checkbox in sync.
         if let Some(ref tray) = self.tray {

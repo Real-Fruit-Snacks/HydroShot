@@ -61,15 +61,14 @@ impl PinnedWindow {
         // Build the framed pixel buffer
         let mut framed = vec![0u8; (total_w * total_h * 4) as usize];
 
-        // Shadow fill (dark, offset bottom-right)
-        let (sh_r, sh_g, sh_b) = crate::theme::bg_1();
+        // Shadow fill (dark in both themes, offset bottom-right)
         for y in shadow..total_h {
             for x in shadow..total_w {
                 let i = ((y * total_w + x) * 4) as usize;
                 if i + 3 < framed.len() {
-                    framed[i] = sh_r; // theme bg R
-                    framed[i + 1] = sh_g;
-                    framed[i + 2] = sh_b;
+                    framed[i] = 0;
+                    framed[i + 1] = 0;
+                    framed[i + 2] = 0;
                     framed[i + 3] = 100; // semi-transparent (visible in the saved PNG)
                 }
             }
