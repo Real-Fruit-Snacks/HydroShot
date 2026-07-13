@@ -921,18 +921,8 @@ pub fn hit_test_annotation(annotation: &Annotation, point: &Point, threshold: f3
         Annotation::Measurement { start, end, .. } => {
             point_to_segment_distance(point, start, end) < threshold + 1.0
         }
-        Annotation::Rectangle {
-            top_left,
-            size,
-            thickness: _,
-            ..
-        }
-        | Annotation::RoundedRect {
-            top_left,
-            size,
-            thickness: _,
-            ..
-        } => {
+        Annotation::Rectangle { top_left, size, .. }
+        | Annotation::RoundedRect { top_left, size, .. } => {
             let r = tiny_skia::Rect::from_xywh(top_left.x, top_left.y, size.width, size.height);
             if let Some(r) = r {
                 let near_left = (point.x - r.left()).abs() < threshold
