@@ -21,13 +21,6 @@ const PADDING: f32 = 16.0;
 const GAP: f32 = 12.0;
 const HEADER_H: f32 = 44.0;
 
-// Catppuccin Mocha palette
-const BASE: (u8, u8, u8) = (0x1e, 0x1e, 0x2e);
-const SURFACE0: (u8, u8, u8) = (0x31, 0x32, 0x44);
-const SURFACE1: (u8, u8, u8) = (0x45, 0x47, 0x5a);
-const LAVENDER: (u8, u8, u8) = (0xb4, 0xbe, 0xfe);
-const TEXT_RGB: (u8, u8, u8) = (0xcd, 0xd6, 0xf4);
-const SUBTEXT0: (u8, u8, u8) = (0xa6, 0xad, 0xc8);
 
 /// A loaded thumbnail: path, RGBA pixels, width, height.
 struct Thumbnail {
@@ -121,7 +114,7 @@ impl HistoryWindow {
         };
 
         // Background
-        fill_rect_rgb(&mut pixmap, 0.0, 0.0, WIN_W as f32, WIN_H as f32, BASE);
+        fill_rect_rgb(&mut pixmap, 0.0, 0.0, WIN_W as f32, WIN_H as f32, crate::theme::bg_1());
 
         if self.thumbnails.is_empty() {
             draw_label(
@@ -130,7 +123,7 @@ impl HistoryWindow {
                 HEADER_H + PADDING + 20.0,
                 "No captures yet.",
                 14.0,
-                SUBTEXT0,
+                crate::theme::text_muted(),
             );
         } else {
             for (i, thumb) in self.thumbnails.iter().enumerate() {
@@ -143,9 +136,9 @@ impl HistoryWindow {
 
                 // Border (highlight on hover)
                 let border_color = if self.hovered == Some(i) {
-                    LAVENDER
+                    crate::theme::accent()
                 } else {
-                    SURFACE0
+                    crate::theme::bg_3()
                 };
                 fill_rect_rgb(
                     &mut pixmap,
@@ -182,20 +175,20 @@ impl HistoryWindow {
                     knob_y,
                     3.0,
                     knob_h,
-                    SURFACE1,
+                    crate::theme::bg_4(),
                 );
             }
         }
 
         // Header drawn last so scrolled thumbnails never overlap it
-        fill_rect_rgb(&mut pixmap, 0.0, 0.0, WIN_W as f32, HEADER_H - 3.0, BASE);
+        fill_rect_rgb(&mut pixmap, 0.0, 0.0, WIN_W as f32, HEADER_H - 3.0, crate::theme::bg_1());
         draw_label(
             &mut pixmap,
             PADDING,
             14.0,
             "Recent Captures",
             16.0,
-            TEXT_RGB,
+            crate::theme::text_normal(),
         );
         // Separator
         fill_rect_rgb(
@@ -204,12 +197,12 @@ impl HistoryWindow {
             HEADER_H - 4.0,
             WIN_W as f32 - PADDING * 2.0,
             1.0,
-            SURFACE0,
+            crate::theme::bg_3(),
         );
         // Clear All button
         if !self.thumbnails.is_empty() {
             let (cx, cy, cw, ch) = self.clear_rect;
-            let bg = if self.hover_clear { SURFACE1 } else { SURFACE0 };
+            let bg = if self.hover_clear { crate::theme::bg_4() } else { crate::theme::bg_3() };
             fill_rect_rgb(&mut pixmap, cx, cy, cw, ch, bg);
             let label = "Clear All";
             let tw = measure_text_width(label, 12.0);
@@ -219,7 +212,7 @@ impl HistoryWindow {
                 cy + 5.0,
                 label,
                 12.0,
-                TEXT_RGB,
+                crate::theme::text_normal(),
             );
         }
 
