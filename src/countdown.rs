@@ -8,7 +8,7 @@ use std::time::{Duration, Instant};
 use winit::event_loop::ActiveEventLoop;
 use winit::window::{Window, WindowAttributes, WindowId, WindowLevel};
 
-use crate::geometry::{Color, Point};
+use crate::geometry::Point;
 
 const CD_SIZE: u32 = 120;
 
@@ -117,23 +117,19 @@ impl Countdown {
             None => return,
         };
 
-        // Background: Catppuccin Crust #11111b (opaque — softbuffer has no alpha)
+        // Background: theme surface (opaque — softbuffer has no alpha)
+        let (bg_r, bg_g, bg_b) = crate::theme::bg_1();
         let pixels_data = pixmap.data_mut();
         for chunk in pixels_data.chunks_exact_mut(4) {
-            chunk[0] = 0x11;
-            chunk[1] = 0x11;
-            chunk[2] = 0x1b;
+            chunk[0] = bg_r;
+            chunk[1] = bg_g;
+            chunk[2] = bg_b;
             chunk[3] = 255;
         }
 
         // Render the number, centered using real font metrics
         let num_str = self.remaining.to_string();
-        let text_color = Color::new(
-            0xb4 as f32 / 255.0,
-            0xbe as f32 / 255.0,
-            0xfe as f32 / 255.0,
-            1.0,
-        ); // Lavender #b4befe
+        let text_color = crate::theme::gcolor(crate::theme::accent(), 1.0); // theme accent
         let font_size = 60.0_f32;
 
         let text_w = crate::tools::measure_text_width(&num_str, font_size);

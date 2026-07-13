@@ -106,27 +106,27 @@ pub const BUTTONS: [ButtonDef; BUTTON_COUNT] = [
     ButtonDef {
         action: ButtonAction::Color(0),
         icon: None,
-        tooltip: "Red #f38ba8 (right-click: pick)",
+        tooltip: "Red #ff6e7a (right-click: pick)",
     },
     ButtonDef {
         action: ButtonAction::Color(1),
         icon: None,
-        tooltip: "Blue #89b4fa (right-click: pick)",
+        tooltip: "Blue #6bdcff (right-click: pick)",
     },
     ButtonDef {
         action: ButtonAction::Color(2),
         icon: None,
-        tooltip: "Green #a6e3a1 (right-click: pick)",
+        tooltip: "Green #63f2ab (right-click: pick)",
     },
     ButtonDef {
         action: ButtonAction::Color(3),
         icon: None,
-        tooltip: "Yellow #f9e2af (right-click: pick)",
+        tooltip: "Yellow #f0c674 (right-click: pick)",
     },
     ButtonDef {
         action: ButtonAction::Color(4),
         icon: None,
-        tooltip: "Mauve #cba6f7 (right-click: pick)",
+        tooltip: "Mauve #b78cff (right-click: pick)",
     },
     ButtonDef {
         action: ButtonAction::Ocr,

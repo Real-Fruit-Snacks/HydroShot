@@ -1,7 +1,7 @@
 //! Pinned always-on-top capture windows.
 //!
 //! A pin shows a captured selection in a borderless floating window framed by
-//! a Catppuccin border. Drag to move, middle-click to copy, right-click to
+//! a themed border. Drag to move, middle-click to copy, right-click to
 //! reveal the backing temp file, Escape or close to dismiss.
 
 use std::num::NonZeroU32;
@@ -16,7 +16,7 @@ use winit::window::{CursorIcon, Window, WindowAttributes, WindowId, WindowLevel}
 
 use crate::export;
 
-/// Border thickness for pinned windows (Catppuccin themed frame)
+/// Border thickness for pinned windows (themed frame)
 const PIN_BORDER: u32 = 3;
 /// Shadow offset for pinned windows
 const PIN_SHADOW: u32 = 2;
@@ -62,26 +62,28 @@ impl PinnedWindow {
         let mut framed = vec![0u8; (total_w * total_h * 4) as usize];
 
         // Shadow fill (dark, offset bottom-right)
+        let (sh_r, sh_g, sh_b) = crate::theme::bg_1();
         for y in shadow..total_h {
             for x in shadow..total_w {
                 let i = ((y * total_w + x) * 4) as usize;
                 if i + 3 < framed.len() {
-                    framed[i] = 17; // Crust R
-                    framed[i + 1] = 17;
-                    framed[i + 2] = 27;
+                    framed[i] = sh_r; // theme bg R
+                    framed[i + 1] = sh_g;
+                    framed[i + 2] = sh_b;
                     framed[i + 3] = 100; // semi-transparent (visible in the saved PNG)
                 }
             }
         }
 
-        // Border fill (Lavender #b4befe)
+        // Border fill (theme accent)
+        let (bd_r, bd_g, bd_b) = crate::theme::accent();
         for y in 0..total_h - shadow {
             for x in 0..total_w - shadow {
                 let i = ((y * total_w + x) * 4) as usize;
                 if i + 3 < framed.len() {
-                    framed[i] = 180; // Lavender R
-                    framed[i + 1] = 190;
-                    framed[i + 2] = 254;
+                    framed[i] = bd_r; // theme accent R
+                    framed[i + 1] = bd_g;
+                    framed[i + 2] = bd_b;
                     framed[i + 3] = 255;
                 }
             }
