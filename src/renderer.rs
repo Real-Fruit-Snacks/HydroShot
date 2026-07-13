@@ -30,7 +30,7 @@ pub fn render_overlay(state: &mut OverlayState, pixmap: &mut tiny_skia::Pixmap) 
         let ph = pixmap.height() as f32;
 
         let mut paint = Paint::default();
-        paint.set_color(tiny_skia::Color::from_rgba(0.706, 0.745, 0.996, 0.5).unwrap()); // Lavender #b4befe 50%
+        paint.set_color(crate::theme::skia(crate::theme::accent(), 0.5));
         paint.anti_alias = true;
         let stroke = Stroke {
             width: 1.0,
@@ -82,7 +82,7 @@ pub fn render_overlay(state: &mut OverlayState, pixmap: &mut tiny_skia::Pixmap) 
         if let Some(rect) = tiny_skia::Rect::from_xywh(sel.x, sel.y, sel.width, sel.height) {
             let path = PathBuilder::from_rect(rect);
             let mut paint = Paint::default();
-            paint.set_color(tiny_skia::Color::from_rgba(0.706, 0.745, 0.996, 0.9).unwrap()); // Lavender #b4befe
+            paint.set_color(crate::theme::skia(crate::theme::accent(), 0.9));
             paint.anti_alias = true;
             let stroke = Stroke {
                 width: 1.5,
@@ -286,7 +286,7 @@ pub fn render_overlay(state: &mut OverlayState, pixmap: &mut tiny_skia::Pixmap) 
 
             if let Some(bg) = rounded_rect_path(pill_x, pill_y, pill_w, pill_h, 3.0) {
                 let mut bg_paint = Paint::default();
-                bg_paint.set_color(tiny_skia::Color::from_rgba(0.067, 0.067, 0.094, 0.9).unwrap());
+                bg_paint.set_color(crate::theme::skia(crate::theme::bg_1(), 0.9));
                 bg_paint.anti_alias = true;
                 pixmap.fill_path(
                     &bg,
@@ -299,7 +299,7 @@ pub fn render_overlay(state: &mut OverlayState, pixmap: &mut tiny_skia::Pixmap) 
 
             use crate::tools::render_text_annotation;
             let text_pos = crate::geometry::Point::new(pill_x + pad_x, pill_y + pad_y);
-            let white = crate::geometry::Color::new(0.804, 0.839, 0.957, 1.0);
+            let white = crate::theme::gcolor(crate::theme::text_normal(), 1.0);
             render_text_annotation(pixmap, &text_pos, &hex, &white, font_size);
         }
     }
@@ -320,7 +320,7 @@ pub fn render_overlay(state: &mut OverlayState, pixmap: &mut tiny_skia::Pixmap) 
         // Background pill
         if let Some(bg) = rounded_rect_path(toast_x, toast_y, toast_w, toast_h, 8.0) {
             let mut bg_paint = Paint::default();
-            bg_paint.set_color(tiny_skia::Color::from_rgba(0.067, 0.067, 0.094, 0.92).unwrap());
+            bg_paint.set_color(crate::theme::skia(crate::theme::bg_1(), 0.92));
             bg_paint.anti_alias = true;
             pixmap.fill_path(
                 &bg,
@@ -331,7 +331,7 @@ pub fn render_overlay(state: &mut OverlayState, pixmap: &mut tiny_skia::Pixmap) 
             );
             // Border
             let mut border = Paint::default();
-            border.set_color(tiny_skia::Color::from_rgba(0.651, 0.890, 0.631, 0.6).unwrap()); // green tint
+            border.set_color(crate::theme::skia(crate::theme::accent(), 0.6));
             border.anti_alias = true;
             let stroke = Stroke {
                 width: 1.0,
@@ -343,7 +343,7 @@ pub fn render_overlay(state: &mut OverlayState, pixmap: &mut tiny_skia::Pixmap) 
         // Text
         use crate::tools::render_text_annotation;
         let text_pos = crate::geometry::Point::new(toast_x + pad_x, toast_y + pad_y);
-        let text_color = crate::geometry::Color::new(0.804, 0.839, 0.957, 1.0);
+        let text_color = crate::theme::gcolor(crate::theme::text_normal(), 1.0);
         render_text_annotation(pixmap, &text_pos, msg, &text_color, font_size);
     }
 }
@@ -379,11 +379,11 @@ fn render_selection_highlight(pixmap: &mut tiny_skia::Pixmap, x: f32, y: f32, w:
     if w <= 0.0 || h <= 0.0 {
         return;
     }
-    let lavender_color = tiny_skia::Color::from_rgba(0.706, 0.745, 0.996, 0.8).unwrap();
+    let highlight_color = crate::theme::skia(crate::theme::accent(), 0.8);
     if let Some(rect) = tiny_skia::Rect::from_xywh(x, y, w, h) {
         let path = PathBuilder::from_rect(rect);
         let mut paint = Paint::default();
-        paint.set_color(lavender_color);
+        paint.set_color(highlight_color);
         paint.anti_alias = true;
         let stroke = Stroke {
             width: 1.5,
@@ -404,10 +404,10 @@ fn render_selection_highlight(pixmap: &mut tiny_skia::Pixmap, x: f32, y: f32, w:
             fill.anti_alias = false;
             pixmap.fill_rect(rect, &fill, Transform::identity(), None);
 
-            // Lavender border to match the dashed selection border
+            // Accent border to match the dashed selection border
             let path = PathBuilder::from_rect(rect);
             let mut border = Paint::default();
-            border.set_color(lavender_color);
+            border.set_color(highlight_color);
             border.anti_alias = true;
             let stroke = Stroke {
                 width: 1.0,
@@ -449,7 +449,7 @@ fn render_toolbar(state: &mut OverlayState, selection: &Selection, pixmap: &mut 
         }
         // Background fill
         let mut bg_paint = Paint::default();
-        bg_paint.set_color(tiny_skia::Color::from_rgba(0.067, 0.067, 0.094, 0.95).unwrap());
+        bg_paint.set_color(crate::theme::skia(crate::theme::bg_1(), 0.95));
         bg_paint.anti_alias = true;
         pixmap.fill_path(
             &bg_path,
@@ -460,7 +460,7 @@ fn render_toolbar(state: &mut OverlayState, selection: &Selection, pixmap: &mut 
         );
         // Subtle border
         let mut border_paint = Paint::default();
-        border_paint.set_color(tiny_skia::Color::from_rgba(0.804, 0.839, 0.957, 0.12).unwrap());
+        border_paint.set_color(crate::theme::skia(crate::theme::text_normal(), 0.12));
         border_paint.anti_alias = true;
         let border_stroke = Stroke {
             width: 1.0,
@@ -477,7 +477,7 @@ fn render_toolbar(state: &mut OverlayState, selection: &Selection, pixmap: &mut 
 
     // --- Separators between button groups (tools | colors | actions) ---
     // Find the visible positions where group boundaries occur (after last tool, after last color)
-    let sep_color = tiny_skia::Color::from_rgba(0.804, 0.839, 0.957, 0.15).unwrap();
+    let sep_color = crate::theme::skia(crate::theme::text_normal(), 0.15);
     // Separator after the last tool button (orig 0-13) before colors (orig 14)
     // and after the last color button (orig 18) before actions (orig 19)
     let sep_after_orig = [13usize, 18];
@@ -546,7 +546,7 @@ fn render_toolbar(state: &mut OverlayState, selection: &Selection, pixmap: &mut 
             if is_active {
                 // Active: filled highlight
                 let mut fill = Paint::default();
-                fill.set_color(tiny_skia::Color::from_rgba(0.537, 0.706, 0.980, 0.3).unwrap());
+                fill.set_color(crate::theme::skia(crate::theme::accent(), 0.3));
                 fill.anti_alias = true;
                 pixmap.fill_path(
                     &btn_path,
@@ -557,7 +557,7 @@ fn render_toolbar(state: &mut OverlayState, selection: &Selection, pixmap: &mut 
                 );
                 // Active border glow
                 let mut glow = Paint::default();
-                glow.set_color(tiny_skia::Color::from_rgba(0.706, 0.745, 0.996, 0.7).unwrap());
+                glow.set_color(crate::theme::skia(crate::theme::accent(), 0.7));
                 glow.anti_alias = true;
                 let glow_stroke = Stroke {
                     width: 1.5,
@@ -567,7 +567,7 @@ fn render_toolbar(state: &mut OverlayState, selection: &Selection, pixmap: &mut 
             } else {
                 // Inactive: subtle hover-ready background
                 let mut fill = Paint::default();
-                fill.set_color(tiny_skia::Color::from_rgba(0.804, 0.839, 0.957, 0.08).unwrap());
+                fill.set_color(crate::theme::skia(crate::theme::text_normal(), 0.08));
                 fill.anti_alias = true;
                 pixmap.fill_path(
                     &btn_path,
@@ -582,7 +582,9 @@ fn render_toolbar(state: &mut OverlayState, selection: &Selection, pixmap: &mut 
         // --- SVG icon rendering for tool buttons and action buttons ---
         if let Some(name) = def.icon {
             let icon_size = (bw - 12.0).max(12.0) as u32;
-            let color_hex = if is_active { "#cdd6f4" } else { "#a6adc8" };
+            let active_hex = crate::theme::hex(crate::theme::text_normal());
+            let inactive_hex = crate::theme::hex(crate::theme::text_muted());
+            let color_hex = if is_active { active_hex.as_str() } else { inactive_hex.as_str() };
             if let Some(icon_pixmap) = state.icon_cache.get_or_render(name, icon_size, color_hex) {
                 let icon_x = (bx + (bw - icon_size as f32) / 2.0) as i32;
                 let icon_y = (by + (bh - icon_size as f32) / 2.0) as i32;
@@ -660,7 +662,7 @@ fn render_toolbar(state: &mut OverlayState, selection: &Selection, pixmap: &mut 
             // Background pill
             if let Some(bg) = rounded_rect_path(tip_x, tip_y, tip_w, tip_h, 4.0) {
                 let mut bg_paint = Paint::default();
-                bg_paint.set_color(tiny_skia::Color::from_rgba(0.067, 0.067, 0.094, 0.95).unwrap());
+                bg_paint.set_color(crate::theme::skia(crate::theme::bg_1(), 0.95));
                 bg_paint.anti_alias = true;
                 pixmap.fill_path(
                     &bg,
@@ -673,7 +675,7 @@ fn render_toolbar(state: &mut OverlayState, selection: &Selection, pixmap: &mut 
                 // Border
                 let mut border_paint = Paint::default();
                 border_paint
-                    .set_color(tiny_skia::Color::from_rgba(0.804, 0.839, 0.957, 0.2).unwrap());
+                    .set_color(crate::theme::skia(crate::theme::text_normal(), 0.2));
                 border_paint.anti_alias = true;
                 let border_stroke = Stroke {
                     width: 0.5,
@@ -691,7 +693,7 @@ fn render_toolbar(state: &mut OverlayState, selection: &Selection, pixmap: &mut 
             // Text
             use crate::tools::render_text_annotation;
             let text_pos = crate::geometry::Point::new(tip_x + pad_x, tip_y + pad_y);
-            let white = crate::geometry::Color::new(0.804, 0.839, 0.957, 1.0);
+            let white = crate::theme::gcolor(crate::theme::text_normal(), 1.0);
             render_text_annotation(pixmap, &text_pos, label, &white, font_size);
         }
     }
@@ -742,7 +744,7 @@ fn render_size_label(
     // Draw background pill (dark semi-transparent rounded rect)
     if let Some(bg_path) = rounded_rect_path(pill_x, pill_y, pill_w, pill_h, 4.0) {
         let mut paint = Paint::default();
-        paint.set_color(tiny_skia::Color::from_rgba(0.0, 0.0, 0.0, 0.7).unwrap());
+        paint.set_color(crate::theme::skia(crate::theme::bg_1(), 0.85));
         paint.anti_alias = true;
         pixmap.fill_path(
             &bg_path,
@@ -756,6 +758,6 @@ fn render_size_label(
     // Render text on top via the shared single-line text path
     use crate::tools::render_text_annotation;
     let text_pos = crate::geometry::Point::new(pill_x + pad_x, pill_y + pad_y);
-    let white = crate::geometry::Color::new(1.0, 1.0, 1.0, 1.0);
+    let white = crate::theme::gcolor(crate::theme::text_normal(), 1.0);
     render_text_annotation(pixmap, &text_pos, &label, &white, font_size);
 }
