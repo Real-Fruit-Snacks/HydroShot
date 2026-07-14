@@ -1,7 +1,8 @@
-//! Generate the HydroShot icon (Concept D: Drop + Capture Frame) using tiny-skia.
+//! Generate the HydroShot icon (drop + capture frame) using tiny-skia.
 //! Run: cargo run --example generate_icon
 //!
-//! Dark rounded badge with cyan selection brackets framing a gradient water droplet.
+//! Terminal Workbench badge: a graphite tile with mint selection brackets
+//! framing a cyan water droplet.
 
 fn main() {
     generate_icon(256, "icon_256.png");
@@ -19,7 +20,7 @@ fn generate_icon(size: u32, path: &str) {
     let corner_r = 26.0 * s;
     if let Some(bg_path) = rounded_rect(0.0, 0.0, size as f32, size as f32, corner_r) {
         let mut paint = tiny_skia::Paint::default();
-        paint.set_color(tiny_skia::Color::from_rgba(0.047, 0.071, 0.133, 1.0).unwrap()); // #0c1222
+        paint.set_color(tiny_skia::Color::from_rgba(0.035, 0.047, 0.051, 1.0).unwrap()); // #090c0d (bg-0)
         paint.anti_alias = true;
         pixmap.fill_path(
             &bg_path,
@@ -41,7 +42,7 @@ fn generate_icon(size: u32, path: &str) {
         corner_r - inset,
     ) {
         let mut paint = tiny_skia::Paint::default();
-        paint.set_color(tiny_skia::Color::from_rgba(0.06, 0.09, 0.16, 1.0).unwrap()); // slightly lighter
+        paint.set_color(tiny_skia::Color::from_rgba(0.055, 0.071, 0.078, 1.0).unwrap()); // #0e1214 (bg-1)
         paint.anti_alias = true;
         pixmap.fill_path(
             &inner_path,
@@ -58,7 +59,7 @@ fn generate_icon(size: u32, path: &str) {
     // Scale bracket width for small sizes
     let bracket_w = if size <= 32 { 5.0 * s } else { 3.5 * s };
 
-    let bracket_color = tiny_skia::Color::from_rgba(0.22, 0.74, 0.97, 1.0).unwrap(); // #38bdf8
+    let bracket_color = tiny_skia::Color::from_rgba(0.388, 0.949, 0.671, 1.0).unwrap(); // #63f2ab (accent)
     let mut bp = tiny_skia::Paint::default();
     bp.set_color(bracket_color);
     bp.anti_alias = true;
@@ -99,7 +100,7 @@ fn generate_icon(size: u32, path: &str) {
     if let Some(ref dp) = drop_path {
         // Base fill: deep blue
         let mut base = tiny_skia::Paint::default();
-        base.set_color(tiny_skia::Color::from_rgba(0.01, 0.41, 0.64, 1.0).unwrap()); // #0369a1
+        base.set_color(tiny_skia::Color::from_rgba(0.098, 0.373, 0.478, 1.0).unwrap()); // deep cyan
         base.anti_alias = true;
         pixmap.fill_path(
             dp,
@@ -113,7 +114,7 @@ fn generate_icon(size: u32, path: &str) {
         let upper = build_droplet_upper(cx, drop_top, drop_radius, drop_wide_y, cy - 2.0 * s, s);
         if let Some(ref up) = upper {
             let mut light = tiny_skia::Paint::default();
-            light.set_color(tiny_skia::Color::from_rgba(0.13, 0.83, 0.93, 0.8).unwrap()); // #22d3ee
+            light.set_color(tiny_skia::Color::from_rgba(0.420, 0.863, 1.0, 0.8).unwrap()); // #6bdcff (accent-alt)
             light.anti_alias = true;
             pixmap.fill_path(
                 up,
@@ -135,7 +136,7 @@ fn generate_icon(size: u32, path: &str) {
         );
         if let Some(ref tp) = tip {
             let mut bright = tiny_skia::Paint::default();
-            bright.set_color(tiny_skia::Color::from_rgba(0.4, 0.92, 0.98, 0.5).unwrap()); // bright cyan
+            bright.set_color(tiny_skia::Color::from_rgba(0.65, 0.93, 1.0, 0.5).unwrap()); // bright cyan
             bright.anti_alias = true;
             pixmap.fill_path(
                 tp,
@@ -187,7 +188,7 @@ fn generate_icon(size: u32, path: &str) {
 
         // Droplet outline: subtle cyan border
         let mut outline = tiny_skia::Paint::default();
-        outline.set_color(tiny_skia::Color::from_rgba(0.22, 0.74, 0.97, 0.6).unwrap()); // #38bdf8
+        outline.set_color(tiny_skia::Color::from_rgba(0.420, 0.863, 1.0, 0.6).unwrap()); // #6bdcff (accent-alt)
         outline.anti_alias = true;
         let outline_w = if size <= 32 { 2.5 * s } else { 1.8 * s };
         let os = tiny_skia::Stroke {
@@ -203,7 +204,7 @@ fn generate_icon(size: u32, path: &str) {
             rounded_rect(0.5, 0.5, size as f32 - 1.0, size as f32 - 1.0, corner_r)
         {
             let mut border = tiny_skia::Paint::default();
-            border.set_color(tiny_skia::Color::from_rgba(0.22, 0.74, 0.97, 0.15).unwrap());
+            border.set_color(tiny_skia::Color::from_rgba(0.388, 0.949, 0.671, 0.15).unwrap()); // #63f2ab (accent)
             border.anti_alias = true;
             let bord_stroke = tiny_skia::Stroke {
                 width: 1.0 * s,
