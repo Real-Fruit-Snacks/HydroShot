@@ -2,6 +2,11 @@
 
 All notable changes to HydroShot will be documented in this file.
 
+## [1.1.3] - 2026-07-12
+
+### Changed
+- Recolored the application icon to the Terminal Workbench palette — a graphite tile with mint selection brackets framing a cyan water droplet. It now matches the app, the website favicon, and the theme across the window, taskbar, tray, executable, and installer.
+
 ## [1.1.2] - 2026-07-12
 
 ### Changed
